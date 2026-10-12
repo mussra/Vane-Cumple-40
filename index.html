@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>40 Años de Vane: El Juego de su Memoria</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Montserrat y Lora -->
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
+
+    <!-- CABECERA (HERO SECTION) -->
+    <header class="relative overflow-hidden border-b border-slate-800/80 bg-gradient-to-b from-[#111827] to-[#0b0f19] py-16 px-4 text-center sm:py-24">
+        <!-- Efecto sutil de fondo tipo constelación/memoria -->
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
+        
+        <div class="relative mx-auto max-w-3xl">
+            <!-- Sello conmemorativo -->
+            <span class="inline-block mb-4 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg shadow-amber-500/5">
+                Museo Virtual • Edición Coleccionista
+            </span>
+            <h1 class="font-serif text-4xl sm:text-6xl font-bold tracking-tight text-white mb-4">
+                40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-3xl font-light mt-2 tracking-normal">El Juego de su Memoria</span>
+            </h1>
+            <p class="text-base sm:text-lg text-slate-300 max-w-xl mx-auto font-light leading-relaxed mb-8">
+                Escanea, descubre y sonríe. Un recorrido íntimo por los momentos, viajes y locuras que nos han traído hasta esta gran noche.
+            </p>
+            
+            <!-- Insignia de Fecha / Evento -->
+            <div class="inline-flex items-center gap-2.5 rounded-xl bg-slate-900/90 border border-slate-800 px-6 py-3 text-sm text-slate-300 shadow-xl backdrop-blur-md">
+                <i class="fa-solid fa-champagne-glasses text-amber-400"></i>
+                <span>Cena Sorpresa Familiar • <strong class="text-white">Colección Privada</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- SECCIÓN DE CONTENIDO / GALERÍA TIPO POLAROID -->
+    <main class="mx-auto max-w-6xl px-4 py-12 sm:py-16 flex-grow w-full">
+        <div class="text-center mb-12">
+            <h2 class="font-serif text-2xl sm:text-3xl font-bold text-white mb-2">Casos y Recuerdos</h2>
+            <p class="text-slate-400 text-sm sm:text-base">Toca cualquier tarjeta polaroid para desvelar el archivo multimedia o pista secreta.</p>
+        </div>
+
+        <!-- Grid de Tarjetas -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10">
+            
+            <!-- TARJETA 1 -->
+            <article class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300 hover:-translate-y-2 hover:border-amber-500/50 hover:shadow-amber-500/10">
+                <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
+                    <img src="assets/recuerdos/foto-1.jpg" alt="Caso 1" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=600&q=80'">
+                    <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
+                        Caso #01
+                    </span>
+                </div>
+                <div class="px-1">
+                    <h3 class="font-serif text-lg font-semibold text-white mb-1 group-hover:text-amber-400 transition-colors">
+                        Verano Inolvidable
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-300 font-light mb-4 line-clamp-2">
+                        ¿Adivinas en qué playa del sur perdimos las llaves del coche? Una pista: hacía mucho calor y risas aseguradas.
+                    </p>
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
+                        <span class="text-xs text-amber-400/80"><i class="fa-solid fa-key mr-1"></i> Pista activa</span>
+                        <button onclick="openMediaModal('Verano Inolvidable', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'vídeo')" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-3.5 py-2 text-xs font-medium text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition-all shadow-sm">
+                            <i class="fa-solid fa-play"></i> Reproducir
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- TARJETA 2 -->
+            <article class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300 hover:-translate-y-2 hover:border-amber-500/50 hover:shadow-amber-500/10">
+                <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
+                    <img src="assets/recuerdos/foto-2.jpg" alt="Caso 2" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=600&q=80'">
+                    <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
+                        Caso #02
+                    </span>
+                </div>
+                <div class="px-1">
+                    <h3 class="font-serif text-lg font-semibold text-white mb-1 group-hover:text-amber-400 transition-colors">
+                        Himno de la Década
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-300 font-light mb-4 line-clamp-2">
+                        La canción que sonaba en bucle en cada viaje de coche. Sube el volumen y viaja en el tiempo.
+                    </p>
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
+                        <span class="text-xs text-amber-400/80"><i class="fa-solid fa-music mr-1"></i> Pista sonora</span>
+                        <button onclick="openMediaModal('Himno de la Década', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'audio')" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-3.5 py-2 text-xs font-medium text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition-all shadow-sm">
+                            <i class="fa-solid fa-play"></i> Escuchar
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- TARJETA 3 -->
+            <article class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300 hover:-translate-y-2 hover:border-amber-500/50 hover:shadow-amber-500/10">
+                <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
+                    <img src="assets/recuerdos/foto-3.jpg" alt="Caso 3" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80'">
+                    <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
+                        Caso #03
+                    </span>
+                </div>
+                <div class="px-1">
+                    <h3 class="font-serif text-lg font-semibold text-white mb-1 group-hover:text-amber-400 transition-colors">
+                        Aventura en la Nieve
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-300 font-light mb-4 line-clamp-2">
+                        Frío polar, chocolate caliente en cabaña de madera y caídas épicas que aún recordamos.
+                    </p>
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
+                        <span class="text-xs text-amber-400/80"><i class="fa-solid fa-video mr-1"></i> Vídeo exclusivo</span>
+                        <button onclick="openMediaModal('Aventura en la Nieve', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'vídeo')" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-3.5 py-2 text-xs font-medium text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition-all shadow-sm">
+                            <i class="fa-solid fa-play"></i> Reproducir
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+        </div>
+    </main>
+
+    <!-- VENTANA MODAL MULTIMEDIA -->
+    <div id="mediaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="relative w-full max-w-2xl rounded-2xl bg-[#111827] border border-slate-700 p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="modalTitle" class="font-serif text-xl font-bold text-white">Reproductor de Recuerdo</h3>
+                <button onclick="closeMediaModal()" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner">
+                <iframe id="modalIframe" class="h-full w-full border-0" src="" allowfullscreen></iframe>
+            </div>
+            <p class="text-xs text-slate-400 text-center font-light">Disfruta de este contenido multimedia exclusivo preparado para el 40 cumpleaños de Vane.</p>
+        </div>
+    </div>
+
+    <!-- PIE DE PÁGINA (FOOTER) -->
+    <footer class="border-t border-slate-800/80 bg-[#0b0f19] py-8 text-center text-xs text-slate-400">
+        <div class="mx-auto max-w-3xl px-4">
+            <p class="font-serif text-slate-300 text-sm mb-2 italic">"Los mejores recuerdos son aquellos que compartimos con quienes más amamos."</p>
+            <p class="font-light">Creado con cariño por la familia y organizadores • 40 Años de Vane 🥂</p>
+        </div>
+    </footer>
+
+    <!-- Script de control interactivo -->
+    <script>
+        const modal = document.getElementById('mediaModal');
+        const modalIframe = document.getElementById('modalIframe');
+        const modalTitle = document.getElementById('modalTitle');
+
+        function openMediaModal(title, url, type) {
+            modalTitle.textContent = title;
+            modalIframe.src = url;
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeMediaModal() {
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modalIframe.src = '';
+            }, 300);
+        }
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeMediaModal();
+        });
+    </script>
+</body>
+</html>

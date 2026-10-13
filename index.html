@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es" class="dark">
 <head>
@@ -25,7 +24,7 @@
                 <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración de Administrador</h3>
                 <div class="flex gap-2 flex-wrap">
                     <button onclick="inicializarCasos()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-slate-700 transition-all border border-amber-500/30">
-                        <i class="fa-solid fa-database mr-1"></i> Inicializar Casos
+                        <i class="fa-solid fa-database mr-1"></i> Inicializar Casos en Firebase
                     </button>
                     <button onclick="guardarCambios()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
                         <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar Cambios
@@ -115,20 +114,6 @@
             };
         }
 
-        const localData = localStorage.getItem('vane_casos_config');
-        if (localData) {
-            try {
-                const parsed = JSON.parse(localData);
-                for (let i = 1; i <= 13; i++) {
-                    if (parsed[`caso-${i}`]) {
-                        casosConfig[`caso-${i}`] = { ...casosConfig[`caso-${i}`], ...parsed[`caso-${i}`] };
-                    }
-                }
-            } catch(e) {
-                console.error("Error al leer localStorage:", e);
-            }
-        }
-
         function renderGrid() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
@@ -140,7 +125,6 @@
                 
                 grid.innerHTML += `
                     <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 flex flex-col justify-between">
-                        <!-- Contenedor vertical estilo Polaroid con object-contain -->
                         <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
                             <img id="img-${id}" src="${c.imagenUrl || ''}" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
                             <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
@@ -228,7 +212,10 @@
             }
         }
 
-        // Sincronización en tiempo real optimizada y blindada para clientes
+        // Renderizamos la rejilla estática de entrada para que se vea siempre
+        renderGrid();
+
+        // Escucha en tiempo real de Firebase para actualizar los estados de los casos
         for (let i = 1; i <= 13; i++) {
             const id = `caso-${i}`;
             db.collection("estado_juego").doc(id).onSnapshot((docSnap) => {
@@ -239,25 +226,20 @@
                     casosConfig[id] = { ...casosConfig[id], ...data };
                     actualizarUI(id, data.resuelto);
 
-                    // 1. Si el caso pasa a resuelto, abrimos el modal automáticamente en todos los dispositivos
                     if (data.resuelto && !antesResuelto) {
                         openModal(id);
                     }
 
-                    // 2. Sincronización de reproducción: si el admin pulsa el botón global, 
-                    // se fuerza la apertura del modal y la reproducción exacta para todos los clientes
                     if (data.reproduciendoDesde) {
-                        // Si el modal no está abierto en este caso, lo abrimos para que reproduzca al unísono
                         if (activeId !== id) {
                             openModal(id);
                         }
 
                         const player = document.getElementById('player');
                         const adminBar = document.getElementById('admin-sync-bar');
-                        if (adminBar) adminBar.remove(); // Oculta la capa de espera si es el admin
+                        if (adminBar) adminBar.remove();
 
                         if (player) {
-                            // Calculamos el tiempo transcurrido desde el servidor
                             const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
                             const elapsedSeconds = (Date.now() - serverTime) / 1000;
                             
@@ -270,6 +252,8 @@
                         }
                     }
                 }
+            }, (error) => {
+                console.error("Error al escuchar Firebase:", error);
             });
         }
 
@@ -279,7 +263,7 @@
                 const ref = db.collection("estado_juego").doc(`caso-${i}`);
                 batch.set(ref, casosConfig[`caso-${i}`], { merge: true });
             }
-            batch.commit().then(() => alert("¡Casos inicializados en Firebase!"));
+            batch.commit().then(() => alert("¡Casos inicializados en Firebase con éxito!"));
         };
 
         window.guardarCambios = function() {
@@ -297,8 +281,7 @@
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
             }
-            localStorage.setItem('vane_casos_config', JSON.stringify(casosConfig));
-            batch.commit().then(() => alert("¡Guardado y sincronizado con éxito!"));
+            batch.commit().then(() => alert("¡Guardado y sincronizado con Firebase!"));
         };
 
         let activeId = '';
@@ -351,7 +334,6 @@
             setTimeout(() => m.classList.remove('opacity-0'), 10);
         };
 
-   
         window.lanzarReproduccionGlobal = function(id) {
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
@@ -369,7 +351,7 @@
             }, 300);
         };
 
-        window.toggleAudio = function() {
+                window.toggleAudio = function() {
             const p = document.getElementById('player');
             if (p) {
                 p.muted = !p.muted;
@@ -379,12 +361,11 @@
             }
         };
 
-        renderGrid();
         if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
             document.getElementById('admin-panel').classList.remove('hidden');
             renderAdmin();
-            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Firebase operativo.';
+            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Firebase conectado. Pulsa "Inicializar Casos en Firebase" si es la primera vez.';
         }
     </script>
 </body>
-</html>     
+</html>

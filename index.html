@@ -15,11 +15,25 @@
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
 
-    <!-- PANEL SECRETO DE ADMINISTRADOR (Solo visible si añades ?admin=vane40 a la URL) -->
-    <div id="admin-panel" class="bg-amber-500 text-slate-950 py-2 px-4 text-center text-xs font-bold hidden">
-        <i class="fa-solid fa-user-shield mr-1"></i> MODO ADMINISTRADOR ACTIVADO — 
-        <button onclick="inicializar13Casos()" class="underline ml-2 hover:text-white transition-colors">[ Inicializar los 13 casos en Firebase ]</button>
-        <span id="admin-status" class="ml-2 font-normal"></span>
+    <!-- PANEL DE ADMINISTRADOR (Visible con ?admin=vane40) -->
+    <div id="admin-panel" class="bg-slate-900 border-b border-amber-500/30 p-4 hidden">
+        <div class="mx-auto max-w-6xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración del Administrador (13 Casos)</h3>
+                <div class="flex gap-2">
+                    <button onclick="guardarConfigAdmin()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
+                        <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar en Firebase y Local
+                    </button>
+                    <button onclick="cargarConfigFirebase()" class="rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition-all border border-slate-700">
+                        <i class="fa-solid fa-rotate mr-1"></i> Sincronizar desde Firebase
+                    </button>
+                </div>
+            </div>
+            <!-- Contenedor editable de los 13 casos -->
+            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto p-2">
+                <!-- Se inyecta dinámicamente mediante JS -->
+            </div>
+        </div>
     </div>
 
     <!-- CABECERA -->
@@ -38,91 +52,20 @@
         </div>
     </header>
 
-    <!-- GALERÍA DE CASOS (Generamos 3 de ejemplo, puedes ampliar hasta 13 fácilmente) -->
+    <!-- GALERÍA DE LOS 13 CASOS -->
     <main class="mx-auto max-w-6xl px-4 py-10 flex-grow w-full">
         <div class="text-center mb-10">
             <h2 class="font-serif text-2xl font-bold text-white mb-1">Casos del Archivo</h2>
             <p class="text-slate-400 text-xs sm:text-sm">Las tarjetas bloqueadas se iluminarán automáticamente al resolverse en la cena.</p>
         </div>
 
+        <!-- Grid donde se pintarán los 13 casos -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" id="cases-grid">
-            
-            <!-- CASO 1 -->
-            <article id="card-caso-1" class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300">
-                <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
-                    <img id="img-caso-1" src="assets/recuerdos/foto-1.jpg" alt="Caso 1" class="h-full w-full object-cover filter blur-sm opacity-40 transition-all duration-500" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=600&q=80'">
-                    <div id="lock-caso-1" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]">
-                        <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                        <span class="text-xs font-medium text-slate-200 tracking-wider uppercase">Caso Bloqueado</span>
-                    </div>
-                    <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-                        Caso #01
-                    </span>
-                </div>
-                <div class="px-1">
-                    <h3 class="font-serif text-lg font-semibold text-white mb-1">Verano Inolvidable</h3>
-                    <p class="text-xs text-slate-300 font-light mb-4">¿Adivinas en qué playa del sur perdimos las llaves?</p>
-                    <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
-                        <span id="status-caso-1" class="text-xs text-slate-400">Pendiente de resolver</span>
-                        <button id="btn-caso-1" disabled onclick="openSyncedMedia('Verano Inolvidable', 'dQw4w9WgXcQ', 'caso-1')" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed transition-all">
-                            <i class="fa-solid fa-play"></i> Reproducir
-                        </button>
-                    </div>
-                </div>
-            </article>
-
-            <!-- CASO 2 -->
-            <article id="card-caso-2" class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300">
-                <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
-                    <img id="img-caso-2" src="assets/recuerdos/foto-2.jpg" alt="Caso 2" class="h-full w-full object-cover filter blur-sm opacity-40 transition-all duration-500" onerror="this.src='https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=600&q=80'">
-                    <div id="lock-caso-2" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]">
-                        <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                        <span class="text-xs font-medium text-slate-200 tracking-wider uppercase">Caso Bloqueado</span>
-                    </div>
-                    <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-                        Caso #02
-                    </span>
-                </div>
-                <div class="px-1">
-                    <h3 class="font-serif text-lg font-semibold text-white mb-1">Himno de la Década</h3>
-                    <p class="text-xs text-slate-300 font-light mb-4">La canción que sonaba en bucle en los viajes.</p>
-                    <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
-                        <span id="status-caso-2" class="text-xs text-slate-400">Pendiente de resolver</span>
-                        <button id="btn-caso-2" disabled onclick="openSyncedMedia('Himno de la Década', 'dQw4w9WgXcQ', 'caso-2')" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed transition-all">
-                            <i class="fa-solid fa-play"></i> Reproducir
-                        </button>
-                    </div>
-                </div>
-            </article>
-
-            <!-- CASO 3 -->
-            <article id="card-caso-3" class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300">
-                <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
-                    <img id="img-caso-3" src="assets/recuerdos/foto-3.jpg" alt="Caso 3" class="h-full w-full object-cover filter blur-sm opacity-40 transition-all duration-500" onerror="this.src='https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80'">
-                    <div id="lock-caso-3" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]">
-                        <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                        <span class="text-xs font-medium text-slate-200 tracking-wider uppercase">Caso Bloqueado</span>
-                    </div>
-                    <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-                        Caso #03
-                    </span>
-                </div>
-                <div class="px-1">
-                    <h3 class="font-serif text-lg font-semibold text-white mb-1">Aventura en la Nieve</h3>
-                    <p class="text-xs text-slate-300 font-light mb-4">Frío polar y chocolate caliente en cabaña.</p>
-                    <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
-                        <span id="status-caso-3" class="text-xs text-slate-400">Pendiente de resolver</span>
-                        <button id="btn-caso-3" disabled onclick="openSyncedMedia('Aventura en la Nieve', 'dQw4w9WgXcQ', 'caso-3')" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed transition-all">
-                            <i class="fa-solid fa-play"></i> Reproducir
-                        </button>
-                    </div>
-                </div>
-            </article>
-
+            <!-- Renderizado dinámico desde JS -->
         </div>
     </main>
 
-    <!-- MODAL MULTIMEDIA CON CONTROL DE AUDIO PARA ADMIN -->
+    <!-- MODAL MULTIMEDIA DINÁMICO (Vídeo, Audio o Foto) -->
     <div id="mediaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
         <div class="relative w-full max-w-2xl rounded-2xl bg-[#111827] border border-slate-700 p-6 shadow-2xl">
             <div class="flex items-center justify-between mb-4">
@@ -131,10 +74,11 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            <div class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative">
-                <iframe id="modalIframe" class="h-full w-full border-0" src="" allow="autoplay"></iframe>
+            <!-- Contenedor dinámico de multimedia -->
+            <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative flex items-center justify-center">
+                <!-- Se inyecta iframe o imagen según el tipo -->
             </div>
-            <div class="flex items-center justify-between text-xs text-slate-400">
+            <div class="flex items-center justify-between text-xs text-slate-400" id="audio-control-bar">
                 <span id="audio-status-label"><i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).</span>
                 <button id="toggle-audio-btn" onclick="toggleAudio()" class="rounded bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 transition-colors">
                     Activar Audio (Modo Sala)
@@ -149,10 +93,10 @@
         <p class="font-light">40 Años de Vane 🥂</p>
     </footer>
 
-    <!-- Firebase y Lógica de Sincronización -->
+    <!-- LÓGICA DE FIREBASE Y CONFIGURACIÓN DINÁMICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, setDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "TU_API_KEY",
@@ -166,46 +110,157 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Detectar si estamos en modo Admin por la URL (?admin=vane40)
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('admin') === 'vane40') {
-            document.getElementById('admin-panel').classList.remove('hidden');
+        // Estructura por defecto de los 13 casos
+        let casosData = {};
+        for (let i = 1; i <= 13; i++) {
+            casosData[`caso-${i}`] = {
+                titulo: `Caso #${i}: Recuerdo Especial`,
+                descripcion: `Un momento inolvidable guardado en la memoria de Vane.`,
+                tipo: 'video', // 'video', 'audio', 'foto'
+                recursoId: 'dQw4w9WgXcQ', // ID de YouTube o URL de imagen/audio
+                resuelto: false,
+                timestamp: null
+            };
         }
 
-        // Función global para que el admin cree los 13 casos en un solo clic
-        window.inicializar13Casos = async function() {
-            const statusSpan = document.getElementById('admin-status');
-            statusSpan.textContent = "Creando casos...";
+        // Cargar configuración previa desde localStorage si existe
+        const localSaved = localStorage.getItem('vane_casos_config');
+        if (localSaved) {
+            try { casosData = JSON.parse(localSaved); } catch(e){}
+        }
+
+        window.casosConfig = casosData;
+        window.casoTimestamps = {};
+
+        // Detectar Modo Admin por URL (?admin=vane40)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === 'vane40';
+        if (isAdmin) {
+            document.getElementById('admin-panel').classList.remove('hidden');
+            renderAdminEditor();
+        }
+
+        // Renderizar la galería principal de los 13 casos
+        function renderMainGrid() {
+            const grid = document.getElementById('cases-grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 13; i++) {
+                const id = `caso-${i}`;
+                const caso = window.casosConfig[id] || casosData[id];
+                
+                const html = `
+                    <article id="card-${id}" class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300">
+                        <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
+                            <img id="img-${id}" src="assets/recuerdos/foto-${(i%3)+1}.jpg" alt="${id}" class="h-full w-full object-cover filter blur-sm opacity-40 transition-all duration-500" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=600&q=80'">
+                            <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]">
+                                <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
+                                <span class="text-xs font-medium text-slate-200 tracking-wider uppercase">Bloqueado</span>
+                            </div>
+                            <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
+                                Caso #${i < 10 ? '0'+i : i}
+                            </span>
+                        </div>
+                        <div class="px-1">
+                            <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${caso.titulo}</h3>
+                            <p id="desc-${id}" class="text-xs text-slate-300 font-light mb-4 line-clamp-2">${caso.descripcion}</p>
+                            <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
+                                <span id="status-${id}" class="text-xs text-slate-400">Pendiente</span>
+                                <button id="btn-${id}" disabled onclick="openSyncedMedia('${id}')" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed transition-all">
+                                    <i class="fa-solid fa-play"></i> Ver
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                `;
+                grid.innerHTML += html;
+            }
+        }
+        renderMainGrid();
+
+        // Renderizar editor del administrador
+        function renderAdminEditor() {
+            const editor = document.getElementById('admin-cases-editor');
+            editor.innerHTML = '';
+            for (let i = 1; i <= 13; i++) {
+                const id = `caso-${i}`;
+                const c = window.casosConfig[id];
+                editor.innerHTML += `
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-2">
+                        <div class="flex justify-between font-bold text-amber-400">
+                            <span>Caso #${i}</span>
+                            <label><input type="checkbox" id="adm-res-${id}" ${c.resuelto ? 'checked':''}> Resuelto</label>
+                        </div>
+                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
+                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
+                        <div class="flex gap-2">
+                            <select id="adm-tipo-${id}" class="bg-slate-900 border border-slate-700 rounded p-1 text-white">
+                                <option value="video" ${c.tipo==='video'?'selected':''}>Vídeo (YouTube)</option>
+                                <option value="audio" ${c.tipo==='audio'?'selected':''}>Audio / Canción</option>
+                                <option value="foto" ${c.tipo==='foto'?'selected':''}>Foto Inédita</option>
+                            </select>
+                            <input type="text" id="adm-rec-${id}" value="${c.recursoId}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="ID YouTube o URL">
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Guardar configuración del admin a Firebase y LocalStorage
+        window.guardarConfigAdmin = async function() {
             try {
                 const batch = writeBatch(db);
                 for (let i = 1; i <= 13; i++) {
-                    const docRef = doc(db, "estado_juego", `caso-${i}`);
-                    batch.set(docRef, {
-                        resuelto: false,
-                        timestamp: null
-                    }, { merge: true });
+                    const id = `caso-${i}`;
+                    window.casosConfig[id] = {
+                        titulo: document.getElementById(`adm-title-${id}`).value,
+                        descripcion: document.getElementById(`adm-desc-${id}`).value,
+                        tipo: document.getElementById(`adm-tipo-${id}`).value,
+                        recursoId: document.getElementById(`adm-rec-${id}`).value,
+                        resuelto: document.getElementById(`adm-res-${id}`).checked,
+                        timestamp: document.getElementById(`adm-res-${id}`).checked ? serverTimestamp() : null
+                    };
+                    const docRef = doc(db, "estado_juego", id);
+                    batch.set(docRef, window.casosConfig[id], { merge: true });
                 }
                 await batch.commit();
-                statusSpan.textContent = "¡13 casos creados con éxito en Firebase!";
-                statusSpan.className = "ml-2 text-emerald-900 font-bold";
-            } catch (error) {
-                statusSpan.textContent = "Error: " + error.message;
-                statusSpan.className = "ml-2 text-red-900 font-bold";
+                localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
+                alert("¡Configuración guardada en Firebase y Local con éxito!");
+                renderMainGrid();
+            } catch (e) {
+                alert("Error al guardar: " + e.message);
             }
         };
 
-        window.casoTimestamps = {};
+        // Sincronizar desde Firebase al arrancar o por botón
+        window.cargarConfigFirebase = async function() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "estado_juego"));
+                querySnapshot.forEach((docSnap) => {
+                    if (docSnap.exists()) {
+                        window.casosConfig[docSnap.id] = docSnap.data();
+                    }
+                });
+                localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
+                renderMainGrid();
+                if (isAdmin) renderAdminEditor();
+                alert("¡Sincronizado correctamente con Firebase!");
+            } catch(e) {
+                console.error(e);
+            }
+        };
+        cargarConfigFirebase();
 
-        // Escuchar los 13 casos en tiempo real
+        // Escuchar cambios en tiempo real para sincronía instantánea
         for (let i = 1; i <= 13; i++) {
             const casoId = `caso-${i}`;
             onSnapshot(doc(db, "estado_juego", casoId), (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    window.casosConfig[casoId] = data;
                     if (data.resuelto === true) {
                         desbloquearCaso(casoId);
                         if (data.timestamp) {
-                            window.casoTimestamps[casoId] = data.timestamp.toMillis();
+                            window.casoTimestamps[casoId] = data.timestamp.toMillis ? data.timestamp.toMillis() : Date.now();
                         }
                     }
                 }
@@ -213,12 +268,19 @@
         }
 
         function desbloquearCaso(id) {
+            const caso = window.casosConfig[id];
             const img = document.getElementById(`img-${id}`);
             const lock = document.getElementById(`lock-${id}`);
             const btn = document.getElementById(`btn-${id}`);
             const status = document.getElementById(`status-${id}`);
             const card = document.getElementById(`card-${id}`);
+            const title = document.getElementById(`title-${id}`);
+            const desc = document.getElementById(`desc-${id}`);
 
+            if (caso) {
+                if (title) title.textContent = caso.titulo;
+                if (desc) desc.textContent = caso.descripcion;
+            }
             if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
             if (lock) lock.style.display = 'none';
             if (btn) {
@@ -234,60 +296,62 @@
         }
     </script>
 
-    <!-- Control del Modal y Audio -->
+    <!-- CONTROL DE REPRODUCTOR DINÁMICO (DETECTA TIPO VÍDEO, AUDIO O FOTO) -->
     <script>
         const modal = document.getElementById('mediaModal');
-        const modalIframe = document.getElementById('modalIframe');
         const modalTitle = document.getElementById('modalTitle');
-        let currentVideoId = '';
-        let currentCasoId = '';
+        const modalContentContainer = document.getElementById('modalContentContainer');
+        const audioControlBar = document.getElementById('audio-control-bar');
         let isAudioMuted = true;
+        let activeCasoId = '';
 
-        function openSyncedMedia(title, videoId, casoId) {
-            modalTitle.textContent = title;
-            currentVideoId = videoId;
-            currentCasoId = casoId;
-            isAudioMuted = true; // Por defecto silenciado para invitados
+        window.openSyncedMedia = function(casoId) {
+            activeCasoId = casoId;
+            const caso = window.casosConfig[casoId];
+            if (!caso) return;
 
-            updateIframeSource();
+            modalTitle.textContent = caso.titulo;
+            isAudioMuted = true;
+            renderModalContent();
+            
             modal.classList.remove('hidden');
             setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
 
-        function updateIframeSource() {
+        function renderModalContent() {
+            const caso = window.casosConfig[activeCasoId];
+            if (!caso) return;
+
             let startSecond = 0;
-            if (window.casoTimestamps && window.casoTimestamps[currentCasoId]) {
-                const elapsedMs = Date.now() - window.casoTimestamps[currentCasoId];
+            if (window.casoTimestamps && window.casoTimestamps[activeCasoId]) {
+                const elapsedMs = Date.now() - window.casoTimestamps[activeCasoId];
                 startSecond = Math.max(0, Math.floor(elapsedMs / 1000));
             }
 
-            // YouTube soporta mute=1 para silenciar y mute=0 para activar audio
-            const muteParam = isAudioMuted ? 1 : 0;
-            modalIframe.src = `https://www.youtube.com/embed/${currentVideoId}?autoplay=1&mute=${muteParam}&start=${startSecond}`;
-
-            const label = document.getElementById('audio-status-label');
-            const btn = document.getElementById('toggle-audio-btn');
-            if (isAudioMuted) {
-                label.innerHTML = '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).';
-                btn.textContent = 'Activar Audio (Modo Sala)';
+            if (caso.tipo === 'video') {
+                audioControlBar.style.display = 'flex';
+                const muteParam = isAudioMuted ? 1 : 0;
+                modalContentContainer.innerHTML = `<iframe class="h-full w-full border-0" src="https://www.youtube.com/embed/${caso.recursoId}?autoplay=1&mute=${muteParam}&start=${startSecond}" allow="autoplay"></iframe>`;
+                updateAudioLabel();
+            } else if (caso.tipo === 'audio') {
+                audioControlBar.style.display = 'flex';
+                const mutedAttr = isAudioMuted ? 'muted' : '';
+                modalContentContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-6 text-center">
+                        <i class="fa-solid fa-music text-amber-400 text-5xl mb-4 animate-bounce"></i>
+                        <p class="text-white font-serif text-lg mb-4">${caso.titulo}</p>
+                        <audio autoplay ${mutedAttr} controls src="${caso.recursoId}" class="w-full"></audio>
+                    </div>
+                `;
+                updateAudioLabel();
             } else {
-                label.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Altavoz principal).';
-                btn.textContent = 'Silenciar Audio';
+                // Tipo Foto
+                audioControlBar.style.display = 'none';
+                modalContentContainer.innerHTML = `<img src="${caso.recursoId}" alt="Foto Inédita" class="h-full w-full object-contain" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=800&q=80'">`;
             }
         }
 
-        function toggleAudio() {
-            isAudioMuted = !isAudioMuted;
-            updateIframeSource();
-        }
-
-        function closeMediaModal() {
-            modal.classList.add('opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modalIframe.src = '';
-            }, 300);
-        }
-    </script>
-</body>
-</html>
+        function updateAudioLabel() {
+            const label = document.getElementById('audio-status-label');
+            const btn = document.getElementById('toggle-audio-btn');
+            if (

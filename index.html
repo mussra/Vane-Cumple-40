@@ -89,36 +89,20 @@
     </footer>
 
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
-        <script>
+    <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'vane40';
-
-        // Validamos primero si la API Key es la de plantilla por defecto
-        if (isAdmin && (firebaseConfig.apiKey === "TU_API_KEY" || !firebaseConfig.apiKey)) {
-            document.addEventListener("DOMContentLoaded", () => {
-                document.getElementById('admin-panel').classList.remove('hidden');
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> ¡Atención! Has dejado la API Key de ejemplo ("TU_API_KEY"). Debes poner tus credenciales reales de Firebase.';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
-            });
-        }
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        
-        // Desactivamos la persistencia offline si queremos forzar red estricta
-        db.enableNetwork().catch(err => console.log(err));
-            
-    
 
-        // Estructura base en memoria por defecto si la base de datos está vacía
+        // Estructura base en memoria por defecto
         let casosConfig = {};
         for (let i = 1; i <= 13; i++) {
             casosConfig[`caso-${i}`] = {
@@ -229,33 +213,38 @@
             }
         }
 
-        // 1. Dibujamos la rejilla inicial inmediatamente
+        // 1. DIBUJAMOS LA REJILLA INMEDIATAMENTE (Para que los casos siempre aparezcan)
         renderGrid();
 
-        // 2. Comprobamos si somos admin y cargamos los datos directos desde Firestore
+        // 2. GESTIÓN DE ADMINISTRADOR Y CONEXIÓN CON FIRESTORE
         const urlParams = new URLSearchParams(window.location.search);
         const isAdmin = urlParams.get('admin') === 'vane40';
 
         if (isAdmin) {
             document.getElementById('admin-panel').classList.remove('hidden');
-            
-            db.collection("estado_juego").get().then((querySnapshot) => {
-                querySnapshot.forEach((doc) => {
-                    if (doc.exists) {
-                        casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
-                    }
-                });
-                renderAdmin();
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> ¡Conectado a Firestore (Sin cachés locales)!';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
-            }).catch((error) => {
-                console.error("Error al conectar con Firestore:", error);
-                document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
+
+            if (firebaseConfig.apiKey === "TU_API_KEY" || !firebaseConfig.apiKey) {
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> ¡Atención! Has dejado la API Key de ejemplo ("TU_API_KEY"). Configura tus credenciales reales.';
                 document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
-            });
+            } else {
+                db.collection("estado_juego").get().then((querySnapshot) => {
+                    querySnapshot.forEach((doc) => {
+                        if (doc.exists) {
+                            casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
+                        }
+                    });
+                    renderAdmin();
+                    document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> ¡Conectado a Firestore (Sin cachés locales)!';
+                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
+                }).catch((error) => {
+                    console.error("Error al conectar con Firestore:", error);
+                    document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
+                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
+                });
+            }
         }
 
-        // 3. Escucha en tiempo real directamente desde Firestore para clientes y admin
+        // 3. ESCUCHA EN TIEMPO REAL DESDE FIRESTORE
         for (let i = 1; i <= 13; i++) {
             const id = `caso-${i}`;
             db.collection("estado_juego").doc(id).onSnapshot((docSnap) => {

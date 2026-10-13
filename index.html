@@ -91,14 +91,14 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         // Tus credenciales de Firebase
-       const firebaseConfig = {
+        const firebaseConfig = {
   apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
   authDomain: "vane-cumple-40.firebaseapp.com",
   projectId: "vane-cumple-40",
   storageBucket: "vane-cumple-40.firebasestorage.app",
   messagingSenderId: "757919275158",
   appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-}; 
+};
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -225,11 +225,32 @@
                 if (docSnap.exists) {
                     const data = docSnap.data();
                     const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
-                    casosConfig[id] = data;
+                    
+                    casosConfig[id] = { ...casosConfig[id], ...data };
                     actualizarUI(id, data.resuelto);
 
+                    // Si se marca como resuelto, abrimos el modal en pausa para precargar
                     if (data.resuelto && !antesResuelto) {
                         openModal(id);
+                    }
+
+                    // En cuanto Firebase recibe el "reproduciendoDesde", se quita la capa del admin y arrancan TODOS a la vez
+                    if (data.reproduciendoDesde && activeId === id) {
+                        const player = document.getElementById('player');
+                        const adminBar = document.getElementById('admin-sync-bar');
+                        if (adminBar) adminBar.remove(); // Quitamos la pantalla de espera del admin
+
+                        if (player) {
+                            const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : Date.now();
+                            const elapsedSeconds = (Date.now() - serverTime) / 1000;
+                            
+                            if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
+                                player.currentTime = Math.max(0, elapsedSeconds);
+                            }
+                            if (player.paused) {
+                                player.play().catch(e => console.log("Play bloqueado por políticas del navegador:", e));
+                            }
+                        }
                     }
                 }
             });
@@ -267,21 +288,66 @@
             activeId = id;
             const c = casosConfig[id];
             if (!c) return;
+            
             document.getElementById('modalTitle').textContent = c.titulo;
-            document.getElementById('modalContentContainer').innerHTML = `
-                <video id="player" autoplay controls muted class="h-full w-full object-contain">
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const isAdmin = urlParams.get('admin') === 'vane40';
+            const mutedAttr = isAdmin ? '' : 'muted';
+
+            let htmlContenido = `
+                <video id="player" controls ${mutedAttr} class="h-full w-full object-contain">
                     <source src="${c.recursoId}" type="video/mp4">
+                    Tu navegador no soporta vídeos HTML5.
                 </video>
             `;
+
+            let panelControlExtra = '';
+            if (isAdmin) {
+                panelControlExtra = `
+                    <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
+                        <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: El vídeo está precargado en pausa en todos los dispositivos.</p>
+                        <button onclick="lanzarReproduccionGlobal('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
+                            <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
+                        </button>
+                    </div>
+                `;
+            }
+
+            document.getElementById('modalContentContainer').innerHTML = `
+                <div class="relative w-full h-full flex items-center justify-center">
+                    ${panelControlExtra}
+                    ${htmlContenido}
+                </div>
+            `;
+
+            const audioLabel = document.getElementById('audio-status-label');
+            if (isAdmin) {
+                audioLabel.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Salida principal con sonido).';
+            } else {
+                audioLabel.innerHTML = '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (Sincronizado).';
+            }
+
             const m = document.getElementById('mediaModal');
             m.classList.remove('hidden');
             setTimeout(() => m.classList.remove('opacity-0'), 10);
         };
 
+        window.lanzarReproduccionGlobal = function(id) {
+            const now = firebase.firestore.FieldValue.serverTimestamp();
+            db.collection("estado_juego").doc(id).set({
+                reproduciendoDesde: now
+            }, { merge: true });
+        };
+
         window.closeModal = function() {
             const m = document.getElementById('mediaModal');
             m.classList.add('opacity-0');
-            setTimeout(() => m.classList.add('hidden'), 300);
+            setTimeout(() => {
+                m.classList.add('hidden');
+                document.getElementById('modalContentContainer').innerHTML = '';
+                activeId = '';
+            }, 300);
         };
 
         window.toggleAudio = function() {

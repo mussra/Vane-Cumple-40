@@ -32,7 +32,7 @@
                 </div>
             </div>
             <div id="admin-status" class="text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-slate-800 text-slate-400">
-                Conectando con Firebase...
+                Verificando conexión real con Firebase...
             </div>
             <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2"></div>
         </div>
@@ -91,13 +91,13 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -212,10 +212,33 @@
             }
         }
 
-        // Renderizamos la rejilla estática de entrada para que se vea siempre
         renderGrid();
 
-        // Escucha en tiempo real de Firebase para actualizar los estados de los casos
+        // Control de administrador y carga inicial desde Firebase
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === 'vane40';
+
+        if (isAdmin) {
+            document.getElementById('admin-panel').classList.remove('hidden');
+            
+            // Cargamos los datos reales desde Firebase para el panel de administración
+            db.collection("estado_juego").get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                    if (doc.exists) {
+                        casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
+                    }
+                });
+                renderAdmin(); // Repintamos el admin con los datos actualizados de Firestore
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> ¡Conexión con Firebase establecida y datos cargados!';
+                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
+            }).catch((error) => {
+                console.error("Error al cargar datos en admin:", error);
+                document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error al cargar datos: ${error.message}`;
+                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
+            });
+        }
+
+        // Escucha en tiempo real de los 13 casos para sincronizar clientes y admin
         for (let i = 1; i <= 13; i++) {
             const id = `caso-${i}`;
             db.collection("estado_juego").doc(id).onSnapshot((docSnap) => {
@@ -253,7 +276,7 @@
                     }
                 }
             }, (error) => {
-                console.error("Error al escuchar Firebase:", error);
+                console.error("Error en la escucha de Firestore:", error);
             });
         }
 
@@ -263,7 +286,10 @@
                 const ref = db.collection("estado_juego").doc(`caso-${i}`);
                 batch.set(ref, casosConfig[`caso-${i}`], { merge: true });
             }
-            batch.commit().then(() => alert("¡Casos inicializados en Firebase con éxito!"));
+            batch.commit().then(() => {
+                alert("¡Casos inicializados en Firebase con éxito!");
+                renderAdmin();
+            }).catch(err => alert("Error al inicializar: " + err.message));
         };
 
         window.guardarCambios = function() {
@@ -281,7 +307,7 @@
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
             }
-            batch.commit().then(() => alert("¡Guardado y sincronizado con Firebase!"));
+            batch.commit().then(() => alert("¡Guardado y sincronizado con Firebase!")).catch(err => alert("Error al guardar: " + err.message));
         };
 
         let activeId = '';
@@ -292,7 +318,6 @@
             
             document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
 
-            const urlParams = new URLSearchParams(window.location.search);
             const isAdmin = urlParams.get('admin') === 'vane40';
             const mutedAttr = isAdmin ? '' : 'muted';
 
@@ -351,7 +376,7 @@
             }, 300);
         };
 
-                window.toggleAudio = function() {
+        window.toggleAudio = function() {
             const p = document.getElementById('player');
             if (p) {
                 p.muted = !p.muted;
@@ -360,12 +385,6 @@
                     '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
             }
         };
-
-        if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
-            document.getElementById('admin-panel').classList.remove('hidden');
-            renderAdmin();
-            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Firebase conectado. Pulsa "Inicializar Casos en Firebase" si es la primera vez.';
-        }
     </script>
 </body>
 </html>

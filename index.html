@@ -90,34 +90,14 @@
 
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
-            
         const firebaseConfig = {
-            apiKey: "TU_API_KEY", // <--- Si dejas esto, saltará el aviso rojo real
-            authDomain: "tu-proyecto.firebaseapp.com",
-            projectId: "tu-proyecto",
-            storageBucket: "tu-proyecto.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef..."
-        };
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'vane40';
-
-        // Validamos primero si la API Key es la de plantilla por defecto
-        if (isAdmin && (firebaseConfig.apiKey === "TU_API_KEY" || !firebaseConfig.apiKey)) {
-            document.addEventListener("DOMContentLoaded", () => {
-                document.getElementById('admin-panel').classList.remove('hidden');
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> ¡Atención! Has dejado la API Key de ejemplo ("TU_API_KEY"). Debes poner tus credenciales reales de Firebase.';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
-            });
-        }
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        // Desactivamos la persistencia offline si queremos forzar red estricta
-        db.enableNetwork().catch(err => console.log(err));
-        
+  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
+  authDomain: "vane-cumple-40.firebaseapp.com",
+  projectId: "vane-cumple-40",
+  storageBucket: "vane-cumple-40.firebasestorage.app",
+  messagingSenderId: "757919275158",
+  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+};
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -360,54 +340,4 @@
                             <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
                         </button>
                     </div>
-                `;
-            }
-
-            document.getElementById('modalContentContainer').innerHTML = `
-                <div class="relative w-full h-full flex items-center justify-center">
-                    ${panelControlExtra}
-                    ${htmlContenido}
-                </div>
-            `;
-
-            const audioLabel = document.getElementById('audio-status-label');
-            if (isAdmin) {
-                audioLabel.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Salida principal de sala).';
-            } else {
-                audioLabel.innerHTML = '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (Sincronizado).';
-            }
-
-            const m = document.getElementById('mediaModal');
-            m.classList.remove('hidden');
-            setTimeout(() => m.classList.remove('opacity-0'), 10);
-        };
-
-        window.lanzarReproduccionGlobal = function(id) {
-            const now = firebase.firestore.FieldValue.serverTimestamp();
-            db.collection("estado_juego").doc(id).set({
-                reproduciendoDesde: now
-            }, { merge: true });
-        };
-
-        window.closeModal = function() {
-            const m = document.getElementById('mediaModal');
-            m.classList.add('opacity-0');
-            setTimeout(() => {
-                m.classList.add('hidden');
-                document.getElementById('modalContentContainer').innerHTML = '';
-                activeId = '';
-            }, 300);
-        };
-
-        window.toggleAudio = function() {
-            const p = document.getElementById('player');
-            if (p) {
-                p.muted = !p.muted;
-                document.getElementById('audio-status-label').innerHTML = p.muted ? 
-                    '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.' : 
-                    '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
-            }
-        };
-    </script>
-</body>
-</html>
+          

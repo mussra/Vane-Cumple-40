@@ -150,24 +150,43 @@
             const editor = document.getElementById('admin-cases-editor');
             if (!editor) return;
             editor.innerHTML = '';
+
+            // Lista completa de vídeos disponibles en tu repositorio
+            const videoOptions = [
+                `assets/videos/caso-1.mp4`, `assets/videos/caso-2.mp4`, `assets/videos/caso-3.mp4`,
+                `assets/videos/caso-4.mp4`, `assets/videos/caso-5.mp4`, `assets/videos/caso-6.mp4`,
+                `assets/videos/caso-7.mp4`, `assets/videos/caso-8.mp4`, `assets/videos/caso-9.mp4`,
+                `assets/videos/caso-10.mp4`, `assets/videos/caso-11.mp4`, `assets/videos/caso-12.mp4`,
+                `assets/videos/caso-13.mp4`, `assets/videos/especial-cumple.mp4`, `assets/videos/recuerdo-familia.mp4`
+            ];
+
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
                 const c = casosConfig[id];
+
+                let optionsHtml = videoOptions.map(path => `
+                    <option value="${path}" ${c.recursoId === path ? 'selected' : ''}>📁 ${path}</option>
+                `).join('');
+
                 editor.innerHTML = editor.innerHTML + `
                     <div class="bg-slate-950 p-3 rounded border border-slate-800 text-xs space-y-2">
                         <div class="flex justify-between font-bold text-amber-400">
                             <span>Caso #${i}</span>
                             <label><input type="checkbox" id="adm-res-${id}" ${c.resuelto?'checked':''}> Resuelto</label>
                         </div>
-                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white">
-                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white">
-                        <select id="adm-rec-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300">
-                            <option value="assets/videos/caso-${i}.mp4">📁 assets/videos/caso-${i}.mp4</option>
-                        </select>
+                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
+                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
+                        <div class="space-y-1">
+                            <label class="text-slate-400 text-[10px]">Vídeo / Recurso asociado:</label>
+                            <select id="adm-rec-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]">
+                                ${optionsHtml}
+                            </select>
+                        </div>
                     </div>
                 `;
             }
-        }
+                }
+        
 
         function actualizarUI(id, resuelto) {
             const c = casosConfig[id];
@@ -226,7 +245,7 @@
             batch.commit().then(() => alert("¡Casos inicializados en Firebase!"));
         };
 
-        window.guardarCambios = function() {
+                window.guardarCambios = function() {
             const batch = db.batch();
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
@@ -241,8 +260,9 @@
                 batch.set(ref, casosConfig[id], { merge: true });
             }
             localStorage.setItem('vane_casos_config', JSON.stringify(casosConfig));
-            batch.commit().then(() => alert("¡Guardado y sincronizado!"));
+            batch.commit().then(() => alert("¡Guardado y sincronizado con éxito!"));
         };
+        
 
         let activeId = '';
         window.openModal = function(id) {

@@ -88,10 +88,11 @@
         <p class="font-light tracking-widest text-[11px] uppercase text-slate-400 mt-3">40 Años de Vane 🥂</p>
     </footer>
 
-    <!-- SCRIPT DE LÓGICA Y FIREBASE COMPAT (GLOBAL) -->
+    <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
-        // PEGA AQUÍ TUS CREDENCIALES DE FIREBASE
-         const firebaseConfig = {
+        // Tus credenciales de Firebase
+        
+const firebaseConfig = {
   apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
   authDomain: "vane-cumple-40.firebaseapp.com",
   projectId: "vane-cumple-40",
@@ -124,8 +125,8 @@
             grid.innerHTML = '';
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
-                const c = casosConfig[id];
-                grid.innerHTML = grid.innerHTML + `
+                const c = casosConfig[id] || { titulo: `Caso #${i}`, descripcion: '', resuelto: false };
+                grid.innerHTML += `
                     <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60">
                         <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4">
                             <img id="img-${id}" src="assets/recuerdos/foto-${(i%3)+1}.jpg" class="h-full w-full object-cover filter blur-sm opacity-40">
@@ -143,16 +144,15 @@
                         </div>
                     </article>
                 `;
+                actualizarUI(id, c.resuelto);
             }
         }
 
         function renderAdmin() {
-                function renderAdmin() {
             const editor = document.getElementById('admin-cases-editor');
             if (!editor) return;
             editor.innerHTML = '';
 
-            // Sugerencias rápidas para el desplegable editable
             const videoSugerencias = [
                 `assets/videos/caso-1.mp4`, `assets/videos/caso-2.mp4`, `assets/videos/caso-3.mp4`,
                 `assets/videos/caso-4.mp4`, `assets/videos/caso-5.mp4`, `assets/videos/caso-6.mp4`,
@@ -165,147 +165,8 @@
                 const id = `caso-${i}`;
                 const c = casosConfig[id];
 
-                let datalistOptions = videoSugerencias.map(path => `
-                    <option value="${path}">
-                `).join('');
+                let datalistOptions = videoSugerencias.map(path => `<option value="${path}">`).join('');
 
-                editor.innerHTML = editor.innerHTML + `
-                    <div class="bg-slate-950 p-3 rounded border border-slate-800 text-xs space-y-2">
-                        <div class="flex justify-between font-bold text-amber-400">
-                            <span>Caso #${i}</span>
-                            <label><input type="checkbox" id="adm-res-${id}" ${c.resuelto?'checked':''}> Resuelto</label>
-                        </div>
-                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
-                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
-                        <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Ruta del vídeo (editable):</label>
-                            <input list="lista-videos-${i}" id="adm-rec-${id}" value="${c.recursoId}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]" placeholder="Ej: assets/videos/video.mp4">
-                            <datalist id="lista-videos-${i}">
-                                ${datalistOptions}
-                            </datalist>
-                        </div>
-                    </div>
-                `;
-            }
-                }
-            
-        
-
-        function actualizarUI(id, resuelto) {
-            const c = casosConfig[id];
-            const img = document.getElementById(`img-${id}`);
-            const lock = document.getElementById(`lock-${id}`);
-            const btn = document.getElementById(`btn-${id}`);
-            const status = document.getElementById(`status-${id}`);
-            const title = document.getElementById(`title-${id}`);
-            const desc = document.getElementById(`desc-${id}`);
-
-            if (title) title.textContent = c.titulo;
-            if (desc) desc.textContent = c.descripcion;
-
-            if (resuelto) {
-                if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
-                if (lock) lock.style.display = 'none';
-                if (btn) {
-                    btn.disabled = false;
-                    btn.className = "rounded bg-amber-500 px-3 py-1.5 text-xs text-slate-950 font-medium hover:bg-amber-400";
-                }
-                if (status) status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
-            } else {
-                if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
-                if (lock) lock.style.display = 'flex';
-                if (btn) {
-                    btn.disabled = true;
-                    btn.className = "rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed";
-                }
-                if (status) status.innerHTML = 'Pendiente';
-            }
-        }
-
-        // Escuchar cambios de Firebase en tiempo real
-        for (let i = 1; i <= 13; i++) {
-            const id = `caso-${i}`;
-            db.collection("estado_juego").doc(id).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    const antesResuelto = casosConfig[id].resuelto;
-                    casosConfig[id] = data;
-                    actualizarUI(id, data.resuelto);
-
-                    if (data.resuelto && !antesResuelto) {
-                        openModal(id);
-                    }
-                }
-            });
-        }
-
-        window.inicializarCasos = function() {
-            const batch = db.batch();
-            for (let i = 1; i <= 13; i++) {
-                const ref = db.collection("estado_juego").doc(`caso-${i}`);
-                batch.set(ref, casosConfig[`caso-${i}`], { merge: true });
-            }
-            batch.commit().then(() => alert("¡Casos inicializados en Firebase!"));
-        };
-
-                   window.guardarCambios = function() {
-            const batch = db.batch();
-            for (let i = 1; i <= 13; i++) {
-                const id = `caso-${i}`;
-                casosConfig[id] = {
-                    titulo: document.getElementById(`adm-title-${id}`).value,
-                    descripcion: document.getElementById(`adm-desc-${id}`).value,
-                    tipo: 'video',
-                    recursoId: document.getElementById(`adm-rec-${id}`).value,
-                    resuelto: document.getElementById(`adm-res-${id}`).checked
-                };
-                const ref = db.collection("estado_juego").doc(id);
-                batch.set(ref, casosConfig[id], { merge: true });
-            }
-            localStorage.setItem('vane_casos_config', JSON.stringify(casosConfig));
-            batch.commit().then(() => alert("¡Guardado y sincronizado con éxito!"));
-        };
-            
-        
-
-        let activeId = '';
-        window.openModal = function(id) {
-            activeId = id;
-            const c = casosConfig[id];
-            document.getElementById('modalTitle').textContent = c.titulo;
-            document.getElementById('modalContentContainer').innerHTML = `
-                <video id="player" autoplay controls muted class="h-full w-full object-contain">
-                    <source src="${c.recursoId}" type="video/mp4">
-                </video>
-            `;
-            const m = document.getElementById('mediaModal');
-            m.classList.remove('hidden');
-            setTimeout(() => m.classList.remove('opacity-0'), 10);
-        };
-
-        window.closeModal = function() {
-            const m = document.getElementById('mediaModal');
-            m.classList.add('opacity-0');
-            setTimeout(() => m.classList.add('hidden'), 300);
-        };
-
-        window.toggleAudio = function() {
-            const p = document.getElementById('player');
-            if (p) {
-                p.muted = !p.muted;
-                document.getElementById('audio-status-label').innerHTML = p.muted ? 
-                    '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.' : 
-                    '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
-            }
-        };
-
-        // Arranque inicial
-        renderGrid();
-        if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
-            document.getElementById('admin-panel').classList.remove('hidden');
-            renderAdmin();
-            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Firebase operativo.';
-        }
-    </script>
-</body>
-</html>
+                editor.innerHTML += `
+                    <div class="bg-slate-950 p-3 rounded border border-slate-
+                    

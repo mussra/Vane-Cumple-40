@@ -91,15 +91,14 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
 
-
-        const firebaseConfig = {
+      const firebaseConfig = {
   apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
   authDomain: "vane-cumple-40.firebaseapp.com",
   projectId: "vane-cumple-40",
   storageBucket: "vane-cumple-40.firebasestorage.app",
   messagingSenderId: "757919275158",
   appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+};  
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -360,4 +359,8 @@
         if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
             document.getElementById('admin-panel').classList.remove('hidden');
             renderAdmin();
-            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-chec
+            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Firebase operativo.';
+        }
+    </script>
+</body>
+</html>

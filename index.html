@@ -147,12 +147,13 @@
         }
 
         function renderAdmin() {
+                function renderAdmin() {
             const editor = document.getElementById('admin-cases-editor');
             if (!editor) return;
             editor.innerHTML = '';
 
-            // Lista completa de vídeos disponibles en tu repositorio
-            const videoOptions = [
+            // Sugerencias rápidas para el desplegable editable
+            const videoSugerencias = [
                 `assets/videos/caso-1.mp4`, `assets/videos/caso-2.mp4`, `assets/videos/caso-3.mp4`,
                 `assets/videos/caso-4.mp4`, `assets/videos/caso-5.mp4`, `assets/videos/caso-6.mp4`,
                 `assets/videos/caso-7.mp4`, `assets/videos/caso-8.mp4`, `assets/videos/caso-9.mp4`,
@@ -164,8 +165,8 @@
                 const id = `caso-${i}`;
                 const c = casosConfig[id];
 
-                let optionsHtml = videoOptions.map(path => `
-                    <option value="${path}" ${c.recursoId === path ? 'selected' : ''}>📁 ${path}</option>
+                let datalistOptions = videoSugerencias.map(path => `
+                    <option value="${path}">
                 `).join('');
 
                 editor.innerHTML = editor.innerHTML + `
@@ -177,15 +178,17 @@
                         <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
                         <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
                         <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Vídeo / Recurso asociado:</label>
-                            <select id="adm-rec-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]">
-                                ${optionsHtml}
-                            </select>
+                            <label class="text-slate-400 text-[10px]">Ruta del vídeo (editable):</label>
+                            <input list="lista-videos-${i}" id="adm-rec-${id}" value="${c.recursoId}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]" placeholder="Ej: assets/videos/video.mp4">
+                            <datalist id="lista-videos-${i}">
+                                ${datalistOptions}
+                            </datalist>
                         </div>
                     </div>
                 `;
             }
                 }
+            
         
 
         function actualizarUI(id, resuelto) {
@@ -245,7 +248,7 @@
             batch.commit().then(() => alert("¡Casos inicializados en Firebase!"));
         };
 
-                window.guardarCambios = function() {
+                   window.guardarCambios = function() {
             const batch = db.batch();
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
@@ -262,6 +265,7 @@
             localStorage.setItem('vane_casos_config', JSON.stringify(casosConfig));
             batch.commit().then(() => alert("¡Guardado y sincronizado con éxito!"));
         };
+            
         
 
         let activeId = '';

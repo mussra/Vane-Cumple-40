@@ -1,357 +1,120 @@
-<!DOCTYPE html>
-<html lang="es" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>40 Años de Vane: El Juego de su Memoria</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
-
-    <!-- PANEL DE ADMINISTRADOR (Visible con ?admin=vane40) -->
-    <div id="admin-panel" class="bg-slate-900 border-b border-amber-500/30 p-4 hidden">
-        <div class="mx-auto max-w-6xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración del Administrador (13 Casos)</h3>
-                <div class="flex gap-2">
-                    <button onclick="guardarConfigAdmin()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
-                        <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar en Firebase y Local
-                    </button>
-                    <button onclick="cargarConfigFirebase()" class="rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition-all border border-slate-700">
-                        <i class="fa-solid fa-rotate mr-1"></i> Sincronizar desde Firebase
-                    </button>
-                </div>
-            </div>
-            <!-- Contenedor editable de los 13 casos -->
-            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto p-2">
-                <!-- Se inyecta dinámicamente mediante JS -->
-            </div>
+<!-- MODAL MULTIMEDIA DINÁMICO (Soporta Vídeos Locales MP4, YouTube, Audio o Fotos) -->
+<div id="mediaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
+    <div class="relative w-full max-w-2xl rounded-2xl bg-[#111827] border border-slate-700 p-6 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="modalTitle" class="font-serif text-xl font-bold text-white">Reproductor Sincronizado</h3>
+            <button onclick="closeMediaModal()" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <!-- Contenedor dinámico de multimedia -->
+        <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative flex items-center justify-center">
+            <!-- Se inyecta iframe, video local o imagen según el tipo -->
+        </div>
+        <div class="flex items-center justify-between text-xs text-slate-400" id="audio-control-bar">
+            <span id="audio-status-label"><i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).</span>
+            <button id="toggle-audio-btn" onclick="toggleAudio()" class="rounded bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 transition-colors">
+                Activar Audio (Modo Sala)
+            </button>
         </div>
     </div>
+</div>
 
-    <!-- CABECERA -->
-    <header class="relative overflow-hidden border-b border-slate-800/80 bg-gradient-to-b from-[#111827] to-[#0b0f19] py-12 px-4 text-center sm:py-16">
-        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
-        <div class="relative mx-auto max-w-3xl">
-            <span class="inline-block mb-3 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
-                Museo Virtual • Sincronizado
-            </span>
-            <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
-                40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-2xl font-light mt-1">El Juego de su Memoria</span>
-            </h1>
-            <p class="text-sm sm:text-base text-slate-300 max-w-lg mx-auto font-light leading-relaxed">
-                Escanea las tarjetas Polaroid para desvelar los casos al unísono en la sala.
-            </p>
-        </div>
-    </header>
+<script>
+    const modal = document.getElementById('mediaModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContentContainer = document.getElementById('modalContentContainer');
+    const audioControlBar = document.getElementById('audio-control-bar');
+    let isAudioMuted = true;
+    let activeCasoId = '';
 
-    <!-- GALERÍA DE LOS 13 CASOS -->
-    <main class="mx-auto max-w-6xl px-4 py-10 flex-grow w-full">
-        <div class="text-center mb-10">
-            <h2 class="font-serif text-2xl font-bold text-white mb-1">Casos del Archivo</h2>
-            <p class="text-slate-400 text-xs sm:text-sm">Las tarjetas bloqueadas se iluminarán automáticamente al resolverse en la cena.</p>
-        </div>
+    window.openSyncedMedia = function(casoId) {
+        activeCasoId = casoId;
+        const caso = window.casosConfig[casoId];
+        if (!caso) return;
 
-        <!-- Grid donde se pintarán los 13 casos -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" id="cases-grid">
-            <!-- Renderizado dinámico desde JS -->
-        </div>
-    </main>
+        modalTitle.textContent = caso.titulo;
+        isAudioMuted = true;
+        renderModalContent();
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
 
-    <!-- MODAL MULTIMEDIA DINÁMICO (Vídeo, Audio o Foto) -->
-    <div id="mediaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
-        <div class="relative w-full max-w-2xl rounded-2xl bg-[#111827] border border-slate-700 p-6 shadow-2xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 id="modalTitle" class="font-serif text-xl font-bold text-white">Reproductor Sincronizado</h3>
-                <button onclick="closeMediaModal()" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <!-- Contenedor dinámico de multimedia -->
-            <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative flex items-center justify-center">
-                <!-- Se inyecta iframe o imagen según el tipo -->
-            </div>
-            <div class="flex items-center justify-between text-xs text-slate-400" id="audio-control-bar">
-                <span id="audio-status-label"><i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).</span>
-                <button id="toggle-audio-btn" onclick="toggleAudio()" class="rounded bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 transition-colors">
-                    Activar Audio (Modo Sala)
-                </button>
-            </div>
-        </div>
-    </div>
+    function renderModalContent() {
+        const caso = window.casosConfig[activeCasoId];
+        if (!caso) return;
 
-    <!-- FOOTER -->
-    <footer class="border-t border-slate-800/80 bg-[#0b0f19] py-6 text-center text-xs text-slate-400">
-        <p class="font-serif text-slate-300 text-sm mb-1 italic">"Los mejores recuerdos son aquellos que compartimos."</p>
-        <p class="font-light">40 Años de Vane 🥂</p>
-    </footer>
-
-    <!-- LÓGICA DE FIREBASE Y CONFIGURACIÓN DINÁMICA -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, doc, onSnapshot, setDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_AUTH_DOMAIN",
-            projectId: "TU_PROJECT_ID",
-            storageBucket: "TU_STORAGE_BUCKET",
-            messagingSenderId: "TU_MESSAGING_SENDER_ID",
-            appId: "TU_APP_ID"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Estructura por defecto de los 13 casos
-        let casosData = {};
-        for (let i = 1; i <= 13; i++) {
-            casosData[`caso-${i}`] = {
-                titulo: `Caso #${i}: Recuerdo Especial`,
-                descripcion: `Un momento inolvidable guardado en la memoria de Vane.`,
-                tipo: 'video', // 'video', 'audio', 'foto'
-                recursoId: 'dQw4w9WgXcQ', // ID de YouTube o URL de imagen/audio
-                resuelto: false,
-                timestamp: null
-            };
+        let startSecond = 0;
+        if (window.casoTimestamps && window.casoTimestamps[activeCasoId]) {
+            const elapsedMs = Date.now() - window.casoTimestamps[activeCasoId];
+            startSecond = Math.max(0, Math.floor(elapsedMs / 1000));
         }
 
-        // Cargar configuración previa desde localStorage si existe
-        const localSaved = localStorage.getItem('vane_casos_config');
-        if (localSaved) {
-            try { casosData = JSON.parse(localSaved); } catch(e){}
-        }
-
-        window.casosConfig = casosData;
-        window.casoTimestamps = {};
-
-        // Detectar Modo Admin por URL (?admin=vane40)
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'vane40';
-        if (isAdmin) {
-            document.getElementById('admin-panel').classList.remove('hidden');
-            renderAdminEditor();
-        }
-
-        // Renderizar la galería principal de los 13 casos
-        function renderMainGrid() {
-            const grid = document.getElementById('cases-grid');
-            grid.innerHTML = '';
-            for (let i = 1; i <= 13; i++) {
-                const id = `caso-${i}`;
-                const caso = window.casosConfig[id] || casosData[id];
-                
-                const html = `
-                    <article id="card-${id}" class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300">
-                        <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
-                            <img id="img-${id}" src="assets/recuerdos/foto-${(i%3)+1}.jpg" alt="${id}" class="h-full w-full object-cover filter blur-sm opacity-40 transition-all duration-500" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=600&q=80'">
-                            <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]">
-                                <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                                <span class="text-xs font-medium text-slate-200 tracking-wider uppercase">Bloqueado</span>
-                            </div>
-                            <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-                                Caso #${i < 10 ? '0'+i : i}
-                            </span>
-                        </div>
-                        <div class="px-1">
-                            <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${caso.titulo}</h3>
-                            <p id="desc-${id}" class="text-xs text-slate-300 font-light mb-4 line-clamp-2">${caso.descripcion}</p>
-                            <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
-                                <span id="status-${id}" class="text-xs text-slate-400">Pendiente</span>
-                                <button id="btn-${id}" disabled onclick="openSyncedMedia('${id}')" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed transition-all">
-                                    <i class="fa-solid fa-play"></i> Ver
-                                </button>
-                            </div>
-                        </div>
-                    </article>
-                `;
-                grid.innerHTML += html;
-            }
-        }
-        renderMainGrid();
-
-        // Renderizar editor del administrador
-        function renderAdminEditor() {
-            const editor = document.getElementById('admin-cases-editor');
-            editor.innerHTML = '';
-            for (let i = 1; i <= 13; i++) {
-                const id = `caso-${i}`;
-                const c = window.casosConfig[id];
-                editor.innerHTML += `
-                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-2">
-                        <div class="flex justify-between font-bold text-amber-400">
-                            <span>Caso #${i}</span>
-                            <label><input type="checkbox" id="adm-res-${id}" ${c.resuelto ? 'checked':''}> Resuelto</label>
-                        </div>
-                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
-                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
-                        <div class="flex gap-2">
-                            <select id="adm-tipo-${id}" class="bg-slate-900 border border-slate-700 rounded p-1 text-white">
-                                <option value="video" ${c.tipo==='video'?'selected':''}>Vídeo (YouTube)</option>
-                                <option value="audio" ${c.tipo==='audio'?'selected':''}>Audio / Canción</option>
-                                <option value="foto" ${c.tipo==='foto'?'selected':''}>Foto Inédita</option>
-                            </select>
-                            <input type="text" id="adm-rec-${id}" value="${c.recursoId}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="ID YouTube o URL">
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // Guardar configuración del admin a Firebase y LocalStorage
-        window.guardarConfigAdmin = async function() {
-            try {
-                const batch = writeBatch(db);
-                for (let i = 1; i <= 13; i++) {
-                    const id = `caso-${i}`;
-                    window.casosConfig[id] = {
-                        titulo: document.getElementById(`adm-title-${id}`).value,
-                        descripcion: document.getElementById(`adm-desc-${id}`).value,
-                        tipo: document.getElementById(`adm-tipo-${id}`).value,
-                        recursoId: document.getElementById(`adm-rec-${id}`).value,
-                        resuelto: document.getElementById(`adm-res-${id}`).checked,
-                        timestamp: document.getElementById(`adm-res-${id}`).checked ? serverTimestamp() : null
-                    };
-                    const docRef = doc(db, "estado_juego", id);
-                    batch.set(docRef, window.casosConfig[id], { merge: true });
-                }
-                await batch.commit();
-                localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
-                alert("¡Configuración guardada en Firebase y Local con éxito!");
-                renderMainGrid();
-            } catch (e) {
-                alert("Error al guardar: " + e.message);
-            }
-        };
-
-        // Sincronizar desde Firebase al arrancar o por botón
-        window.cargarConfigFirebase = async function() {
-            try {
-                const querySnapshot = await getDocs(collection(db, "estado_juego"));
-                querySnapshot.forEach((docSnap) => {
-                    if (docSnap.exists()) {
-                        window.casosConfig[docSnap.id] = docSnap.data();
-                    }
-                });
-                localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
-                renderMainGrid();
-                if (isAdmin) renderAdminEditor();
-                alert("¡Sincronizado correctamente con Firebase!");
-            } catch(e) {
-                console.error(e);
-            }
-        };
-        cargarConfigFirebase();
-
-        // Escuchar cambios en tiempo real para sincronía instantánea
-        for (let i = 1; i <= 13; i++) {
-            const casoId = `caso-${i}`;
-            onSnapshot(doc(db, "estado_juego", casoId), (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    window.casosConfig[casoId] = data;
-                    if (data.resuelto === true) {
-                        desbloquearCaso(casoId);
-                        if (data.timestamp) {
-                            window.casoTimestamps[casoId] = data.timestamp.toMillis ? data.timestamp.toMillis() : Date.now();
-                        }
-                    }
-                }
-            });
-        }
-
-        function desbloquearCaso(id) {
-            const caso = window.casosConfig[id];
-            const img = document.getElementById(`img-${id}`);
-            const lock = document.getElementById(`lock-${id}`);
-            const btn = document.getElementById(`btn-${id}`);
-            const status = document.getElementById(`status-${id}`);
-            const card = document.getElementById(`card-${id}`);
-            const title = document.getElementById(`title-${id}`);
-            const desc = document.getElementById(`desc-${id}`);
-
-            if (caso) {
-                if (title) title.textContent = caso.titulo;
-                if (desc) desc.textContent = caso.descripcion;
-            }
-            if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
-            if (lock) lock.style.display = 'none';
-            if (btn) {
-                btn.removeAttribute('disabled');
-                btn.classList.remove('bg-slate-800', 'text-slate-500', 'cursor-not-allowed');
-                btn.classList.add('bg-amber-500', 'text-slate-950', 'hover:bg-amber-400', 'shadow-md');
-            }
-            if (status) {
-                status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
-                status.classList.add('text-emerald-400', 'font-medium');
-            }
-            if (card) card.classList.add('border-amber-500/50', 'shadow-amber-500/10');
-        }
-    </script>
-
-    <!-- CONTROL DE REPRODUCTOR DINÁMICO (DETECTA TIPO VÍDEO, AUDIO O FOTO) -->
-    <script>
-        const modal = document.getElementById('mediaModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalContentContainer = document.getElementById('modalContentContainer');
-        const audioControlBar = document.getElementById('audio-control-bar');
-        let isAudioMuted = true;
-        let activeCasoId = '';
-
-        window.openSyncedMedia = function(casoId) {
-            activeCasoId = casoId;
-            const caso = window.casosConfig[casoId];
-            if (!caso) return;
-
-            modalTitle.textContent = caso.titulo;
-            isAudioMuted = true;
-            renderModalContent();
+        if (caso.tipo === 'video') {
+            audioControlBar.style.display = 'flex';
             
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.classList.remove('opacity-0'), 10);
-        }
-
-        function renderModalContent() {
-            const caso = window.casosConfig[activeCasoId];
-            if (!caso) return;
-
-            let startSecond = 0;
-            if (window.casoTimestamps && window.casoTimestamps[activeCasoId]) {
-                const elapsedMs = Date.now() - window.casoTimestamps[activeCasoId];
-                startSecond = Math.max(0, Math.floor(elapsedMs / 1000));
-            }
-
-            if (caso.tipo === 'video') {
-                audioControlBar.style.display = 'flex';
-                const muteParam = isAudioMuted ? 1 : 0;
-                modalContentContainer.innerHTML = `<iframe class="h-full w-full border-0" src="https://www.youtube.com/embed/${caso.recursoId}?autoplay=1&mute=${muteParam}&start=${startSecond}" allow="autoplay"></iframe>`;
-                updateAudioLabel();
-            } else if (caso.tipo === 'audio') {
-                audioControlBar.style.display = 'flex';
+            // Comprobamos si es un vídeo local (termina en .mp4 o contiene assets/) o de YouTube
+            if (caso.recursoId.includes('assets/') || caso.recursoId.endsWith('.mp4')) {
                 const mutedAttr = isAudioMuted ? 'muted' : '';
                 modalContentContainer.innerHTML = `
-                    <div class="flex flex-col items-center justify-center p-6 text-center">
-                        <i class="fa-solid fa-music text-amber-400 text-5xl mb-4 animate-bounce"></i>
-                        <p class="text-white font-serif text-lg mb-4">${caso.titulo}</p>
-                        <audio autoplay ${mutedAttr} controls src="${caso.recursoId}" class="w-full"></audio>
-                    </div>
+                    <video id="localVideoPlayer" autoplay ${mutedAttr} controls class="h-full w-full object-contain">
+                        <source src="${caso.recursoId}" type="video/mp4">
+                        Tu navegador no soporta vídeos HTML5.
+                    </video>
                 `;
-                updateAudioLabel();
+                // Sincronizar el segundo exacto para vídeo local
+                const videoEl = document.getElementById('localVideoPlayer');
+                if (videoEl) {
+                    videoEl.currentTime = startSecond;
+                }
             } else {
-                // Tipo Foto
-                audioControlBar.style.display = 'none';
-                modalContentContainer.innerHTML = `<img src="${caso.recursoId}" alt="Foto Inédita" class="h-full w-full object-contain" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=800&q=80'">`;
+                // Es un vídeo de YouTube
+                const muteParam = isAudioMuted ? 1 : 0;
+                modalContentContainer.innerHTML = `<iframe class="h-full w-full border-0" src="https://www.youtube.com/embed/${caso.recursoId}?autoplay=1&mute=${muteParam}&start=${startSecond}" allow="autoplay"></iframe>`;
             }
+            updateAudioLabel();
+        } else if (caso.tipo === 'audio') {
+            audioControlBar.style.display = 'flex';
+            const mutedAttr = isAudioMuted ? 'muted' : '';
+            modalContentContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-6 text-center">
+                    <i class="fa-solid fa-music text-amber-400 text-5xl mb-4 animate-bounce"></i>
+                    <p class="text-white font-serif text-lg mb-4">${caso.titulo}</p>
+                    <audio autoplay ${mutedAttr} controls src="${caso.recursoId}" class="w-full"></audio>
+                </div>
+            `;
+            updateAudioLabel();
+        } else {
+            // Tipo Foto
+            audioControlBar.style.display = 'none';
+            modalContentContainer.innerHTML = `<img src="${caso.recursoId}" alt="Foto Inédita" class="h-full w-full object-contain" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=800&q=80'">`;
         }
+    }
 
-        function updateAudioLabel() {
-            const label = document.getElementById('audio-status-label');
-            const btn = document.getElementById('toggle-audio-btn');
-            if (
+    function updateAudioLabel() {
+        const label = document.getElementById('audio-status-label');
+        const btn = document.getElementById('toggle-audio-btn');
+        if (isAudioMuted) {
+            label.innerHTML = '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).';
+            btn.textContent = 'Activar Audio (Modo Sala)';
+        } else {
+            label.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Altavoz principal).';
+            btn.textContent = 'Silenciar Audio';
+        }
+    }
+
+    window.toggleAudio = function() {
+        isAudioMuted = !isAudioMuted;
+        renderModalContent();
+    }
+
+    window.closeMediaModal = function() {
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modalContentContainer.innerHTML = '';
+        }, 300);
+    }
+</script>
+

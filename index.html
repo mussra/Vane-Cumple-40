@@ -97,15 +97,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_AUTH_DOMAIN",
-            projectId: "TU_PROJECT_ID",
-            storageBucket: "TU_STORAGE_BUCKET",
-            messagingSenderId: "TU_MESSAGING_SENDER_ID",
-            appId: "TU_APP_ID"
-        };
+        
+        // Importamos las credenciales desde el archivo externo seguro
+        import { firebaseConfig } from "./firebase-config.js";
 
         let casosData = {};
         for (let i = 1; i <= 13; i++) {
@@ -299,7 +293,7 @@
                     await batch.commit();
                     alert("¡Configuración guardada en LocalStorage y Firebase!");
                 } else {
-                    alert("¡Configuración guardada en LocalStorage! (Firebase no configurado)");
+                    alert("¡Configuración guardada en LocalStorage!");
                 }
                 window.renderMainGrid();
             } catch (e) {
@@ -307,7 +301,7 @@
             }
         };
 
-        const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
+        const isFirebaseConfigured = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
         const statusBox = document.getElementById('admin-status');
         let db = null;
 
@@ -338,8 +332,12 @@
                                     window.casoTimestamps[casoId] = Date.now();
                                 }
 
-                                // MAGIA: Si el caso acaba de resolverse ahora mismo en remoto, SALTA EL REPRODUCTOR AUTOMÁTICAMENTE
                                 if (!estadoAnterior) {
                                     if (typeof window.openSyncedMedia === 'function') {
                                         window.openSyncedMedia(casoId);
-                    
+                                    }
+                                }
+                            } else {
+                                bloquearCasoUI(casoId);
+                                if (window.activeCasoId === casoId && typeof window.closeMediaModal === 'function') {
+                                

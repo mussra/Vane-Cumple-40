@@ -90,15 +90,14 @@
 
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
-
-      const firebaseConfig = {
+        const firebaseConfig = {
   apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
   authDomain: "vane-cumple-40.firebaseapp.com",
   projectId: "vane-cumple-40",
   storageBucket: "vane-cumple-40.firebasestorage.app",
   messagingSenderId: "757919275158",
   appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};  
+};
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -110,7 +109,7 @@
                 descripcion: `Momento inolvidable de la vida de Vane.`,
                 tipo: 'video',
                 recursoId: ``,
-                imagenUrl: `assets/recuerdos/foto-${i}.jpg`, // <--- Añadido campo de imagen personalizable
+                imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
                 resuelto: false
             };
         }
@@ -128,17 +127,20 @@
                 const id = `caso-${i}`;
                 const c = casosConfig[id] || { titulo: `Caso #${i}`, descripcion: '', resuelto: false, imagenUrl: '' };
                 grid.innerHTML += `
-                    <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60">
-                        <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4">
-                            <img id="img-${id}" src="${c.imagenUrl || ''}" class="h-full w-full object-cover filter blur-sm opacity-40">
-                            <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+                    <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 flex flex-col justify-between">
+                        <!-- Contenedor adaptado a formato vertical / tipo retrato (aspect-[3/4]) con object-contain para no recortar la Polaroid -->
+                        <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
+                            <img id="img-${id}" src="${c.imagenUrl || ''}" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
+                            <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
                                 <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                                <span class="text-xs font-medium text-slate-200 uppercase">Bloqueado</span>
+                                <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
                             </div>
-                            <span class="absolute top-3 left-3 rounded bg-slate-950/80 px-2 py-1 text-xs text-amber-400">Caso #${i}</span>
+                            <span class="absolute top-3 left-3 rounded bg-slate-900/90 border border-slate-700 px-2 py-1 text-xs text-amber-400 shadow">Caso #${i}</span>
                         </div>
-                        <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${c.titulo}</h3>
-                        <p id="desc-${id}" class="text-xs text-slate-300 mb-4">${c.descripcion}</p>
+                        <div>
+                            <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${c.titulo}</h3>
+                            <p id="desc-${id}" class="text-xs text-slate-300 mb-4">${c.descripcion}</p>
+                        </div>
                         <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
                             <span id="status-${id}" class="text-xs text-slate-400">Pendiente</span>
                             <button id="btn-${id}" disabled onclick="openModal('${id}')" class="rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed">Ver</button>
@@ -168,7 +170,7 @@
                         <input type="text" id="adm-desc-${id}" value="${c.descripcion || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
                         
                         <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Ruta/URL de la Foto (Previsualización):</label>
+                            <label class="text-slate-400 text-[10px]">Ruta/URL de la Foto (Vertical/Polaroid):</label>
                             <input type="text" id="adm-img-${id}" value="${c.imagenUrl || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200 font-mono text-[11px]" placeholder="Ej: assets/recuerdos/foto-vane.png">
                         </div>
 
@@ -268,7 +270,7 @@
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
                     tipo: 'video',
                     recursoId: document.getElementById(`adm-rec-${id}`).value,
-                    imagenUrl: document.getElementById(`adm-img-${id}`).value, // <--- Guardamos la imagen personalizada
+                    imagenUrl: document.getElementById(`adm-img-${id}`).value,
                     resuelto: document.getElementById(`adm-res-${id}`).checked
                 };
                 const ref = db.collection("estado_juego").doc(id);
@@ -353,9 +355,8 @@
                     '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.' : 
                     '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
             }
-        };
 
-        renderGrid();
+            renderGrid();
         if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
             document.getElementById('admin-panel').classList.remove('hidden');
             renderAdmin();

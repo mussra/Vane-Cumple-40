@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es" class="dark">
 <head>
@@ -227,7 +228,7 @@
             }
         }
 
-        // Sincronización en tiempo real con Firebase restaurada
+        // Sincronización en tiempo real optimizada y blindada para clientes
         for (let i = 1; i <= 13; i++) {
             const id = `caso-${i}`;
             db.collection("estado_juego").doc(id).onSnapshot((docSnap) => {
@@ -235,31 +236,36 @@
                     const data = docSnap.data();
                     const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
                     
-                    // Actualizamos el objeto local con los datos de Firebase
                     casosConfig[id] = { ...casosConfig[id], ...data };
                     actualizarUI(id, data.resuelto);
 
-                    // AUTODESBLOQUEO Y APERTURA AUTOMÁTICA EN CLIENTES:
-                    // Si el caso pasa de no resuelto a resuelto, abrimos el modal en pausa para precargar
+                    // 1. Si el caso pasa a resuelto, abrimos el modal automáticamente en todos los dispositivos
                     if (data.resuelto && !antesResuelto) {
                         openModal(id);
                     }
 
-                    // AUTOREPRODUCCIÓN Y SINCRONIZACIÓN POR MILISEGUNDO:
-                    if (data.reproduciendoDesde && activeId === id) {
+                    // 2. Sincronización de reproducción: si el admin pulsa el botón global, 
+                    // se fuerza la apertura del modal y la reproducción exacta para todos los clientes
+                    if (data.reproduciendoDesde) {
+                        // Si el modal no está abierto en este caso, lo abrimos para que reproduzca al unísono
+                        if (activeId !== id) {
+                            openModal(id);
+                        }
+
                         const player = document.getElementById('player');
                         const adminBar = document.getElementById('admin-sync-bar');
-                        if (adminBar) adminBar.remove(); // Quitamos la capa de espera del admin
+                        if (adminBar) adminBar.remove(); // Oculta la capa de espera si es el admin
 
                         if (player) {
-                            const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : Date.now();
+                            // Calculamos el tiempo transcurrido desde el servidor
+                            const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
                             const elapsedSeconds = (Date.now() - serverTime) / 1000;
                             
                             if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
                                 player.currentTime = Math.max(0, elapsedSeconds);
                             }
                             if (player.paused) {
-                                player.play().catch(e => console.log("Play bloqueado por navegador:", e));
+                                player.play().catch(e => console.log("Play bloqueado por políticas del navegador:", e));
                             }
                         }
                     }
@@ -345,6 +351,7 @@
             setTimeout(() => m.classList.remove('opacity-0'), 10);
         };
 
+   
         window.lanzarReproduccionGlobal = function(id) {
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
@@ -352,7 +359,7 @@
             }, { merge: true });
         };
 
-       window.closeModal = function() {
+        window.closeModal = function() {
             const m = document.getElementById('mediaModal');
             m.classList.add('opacity-0');
             setTimeout(() => {
@@ -380,4 +387,4 @@
         }
     </script>
 </body>
-</html> 
+</html>     

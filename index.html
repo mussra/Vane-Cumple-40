@@ -100,12 +100,14 @@
     </div>
 
     <!-- FOOTER -->
-    <footer class="border-t border-slate-800/80 bg-[#0b0f19] py-6 text-center text-xs text-slate-400">
-        <p class="font-serif text-slate-300 text-sm mb-1 italic">"Los mejores recuerdos son aquellos que compartimos contigo."</p>
-        <p class="font-light">40 Años de Vane 🥂</p>
+    <footer class="border-t border-slate-800/80 bg-[#0b0f19] py-8 text-center text-xs text-slate-400">
+        <p class="font-serif text-slate-300 text-sm sm:text-base italic mb-2 leading-relaxed max-w-md mx-auto px-4">
+            "Los mejores recuerdos...<br><span class="text-amber-400/90 font-light not-italic text-xs sm:text-sm tracking-wide">...son aquellos que compartimos contigo."</span>
+        </p>
+        <p class="font-light tracking-widest text-[11px] uppercase text-slate-400 mt-3">40 Años de Vane 🥂</p>
     </footer>
 
-    <!-- SCRIPT PRINCIPAL UNIFICADO CON LOG VISUAL PARA ADMIN -->
+    <!-- SCRIPT PRINCIPAL UNIFICADO -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -338,10 +340,4 @@
 
         const isFirebaseConfigured = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
         const statusBox = document.getElementById('admin-status');
-        let db = null;
-
-        if (isFirebaseConfigured) {
-            try {
-                logAdmin("Inicializando Firebase...");
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app
+        let d

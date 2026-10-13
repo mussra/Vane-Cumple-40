@@ -90,14 +90,16 @@
 
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
+
+
         const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "tu-proyecto.firebaseapp.com",
-            projectId: "tu-proyecto",
-            storageBucket: "tu-proyecto.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef..."
-        };
+  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
+  authDomain: "vane-cumple-40.firebaseapp.com",
+  projectId: "vane-cumple-40",
+  storageBucket: "vane-cumple-40.firebasestorage.app",
+  messagingSenderId: "757919275158",
+  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+};
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -109,6 +111,7 @@
                 descripcion: `Momento inolvidable de la vida de Vane.`,
                 tipo: 'video',
                 recursoId: ``,
+                imagenUrl: `assets/recuerdos/foto-${i}.jpg`, // <--- Añadido campo de imagen personalizable
                 resuelto: false
             };
         }
@@ -124,11 +127,11 @@
             grid.innerHTML = '';
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
-                const c = casosConfig[id] || { titulo: `Caso #${i}`, descripcion: '', resuelto: false };
+                const c = casosConfig[id] || { titulo: `Caso #${i}`, descripcion: '', resuelto: false, imagenUrl: '' };
                 grid.innerHTML += `
                     <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60">
                         <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4">
-                            <img id="img-${id}" src="assets/recuerdos/foto-${(i%3)+1}.jpg" class="h-full w-full object-cover filter blur-sm opacity-40">
+                            <img id="img-${id}" src="${c.imagenUrl || ''}" class="h-full w-full object-cover filter blur-sm opacity-40">
                             <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
                                 <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
                                 <span class="text-xs font-medium text-slate-200 uppercase">Bloqueado</span>
@@ -164,8 +167,14 @@
                         </div>
                         <input type="text" id="adm-title-${id}" value="${c.titulo || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
                         <input type="text" id="adm-desc-${id}" value="${c.descripcion || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
+                        
                         <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">URL de Cloudinary (mp4):</label>
+                            <label class="text-slate-400 text-[10px]">Ruta/URL de la Foto (Previsualización):</label>
+                            <input type="text" id="adm-img-${id}" value="${c.imagenUrl || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200 font-mono text-[11px]" placeholder="Ej: assets/recuerdos/foto-vane.png">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-slate-400 text-[10px]">URL de Cloudinary (Vídeo .mp4):</label>
                             <input type="text" id="adm-rec-${id}" value="${c.recursoId || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]" placeholder="https://res.cloudinary.com/...">
                         </div>
                     </div>
@@ -185,15 +194,16 @@
 
             if (title) title.textContent = c.titulo;
             if (desc) desc.textContent = c.descripcion;
+            if (img && c.imagenUrl) img.src = c.imagenUrl;
 
             if (resuelto) {
-                if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
                 if (lock) lock.style.display = 'none';
                 if (btn) {
                     btn.disabled = false;
                     btn.className = "rounded bg-amber-500 px-3 py-1.5 text-xs text-slate-950 font-medium hover:bg-amber-400 shadow-md";
                 }
                 if (status) status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
+                if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
             } else {
                 if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
                 if (lock) lock.style.display = 'flex';
@@ -216,16 +226,14 @@
                     casosConfig[id] = { ...casosConfig[id], ...data };
                     actualizarUI(id, data.resuelto);
 
-                    // Si se marca como resuelto, abrimos el modal en pausa para precargar
                     if (data.resuelto && !antesResuelto) {
                         openModal(id);
                     }
 
-                    // En cuanto Firebase recibe el timestamp de reproducción, arrancan TODOS al unísono
                     if (data.reproduciendoDesde && activeId === id) {
                         const player = document.getElementById('player');
                         const adminBar = document.getElementById('admin-sync-bar');
-                        if (adminBar) adminBar.remove(); // Quitamos la capa de espera del admin
+                        if (adminBar) adminBar.remove();
 
                         if (player) {
                             const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : Date.now();
@@ -261,6 +269,7 @@
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
                     tipo: 'video',
                     recursoId: document.getElementById(`adm-rec-${id}`).value,
+                    imagenUrl: document.getElementById(`adm-img-${id}`).value, // <--- Guardamos la imagen personalizada
                     resuelto: document.getElementById(`adm-res-${id}`).checked
                 };
                 const ref = db.collection("estado_juego").doc(id);
@@ -280,8 +289,6 @@
 
             const urlParams = new URLSearchParams(window.location.search);
             const isAdmin = urlParams.get('admin') === 'vane40';
-            
-            // Admin arranca con sonido activo por defecto (muted = false), invitados silenciados (muted)
             const mutedAttr = isAdmin ? '' : 'muted';
 
             let htmlContenido = `
@@ -353,8 +360,4 @@
         if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
             document.getElementById('admin-panel').classList.remove('hidden');
             renderAdmin();
-            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Firebase operativo.';
-        }
-    </script>
-</body>
-</html>
+            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-chec

@@ -98,16 +98,15 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 1. CONFIGURACIÓN DE FIREBASE (Pon tus credenciales cuando las tengas)
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
-        // 2. ESTRUCTURA INICIAL DE LOS 13 CASOS
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_AUTH_DOMAIN",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_STORAGE_BUCKET",
+            messagingSenderId: "TU_MESSAGING_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
         let casosData = {};
         for (let i = 1; i <= 13; i++) {
             casosData[`caso-${i}`] = {
@@ -120,7 +119,6 @@
             };
         }
 
-        // Recuperar si hay algo guardado en LocalStorage
         const localSaved = localStorage.getItem('vane_casos_config');
         if (localSaved) {
             try { casosData = JSON.parse(localSaved); } catch(e){}
@@ -129,7 +127,6 @@
         window.casosConfig = casosData;
         window.casoTimestamps = {};
 
-        // 3. FUNCIONES DE RENDERIZADO
         window.renderMainGrid = function() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
@@ -165,7 +162,6 @@
                 grid.innerHTML += html;
             }
 
-            // Aplicar desbloqueo si ya están resueltos
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
                 if (window.casosConfig[id] && window.casosConfig[id].resuelto === true) {
@@ -246,13 +242,41 @@
             if (card) card.classList.add('border-amber-500/50', 'shadow-amber-500/10');
         }
 
-        // 4. GUARDAR CONFIGURACIÓN ADMIN
+        function bloquearCasoUI(id) {
+            const caso = window.casosConfig[id];
+            const img = document.getElementById(`img-${id}`);
+            const lock = document.getElementById(`lock-${id}`);
+            const btn = document.getElementById(`btn-${id}`);
+            const status = document.getElementById(`status-${id}`);
+            const card = document.getElementById(`card-${id}`);
+            const title = document.getElementById(`title-${id}`);
+            const desc = document.getElementById(`desc-${id}`);
+
+            if (caso) {
+                if (title) title.textContent = caso.titulo;
+                if (desc) desc.textContent = caso.descripcion;
+            }
+            if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
+            if (lock) lock.style.display = 'flex';
+            if (btn) {
+                btn.setAttribute('disabled', 'true');
+                btn.classList.remove('bg-amber-500', 'text-slate-950', 'hover:bg-amber-400', 'shadow-md');
+                btn.classList.add('bg-slate-800', 'text-slate-500', 'cursor-not-allowed');
+            }
+            if (status) {
+                status.innerHTML = 'Pendiente';
+                status.classList.remove('text-emerald-400', 'font-medium');
+                status.classList.add('text-slate-400');
+            }
+            if (card) card.classList.remove('border-amber-500/50', 'shadow-amber-500/10');
+        }
+
         window.guardarConfigAdmin = async function() {
             try {
                 for (let i = 1; i <= 13; i++) {
                     const id = `caso-${i}`;
                     const resueltoCheck = document.getElementById(`adm-res-${id}`).checked;
-                    const estabaResuelto = window.casosConfig[id].resuelto;
+                    const estadoAnterior = window.casosConfig[id].resuelto;
 
                     window.casosConfig[id] = {
                         titulo: document.getElementById(`adm-title-${id}`).value,
@@ -260,7 +284,7 @@
                         tipo: document.getElementById(`adm-tipo-${id}`).value,
                         recursoId: document.getElementById(`adm-rec-${id}`).value,
                         resuelto: resueltoCheck,
-                        timestamp: (resueltoCheck && !estabaResuelto) ? (isFirebaseConfigured ? serverTimestamp() : Date.now()) : (window.casosConfig[id].timestamp || null)
+                        timestamp: (resueltoCheck && !estadoAnterior) ? (isFirebaseConfigured ? serverTimestamp() : Date.now()) : (window.casosConfig[id].timestamp || null)
                     };
                 }
                 localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
@@ -283,7 +307,6 @@
             }
         };
 
-        // 5. CONEXIÓN A FIREBASE
         const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
         const statusBox = document.getElementById('admin-status');
         let db = null;
@@ -298,151 +321,25 @@
                     statusBox.className = "text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-emerald-500/30 text-emerald-300";
                 }
 
-                // Escuchar cambios en tiempo real
+                // Escuchar cambios en tiempo real con apertura automática del modal
                 for (let i = 1; i <= 13; i++) {
                     const casoId = `caso-${i}`;
                     onSnapshot(doc(db, "estado_juego", casoId), (docSnap) => {
                         if (docSnap.exists()) {
                             const data = docSnap.data();
+                            const estadoAnterior = window.casosConfig[casoId] ? window.casosConfig[casoId].resuelto : false;
                             window.casosConfig[casoId] = data;
+
                             if (data.resuelto === true) {
                                 desbloquearCasoUI(casoId);
                                 if (data.timestamp && data.timestamp.toMillis) {
                                     window.casoTimestamps[casoId] = data.timestamp.toMillis();
+                                } else {
+                                    window.casoTimestamps[casoId] = Date.now();
                                 }
-                            }
-                        }
-                    });
-                }
 
-                window.inicializar13CasosFirebase = async function() {
-                    try {
-                        const batch = writeBatch(db);
-                        for (let i = 1; i <= 13; i++) {
-                            const id = `caso-${i}`;
-                            const docRef = doc(db, "estado_juego", id);
-                            batch.set(docRef, window.casosConfig[id], { merge: true });
-                        }
-                        await batch.commit();
-                        alert("¡13 casos inicializados en Firebase correctamente!");
-                    } catch(e) {
-                        alert("Error al inicializar: " + e.message);
-                    }
-                };
-
-            } catch (err) {
-                if (statusBox) {
-                    statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-400 mr-1"></i> Error en Firebase: ${err.message}`;
-                    statusBox.className = "text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-red-500/30 text-red-300";
-                }
-            }
-        } else {
-            if (statusBox) {
-                statusBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> <strong>Modo Local:</strong> Firebase no está configurado ("TU_API_KEY"). Funciona con almacenamiento en este navegador.';
-                statusBox.className = "text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-amber-500/30 text-amber-300";
-            }
-            window.inicializar13CasosFirebase = function() {
-                alert("⚠️ Añade las credenciales de Firebase en el código HTML para sincronizar en la nube.");
-            };
-        }
-
-        // 6. INICIALIZACIÓN AL CARGAR LA PÁGINA
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('admin') === 'vane40') {
-            const adminPanel = document.getElementById('admin-panel');
-            if (adminPanel) adminPanel.classList.remove('hidden');
-            window.renderAdminEditor();
-        }
-        window.renderMainGrid();
-    </script>
-
-    <!-- CONTROL DE REPRODUCTOR MULTIMEDIA -->
-    <script>
-        const modal = document.getElementById('mediaModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalContentContainer = document.getElementById('modalContentContainer');
-        const audioControlBar = document.getElementById('audio-control-bar');
-        let isAudioMuted = true;
-        let activeCasoId = '';
-
-        window.openSyncedMedia = function(casoId) {
-            activeCasoId = casoId;
-            const caso = window.casosConfig[casoId];
-            if (!caso) return;
-
-            modalTitle.textContent = caso.titulo;
-            isAudioMuted = true;
-            renderModalContent();
-            
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.classList.remove('opacity-0'), 10);
-        }
-
-        function renderModalContent() {
-            const caso = window.casosConfig[activeCasoId];
-            if (!caso) return;
-
-            let startSecond = 0;
-            if (window.casoTimestamps && window.casoTimestamps[activeCasoId]) {
-                const elapsedMs = Date.now() - window.casoTimestamps[activeCasoId];
-                startSecond = Math.max(0, Math.floor(elapsedMs / 1000));
-            }
-
-            if (caso.tipo === 'video') {
-                audioControlBar.style.display = 'flex';
-                const mutedAttr = isAudioMuted ? 'muted' : '';
-                modalContentContainer.innerHTML = `
-                    <video id="localVideoPlayer" autoplay ${mutedAttr} controls class="h-full w-full object-contain">
-                        <source src="${caso.recursoId}" type="video/mp4">
-                        Tu navegador no soporta vídeos HTML5.
-                    </video>
-                `;
-                setTimeout(() => {
-                    const videoEl = document.getElementById('localVideoPlayer');
-                    if (videoEl) videoEl.currentTime = startSecond;
-                }, 100);
-                updateAudioLabel();
-            } else if (caso.tipo === 'audio') {
-                audioControlBar.style.display = 'flex';
-                const mutedAttr = isAudioMuted ? 'muted' : '';
-                modalContentContainer.innerHTML = `
-                    <div class="flex flex-col items-center justify-center p-6 text-center">
-                        <i class="fa-solid fa-music text-amber-400 text-5xl mb-4 animate-bounce"></i>
-                        <p class="text-white font-serif text-lg mb-4">${caso.titulo}</p>
-                        <audio autoplay ${mutedAttr} controls src="${caso.recursoId}" class="w-full"></audio>
-                    </div>
-                `;
-                updateAudioLabel();
-            } else {
-                audioControlBar.style.display = 'none';
-                modalContentContainer.innerHTML = `<img src="${caso.recursoId}" alt="Foto" class="h-full w-full object-contain" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=800&q=80'">`;
-            }
-        }
-
-        function updateAudioLabel() {
-            const label = document.getElementById('audio-status-label');
-            const btn = document.getElementById('toggle-audio-btn');
-            if (isAudioMuted) {
-                label.innerHTML = '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).';
-                btn.textContent = 'Activar Audio (Modo Sala)';
-            } else {
-                label.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Altavoz principal).';
-                btn.textContent = 'Silenciar Audio';
-            }
-        }
-
-        window.toggleAudio = function() {
-            isAudioMuted = !isAudioMuted;
-            renderModalContent();
-        }
-
-        window.closeMediaModal = function() {
-            modal.classList.add('opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modalContentContainer.innerHTML = '';
-            }, 300);
-        }
-    </script>
-</body>
-</html>
+                                // MAGIA: Si el caso acaba de resolverse ahora mismo en remoto, SALTA EL REPRODUCTOR AUTOMÁTICAMENTE
+                                if (!estadoAnterior) {
+                                    if (typeof window.openSyncedMedia === 'function') {
+                                        window.openSyncedMedia(casoId);
+                    

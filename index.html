@@ -33,6 +33,18 @@
             <div id="admin-status" class="text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-slate-800 text-slate-400">
                 <i class="fa-solid fa-circle-info text-amber-400 mr-1"></i> Comprobando estado de conexión con Firebase...
             </div>
+
+            <!-- CONSOLA DE LOGS VISIBLE PARA EL ADMIN EN MÓVIL -->
+            <div class="mb-4 bg-black/85 border border-amber-500/30 rounded-lg p-3 text-[11px] font-mono text-amber-300">
+                <div class="flex justify-between items-center mb-1 border-b border-slate-800 pb-1">
+                    <span class="font-bold text-white"><i class="fa-solid fa-terminal mr-1"></i> Monitor de Estado (Admin)</span>
+                    <button onclick="document.getElementById('admin-log-box').innerHTML=''" class="text-slate-400 hover:text-white text-[10px]">Limpiar</button>
+                </div>
+                <div id="admin-log-box" class="max-h-28 overflow-y-auto space-y-1 text-slate-300">
+                    <div>> Sistema iniciado. Esperando eventos...</div>
+                </div>
+            </div>
+
             <!-- Editor de los 13 casos -->
             <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2">
                 <!-- Inyectado dinámicamente -->
@@ -93,13 +105,23 @@
         <p class="font-light">40 Años de Vane 🥂</p>
     </footer>
 
-    <!-- SCRIPT PRINCIPAL UNIFICADO -->
+    <!-- SCRIPT PRINCIPAL UNIFICADO CON LOG VISUAL PARA ADMIN -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        
-        // Importamos las credenciales desde el archivo externo seguro
         import { firebaseConfig } from "./firebase-config.js";
+
+        function logAdmin(msg, isError = false) {
+            console.log(msg);
+            const box = document.getElementById('admin-log-box');
+            if (box) {
+                const color = isError ? 'text-red-400' : 'text-slate-300';
+                box.innerHTML += `<div class="${color}">> ${msg}</div>`;
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        logAdmin("Iniciando script principal...");
 
         let casosData = {};
         for (let i = 1; i <= 13; i++) {
@@ -115,15 +137,24 @@
 
         const localSaved = localStorage.getItem('vane_casos_config');
         if (localSaved) {
-            try { casosData = JSON.parse(localSaved); } catch(e){}
+            try { 
+                casosData = JSON.parse(localSaved); 
+                logAdmin("Configuración cargada desde localStorage.");
+            } catch(e){
+                logAdmin("Error al parsear localStorage: " + e.message, true);
+            }
         }
 
         window.casosConfig = casosData;
         window.casoTimestamps = {};
 
         window.renderMainGrid = function() {
+            logAdmin("Renderizando cuadrícula de casos...");
             const grid = document.getElementById('cases-grid');
-            if (!grid) return;
+            if (!grid) {
+                logAdmin("¡No se encontró el elemento #cases-grid!", true);
+                return;
+            }
             grid.innerHTML = '';
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
@@ -162,6 +193,7 @@
                     desbloquearCasoUI(id);
                 }
             }
+            logAdmin("Cuadrícula renderizada correctamente.");
         };
 
         window.renderAdminEditor = function() {
@@ -291,12 +323,15 @@
                         batch.set(docRef, window.casosConfig[id], { merge: true });
                     }
                     await batch.commit();
-                    alert("¡Configuración guardada en LocalStorage y Firebase!");
+                    logAdmin("Configuración guardada en LocalStorage y Firebase.");
+                    alert("¡Configuración guardada correctamente!");
                 } else {
-                    alert("¡Configuración guardada en LocalStorage!");
+                    logAdmin("Configuración guardada solo en LocalStorage.");
+                    alert("¡Configuración guardada!");
                 }
                 window.renderMainGrid();
             } catch (e) {
+                logAdmin("Error al guardar: " + e.message, true);
                 alert("❌ Error al guardar: " + e.message);
             }
         };
@@ -307,37 +342,6 @@
 
         if (isFirebaseConfigured) {
             try {
+                logAdmin("Inicializando Firebase...");
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                
-                if (statusBox) {
-                    statusBox.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Firebase conectado correctamente.';
-                    statusBox.className = "text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-emerald-500/30 text-emerald-300";
-                }
-
-                // Escuchar cambios en tiempo real con apertura automática del modal
-                for (let i = 1; i <= 13; i++) {
-                    const casoId = `caso-${i}`;
-                    onSnapshot(doc(db, "estado_juego", casoId), (docSnap) => {
-                        if (docSnap.exists()) {
-                            const data = docSnap.data();
-                            const estadoAnterior = window.casosConfig[casoId] ? window.casosConfig[casoId].resuelto : false;
-                            window.casosConfig[casoId] = data;
-
-                            if (data.resuelto === true) {
-                                desbloquearCasoUI(casoId);
-                                if (data.timestamp && data.timestamp.toMillis) {
-                                    window.casoTimestamps[casoId] = data.timestamp.toMillis();
-                                } else {
-                                    window.casoTimestamps[casoId] = Date.now();
-                                }
-
-                                if (!estadoAnterior) {
-                                    if (typeof window.openSyncedMedia === 'function') {
-                                        window.openSyncedMedia(casoId);
-                                    }
-                                }
-                            } else {
-                                bloquearCasoUI(casoId);
-                                if (window.activeCasoId === casoId && typeof window.closeMediaModal === 'function') {
-                                
+                db = getFirestore(app

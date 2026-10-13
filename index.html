@@ -47,7 +47,7 @@
         <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
         <div class="relative mx-auto max-w-3xl">
             <span class="inline-block mb-3 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
-                Museo Virtual • Edición Coleccionista v2
+                Museo Virtual • Edición Coleccionista v3
             </span>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
                 40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-2xl font-light mt-1">El Juego de su Memoria</span>
@@ -115,13 +115,17 @@
             document.getElementById('admin-panel').classList.remove('hidden');
         }
 
-        function renderGrid() {
+                function renderGrid() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
             
-            const keys = Object.keys(casosConfig);
-            
-            // Si no hay casos cargados, mostramos un aviso elegante y limpio
+            // Ordenamos las claves numéricamente (caso-1, caso-2, ..., caso-10, caso-11...)
+            const keys = Object.keys(casosConfig).sort((a, b) => {
+                const numA = parseInt(a.replace('caso-', ''));
+                const numB = parseInt(b.replace('caso-', ''));
+                return numA - numB;
+            });
+
             if (keys.length === 0) {
                 grid.innerHTML = `
                     <div class="col-span-full text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-700 p-8">
@@ -166,7 +170,14 @@
             if (!editor) return;
             editor.innerHTML = '';
 
-            Object.keys(casosConfig).forEach((id) => {
+            // Ordenamos también numéricamente en el panel de administración
+            const keys = Object.keys(casosConfig).sort((a, b) => {
+                const numA = parseInt(a.replace('caso-', ''));
+                const numB = parseInt(b.replace('caso-', ''));
+                return numA - numB;
+            });
+
+            keys.forEach((id) => {
                 const c = casosConfig[id];
                 editor.innerHTML += `
                     <div class="bg-slate-950 p-3 rounded border border-slate-800 text-xs space-y-2">
@@ -190,6 +201,7 @@
                 `;
             });
         }
+
 
         function actualizarUI(id, resuelto) {
             const c = casosConfig[id];

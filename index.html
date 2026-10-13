@@ -91,17 +91,18 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // 1. Estructura base garantizada para los 13 casos
         let casosConfig = {};
         for (let i = 1; i <= 13; i++) {
             casosConfig[`caso-${i}`] = {
@@ -114,21 +115,34 @@
             };
         }
 
+        // 2. Recuperar de localStorage de forma segura
         const localData = localStorage.getItem('vane_casos_config');
         if (localData) {
-            try { casosConfig = JSON.parse(localData); } catch(e){}
+            try {
+                const parsed = JSON.parse(localData);
+                // Combinamos asegurando que no se pierda ningún campo
+                for (let i = 1; i <= 13; i++) {
+                    if (parsed[`caso-${i}`]) {
+                        casosConfig[`caso-${i}`] = { ...casosConfig[`caso-${i}`], ...parsed[`caso-${i}`] };
+                    }
+                }
+            } catch(e) {
+                console.error("Error al leer localStorage:", e);
+            }
         }
 
         function renderGrid() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
             grid.innerHTML = '';
+            
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
-                const c = casosConfig[id] || { titulo: `Caso #${i}`, descripcion: '', resuelto: false, imagenUrl: '' };
+                const c = casosConfig[id];
+                
                 grid.innerHTML += `
                     <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 flex flex-col justify-between">
-                        <!-- Contenedor adaptado a formato vertical / tipo retrato (aspect-[3/4]) con object-contain para no recortar la Polaroid -->
+                        <!-- Contenedor vertical estilo Polaroid -->
                         <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
                             <img id="img-${id}" src="${c.imagenUrl || ''}" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
                             <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
@@ -355,7 +369,9 @@
                     '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.' : 
                     '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
             }
+        };
 
+        // Ejecutar renderizado al cargar el script de forma segura
         renderGrid();
         if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
             document.getElementById('admin-panel').classList.remove('hidden');
@@ -365,3 +381,4 @@
     </script>
 </body>
 </html>
+       

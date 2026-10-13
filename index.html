@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>40 Años de Vane: El Juego de su Memoria v1</title>
+    <title>40 Años de Vane: El Juego de su Memoria</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -22,9 +22,13 @@
         <div class="mx-auto max-w-6xl">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración de Administrador</h3>
-                <div class="flex gap-2 flex-wrap">
+                <div class="flex gap-2 flex-wrap items-center">
+                    <div class="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded border border-slate-800 text-xs">
+                        <span class="text-slate-400">Nº de Casos:</span>
+                        <input type="number" id="input-total-casos" value="13" min="1" max="50" class="w-12 bg-slate-900 text-amber-400 font-bold text-center rounded border border-slate-700 p-0.5">
+                    </div>
                     <button onclick="inicializarCasos()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-slate-700 transition-all border border-amber-500/30">
-                        <i class="fa-solid fa-database mr-1"></i> Inicializar Casos en Firebase
+                        <i class="fa-solid fa-database mr-1"></i> Inicializar Casos
                     </button>
                     <button onclick="guardarCambios()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
                         <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar Cambios
@@ -43,7 +47,7 @@
         <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
         <div class="relative mx-auto max-w-3xl">
             <span class="inline-block mb-3 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
-                Museo Virtual • Edición Coleccionista v1
+                Museo Virtual • Edición Coleccionista v2
             </span>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
                 40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-2xl font-light mt-1">El Juego de su Memoria</span>
@@ -54,13 +58,14 @@
         </div>
     </header>
 
-    <!-- GALERÍA DE LOS 13 CASOS -->
+    <!-- GALERÍA DE LOS CASOS -->
     <main class="mx-auto max-w-6xl px-4 py-10 flex-grow w-full">
         <div class="text-center mb-10">
             <h2 class="font-serif text-2xl font-bold text-white mb-1">Casos del Archivo</h2>
             <p class="text-slate-400 text-xs sm:text-sm">Las tarjetas bloqueadas se iluminarán automáticamente al resolverse en la cena.</p>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" id="cases-grid"></div>
+        <!-- Contenedor donde se mostrarán los casos o el mensaje de aviso si está vacío -->
+        <div id="cases-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"></div>
     </main>
 
     <!-- MODAL MULTIMEDIA -->
@@ -91,39 +96,47 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Estructura base en memoria por defecto
         let casosConfig = {};
-        for (let i = 1; i <= 13; i++) {
-            casosConfig[`caso-${i}`] = {
-                titulo: `Caso #${i}: Recuerdo Especial`,
-                descripcion: `Momento inolvidable de la vida de Vane.`,
-                tipo: 'video',
-                recursoId: ``,
-                imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
-                resuelto: false
-            };
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === 'vane40';
+
+        if (isAdmin) {
+            document.getElementById('admin-panel').classList.remove('hidden');
         }
 
         function renderGrid() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
-            grid.innerHTML = '';
             
-            for (let i = 1; i <= 13; i++) {
-                const id = `caso-${i}`;
+            const keys = Object.keys(casosConfig);
+            
+            // Si no hay casos cargados, mostramos un aviso elegante y limpio
+            if (keys.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-700 p-8">
+                        <i class="fa-solid fa-folder-open text-amber-400/50 text-4xl mb-3"></i>
+                        <h3 class="font-serif text-lg font-bold text-white mb-1">No hay casos configurados todavía</h3>
+                        <p class="text-slate-400 text-xs max-w-sm mx-auto mb-4">El archivo está vacío en este momento. Accede al panel de administración para inicializar los casos.</p>
+                        ${isAdmin ? '<span class="text-amber-400 text-xs font-mono bg-amber-500/10 px-3 py-1 rounded border border-amber-500/30">Usa el botón "Inicializar Casos" arriba</span>' : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = '';
+            keys.forEach((id) => {
                 const c = casosConfig[id];
-                
                 grid.innerHTML += `
                     <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 flex flex-col justify-between">
                         <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
@@ -132,7 +145,7 @@
                                 <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
                                 <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
                             </div>
-                            <span class="absolute top-3 left-3 rounded bg-slate-900/90 border border-slate-700 px-2 py-1 text-xs text-amber-400 shadow">Caso #${i}</span>
+                            <span class="absolute top-3 left-3 rounded bg-slate-900/90 border border-slate-700 px-2 py-1 text-xs text-amber-400 shadow">${c.titulo || id}</span>
                         </div>
                         <div>
                             <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${c.titulo}</h3>
@@ -145,7 +158,7 @@
                     </article>
                 `;
                 actualizarUI(id, c.resuelto);
-            }
+            });
         }
 
         function renderAdmin() {
@@ -153,14 +166,12 @@
             if (!editor) return;
             editor.innerHTML = '';
 
-            for (let i = 1; i <= 13; i++) {
-                const id = `caso-${i}`;
+            Object.keys(casosConfig).forEach((id) => {
                 const c = casosConfig[id];
-
                 editor.innerHTML += `
                     <div class="bg-slate-950 p-3 rounded border border-slate-800 text-xs space-y-2">
                         <div class="flex justify-between font-bold text-amber-400">
-                            <span>Caso #${i}</span>
+                            <span>${id.toUpperCase()}</span>
                             <label><input type="checkbox" id="adm-res-${id}" ${c.resuelto?'checked':''}> Resuelto</label>
                         </div>
                         <input type="text" id="adm-title-${id}" value="${c.titulo || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
@@ -177,7 +188,7 @@
                         </div>
                     </div>
                 `;
-            }
+            });
         }
 
         function actualizarUI(id, resuelto) {
@@ -213,93 +224,107 @@
             }
         }
 
-        // 1. DIBUJAMOS LA REJILLA INMEDIATAMENTE (Para que los casos siempre aparezcan)
-        renderGrid();
-
-        // 2. GESTIÓN DE ADMINISTRADOR Y CONEXIÓN CON FIRESTORE
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'vane40';
-
-        if (isAdmin) {
-            document.getElementById('admin-panel').classList.remove('hidden');
-
-            if (firebaseConfig.apiKey === "TU_API_KEY" || !firebaseConfig.apiKey) {
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> ¡Atención! Has dejado la API Key de ejemplo ("TU_API_KEY"). Configura tus credenciales reales.';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
-            } else {
-                db.collection("estado_juego").get().then((querySnapshot) => {
-                    querySnapshot.forEach((doc) => {
-                        if (doc.exists) {
-                            casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
-                        }
-                    });
-                    renderAdmin();
-                    document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> ¡Conectado a Firestore (Sin cachés locales)!';
-                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
-                }).catch((error) => {
-                    console.error("Error al conectar con Firestore:", error);
-                    document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
-                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
+        // Carga inicial y escucha en tiempo real directo desde Firestore
+        db.collection("estado_juego").get().then((querySnapshot) => {
+            if (!querySnapshot.empty) {
+                casosConfig = {};
+                querySnapshot.forEach((doc) => {
+                    casosConfig[doc.id] = doc.data();
                 });
             }
-        }
+            renderGrid();
+            if (isAdmin) {
+                renderAdmin();
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado a Firestore con éxito.';
+                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
+            }
+        }).catch((error) => {
+            console.error("Error al cargar Firestore:", error);
+            renderGrid();
+            if (isAdmin) {
+                document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
+                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
+            }
+        });
 
-        // 3. ESCUCHA EN TIEMPO REAL DESDE FIRESTORE
-        for (let i = 1; i <= 13; i++) {
-            const id = `caso-${i}`;
-            db.collection("estado_juego").doc(id).onSnapshot((docSnap) => {
-                if (docSnap.exists) {
-                    const data = docSnap.data();
-                    const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
+        // Escucha en tiempo real de los documentos existentes
+        db.collection("estado_juego").onSnapshot((snapshot) => {
+            if (!snapshot.empty) {
+                snapshot.docChanges().forEach((change) => {
+                    const id = change.doc.id;
+                    const data = change.doc.data();
                     
-                    casosConfig[id] = { ...casosConfig[id], ...data };
-                    actualizarUI(id, data.resuelto);
+                    if (change.type === "added" || change.type === "modified") {
+                        const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
+                        casosConfig[id] = { ...casosConfig[id], ...data };
+                        
+                        // Si el documento es nuevo y no estaba pintado en la rejilla, repintamos la rejilla completa
+                        if (!document.getElementById(`card-${id}`)) {
+                            renderGrid();
+                            if (isAdmin) renderAdmin();
+                        } else {
+                            actualizarUI(id, data.resuelto);
+                        }
 
-                    if (data.resuelto && !antesResuelto) {
-                        openModal(id);
-                    }
-
-                    if (data.reproduciendoDesde) {
-                        if (activeId !== id) {
+                        if (data.resuelto && !antesResuelto) {
                             openModal(id);
                         }
 
-                        const player = document.getElementById('player');
-                        const adminBar = document.getElementById('admin-sync-bar');
-                        if (adminBar) adminBar.remove();
-
-                        if (player) {
-                            const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
-                            const elapsedSeconds = (Date.now() - serverTime) / 1000;
-                            
-                            if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
-                                player.currentTime = Math.max(0, elapsedSeconds);
+                        if (data.reproduciendoDesde) {
+                            if (activeId !== id) {
+                                openModal(id);
                             }
-                            if (player.paused) {
-                                player.play().catch(e => console.log("Play bloqueado por políticas del navegador:", e));
+
+                            const player = document.getElementById('player');
+                            const adminBar = document.getElementById('admin-sync-bar');
+                            if (adminBar) adminBar.remove();
+
+                            if (player) {
+                                const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
+                                const elapsedSeconds = (Date.now() - serverTime) / 1000;
+                                
+                                if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
+                                    player.currentTime = Math.max(0, elapsedSeconds);
+                                }
+                                if (player.paused) {
+                                    player.play().catch(e => console.log("Play bloqueado:", e));
+                                }
                             }
                         }
                     }
-                }
-            });
-        }
+                });
+            }
+        });
 
         window.inicializarCasos = function() {
+            const total = parseInt(document.getElementById('input-total-casos').value) || 13;
             const batch = db.batch();
-            for (let i = 1; i <= 13; i++) {
-                const ref = db.collection("estado_juego").doc(`caso-${i}`);
-                batch.set(ref, casosConfig[`caso-${i}`], { merge: true });
+            
+            casosConfig = {};
+            for (let i = 1; i <= total; i++) {
+                const id = `caso-${i}`;
+                casosConfig[id] = {
+                    titulo: `Caso #${i}: Recuerdo Especial`,
+                    descripcion: `Momento inolvidable de la vida de Vane.`,
+                    tipo: 'video',
+                    recursoId: ``,
+                    imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
+                    resuelto: false
+                };
+                const ref = db.collection("estado_juego").doc(id);
+                batch.set(ref, casosConfig[id], { merge: true });
             }
+
             batch.commit().then(() => {
-                alert("¡Casos inicializados en Firestore correctamente!");
+                alert(`¡Se han inicializado ${total} casos en Firestore correctamente!`);
+                renderGrid();
                 if (isAdmin) renderAdmin();
             }).catch(err => alert("Error al inicializar: " + err.message));
         };
 
-        window.guardarCambios = function() {
+               window.guardarCambios = function() {
             const batch = db.batch();
-            for (let i = 1; i <= 13; i++) {
-                const id = `caso-${i}`;
+            Object.keys(casosConfig).forEach((id) => {
                 casosConfig[id] = {
                     titulo: document.getElementById(`adm-title-${id}`).value,
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
@@ -310,7 +335,7 @@
                 };
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
-            }
+            });
             batch.commit().then(() => alert("¡Guardado y sincronizado en la nube con éxito!")).catch(err => alert("Error al guardar: " + err.message));
         };
 
@@ -321,7 +346,6 @@
             if (!c) return;
             
             document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
-
             const mutedAttr = isAdmin ? '' : 'muted';
 
             let htmlContenido = `
@@ -340,4 +364,54 @@
                             <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
                         </button>
                     </div>
-          
+                `;
+            }
+
+            document.getElementById('modalContentContainer').innerHTML = `
+                <div class="relative w-full h-full flex items-center justify-center">
+                    ${panelControlExtra}
+                    ${htmlContenido}
+                </div>
+            `;
+
+            const audioLabel = document.getElementById('audio-status-label');
+            if (isAdmin) {
+                audioLabel.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Salida principal de sala).';
+            } else {
+                audioLabel.innerHTML = '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (Sincronizado).';
+            }
+
+            const m = document.getElementById('mediaModal');
+            m.classList.remove('hidden');
+            setTimeout(() => m.classList.remove('opacity-0'), 10);
+        };
+
+        window.lanzarReproduccionGlobal = function(id) {
+            const now = firebase.firestore.FieldValue.serverTimestamp();
+            db.collection("estado_juego").doc(id).set({
+                reproduciendoDesde: now
+            }, { merge: true });
+        };
+
+        window.closeModal = function() {
+            const m = document.getElementById('mediaModal');
+            m.classList.add('opacity-0');
+            setTimeout(() => {
+                m.classList.add('hidden');
+                document.getElementById('modalContentContainer').innerHTML = '';
+                activeId = '';
+            }, 300);
+        };
+
+        window.toggleAudio = function() {
+            const p = document.getElementById('player');
+            if (p) {
+                p.muted = !p.muted;
+                document.getElementById('audio-status-label').innerHTML = p.muted ? 
+                    '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.' : 
+                    '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
+            }
+        };
+    </script>
+</body>
+</html>

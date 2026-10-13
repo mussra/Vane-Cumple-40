@@ -21,19 +21,19 @@
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración de Administrador (13 Casos)</h3>
                 <div class="flex gap-2 flex-wrap">
-                    <button onclick="inicializar13CasosFirebase()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-slate-700 transition-all border border-amber-500/30">
-                        <i class="fa-solid fa-database mr-1"></i> Inicializar 13 Casos en Firebase
+                    <button onclick="window.inicializar13CasosFirebase()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-slate-700 transition-all border border-amber-500/30">
+                        <i class="fa-solid fa-database mr-1"></i> Inicializar en Firebase
                     </button>
-                    <button onclick="guardarConfigAdmin()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
+                    <button onclick="window.guardarConfigAdmin()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
                         <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar Cambios
                     </button>
                 </div>
             </div>
-            <!-- Contenedor de avisos de estado y errores -->
+            <!-- Estado de conexión -->
             <div id="admin-status" class="text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-slate-800 text-slate-400">
-                <i class="fa-solid fa-circle-info text-amber-400 mr-1"></i> Comprobando estado de conexión con Firebase...
+                <i class="fa-solid fa-circle-info text-amber-400 mr-1"></i> Estado: Cargando configuración local...
             </div>
-            <!-- Contenedor editable de los 13 casos -->
+            <!-- Editor de los 13 casos -->
             <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2">
                 <!-- Inyectado por JS -->
             </div>
@@ -68,7 +68,7 @@
         </div>
     </main>
 
-    <!-- MODAL MULTIMEDIA DINÁMICO -->
+    <!-- MODAL MULTIMEDIA -->
     <div id="mediaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
         <div class="relative w-full max-w-2xl rounded-2xl bg-[#111827] border border-slate-700 p-6 shadow-2xl">
             <div class="flex items-center justify-between mb-4">
@@ -77,10 +77,7 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            <!-- Contenedor multimedia -->
-            <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative flex items-center justify-center">
-                <!-- Contenido dinámico -->
-            </div>
+            <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative flex items-center justify-center"></div>
             <div class="flex items-center justify-between text-xs text-slate-400" id="audio-control-bar">
                 <span id="audio-status-label"><i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).</span>
                 <button id="toggle-audio-btn" onclick="toggleAudio()" class="rounded bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 transition-colors">
@@ -96,50 +93,8 @@
         <p class="font-light">40 Años de Vane 🥂</p>
     </footer>
 
-    <!-- SCRIPT DE FIREBASE Y GESTIÓN DE DATOS -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, doc, onSnapshot, setDoc, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // CONFIGURA TUS CREDENCIALES DE FIREBASE AQUÍ:
-        const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_AUTH_DOMAIN",
-            projectId: "TU_PROJECT_ID",
-            storageBucket: "TU_STORAGE_BUCKET",
-            messagingSenderId: "TU_MESSAGING_SENDER_ID",
-            appId: "TU_APP_ID"
-        };
-
-        // Comprobación de configuración por defecto
-        const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
-        let db = null;
-        let app = null;
-
-        const statusBox = document.getElementById('admin-status');
-
-        if (isFirebaseConfigured) {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                if (statusBox) {
-                    statusBox.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Firebase configurado correctamente. Conectado a la nube.';
-                    statusBox.className = "text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-emerald-500/30 text-emerald-300";
-                }
-            } catch (err) {
-                console.error("Error al inicializar Firebase:", err);
-                if (statusBox) {
-                    statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-400 mr-1"></i> Error al conectar con Firebase: ${err.message}. Los cambios solo se guardarán localmente.`;
-                    statusBox.className = "text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-red-500/30 text-red-300";
-                }
-            }
-        } else {
-            if (statusBox) {
-                statusBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> <strong>Atención:</strong> Las credenciales de Firebase no están configuradas ("TU_API_KEY"). Los cambios solo se guardarán en tu navegador (LocalStorage) y no se sincronizarán en tiempo real.';
-                statusBox.className = "text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-amber-500/30 text-amber-300";
-            }
-        }
-
+    <!-- LÓGICA GENERAL Y RENDERIZADO (EJECUCIÓN INMEDIATA) -->
+    <script>
         // Estructura por defecto de los 13 casos
         let casosData = {};
         for (let i = 1; i <= 13; i++) {
@@ -161,15 +116,10 @@
         window.casosConfig = casosData;
         window.casoTimestamps = {};
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'vane40';
-        if (isAdmin) {
-            document.getElementById('admin-panel').classList.remove('hidden');
-            renderAdminEditor();
-        }
-
+        // Renderizar la cuadrícula principal de inmediato
         function renderMainGrid() {
             const grid = document.getElementById('cases-grid');
+            if (!grid) return;
             grid.innerHTML = '';
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
@@ -201,144 +151,33 @@
                 `;
                 grid.innerHTML += html;
             }
-        }
-        renderMainGrid();
 
-        function renderAdminEditor() {
-            const editor = document.getElementById('admin-cases-editor');
-            editor.innerHTML = '';
-            
-            const videoOptions = [
-                `assets/videos/caso-1.mp4`, `assets/videos/caso-2.mp4`, `assets/videos/caso-3.mp4`,
-                `assets/videos/caso-4.mp4`, `assets/videos/caso-5.mp4`, `assets/videos/caso-6.mp4`,
-                `assets/videos/caso-7.mp4`, `assets/videos/caso-8.mp4`, `assets/videos/caso-9.mp4`,
-                `assets/videos/caso-10.mp4`, `assets/videos/caso-11.mp4`, `assets/videos/caso-12.mp4`,
-                `assets/videos/caso-13.mp4`, `assets/videos/especial-cumple.mp4`, `assets/videos/recuerdo-familia.mp4`
-            ];
-
+            // Comprobamos si hay casos ya resueltos en local
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
-                const c = window.casosConfig[id];
-
-                let optionsHtml = videoOptions.map(path => `
-                    <option value="${path}" ${c.recursoId === path ? 'selected' : ''}>📁 ${path}</option>
-                `).join('');
-
-                editor.innerHTML += `
-                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-2">
-                        <div class="flex justify-between font-bold text-amber-400">
-                            <span>Caso #${i}</span>
-                            <label class="cursor-pointer"><input type="checkbox" id="adm-res-${id}" ${c.resuelto ? 'checked':''}> Resuelto</label>
-                        </div>
-                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
-                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
-                        <div class="flex gap-2 flex-col">
-                            <select id="adm-tipo-${id}" class="bg-slate-900 border border-slate-700 rounded p-1 text-white">
-                                <option value="video" ${c.tipo==='video'?'selected':''}>Vídeo Local (.mp4)</option>
-                                <option value="audio" ${c.tipo==='audio'?'selected':''}>Audio / Canción</option>
-                                <option value="foto" ${c.tipo==='foto'?'selected':''}>Foto Inédita</option>
-                            </select>
-                            <select id="adm-rec-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]">
-                                ${optionsHtml}
-                            </select>
-                        </div>
-                    </div>
-                `;
+                if (window.casosConfig[id] && window.casosConfig[id].resuelto === true) {
+                    desbloquearCasoLocal(id);
+                }
             }
         }
 
-        window.inicializar13CasosFirebase = async function() {
-            if (!isFirebaseConfigured || !db) {
-                alert("⚠️ Firebase no está configurado. No se pueden inicializar los casos en la nube. Los cambios solo se quedan en este navegador (LocalStorage).");
-                return;
+        function desbloquearCasoLocal(id) {
+            const caso = window.casosConfig[id];
+            const img = document.getElementById(`img-${id}`);
+            const lock = document.getElementById(`lock-${id}`);
+            const btn = document.getElementById(`btn-${id}`);
+            const status = document.getElementById(`status-${id}`);
+            const card = document.getElementById(`card-${id}`);
+            const title = document.getElementById(`title-${id}`);
+            const desc = document.getElementById(`desc-${id}`);
+
+            if (caso) {
+                if (title) title.textContent = caso.titulo;
+                if (desc) desc.textContent = caso.descripcion;
             }
-            try {
-                const batch = writeBatch(db);
-                for (let i = 1; i <= 13; i++) {
-                    const id = `caso-${i}`;
-                    const docRef = doc(db, "estado_juego", id);
-                    batch.set(docRef, window.casosConfig[id], { merge: true });
-                }
-                await batch.commit();
-                alert("¡13 casos inicializados en Firebase correctamente!");
-            } catch(e) {
-                alert("❌ Error al inicializar en Firebase: " + e.message);
-            }
-        };
-
-        window.guardarConfigAdmin = async function() {
-            try {
-                for (let i = 1; i <= 13; i++) {
-                    const id = `caso-${i}`;
-                    const resueltoCheck = document.getElementById(`adm-res-${id}`).checked;
-                    const estabaResuelto = window.casosConfig[id].resuelto;
-
-                    window.casosConfig[id] = {
-                        titulo: document.getElementById(`adm-title-${id}`).value,
-                        descripcion: document.getElementById(`adm-desc-${id}`).value,
-                        tipo: document.getElementById(`adm-tipo-${id}`).value,
-                        recursoId: document.getElementById(`adm-rec-${id}`).value,
-                        resuelto: resueltoCheck,
-                        timestamp: (resueltoCheck && !estabaResuelto) ? (isFirebaseConfigured ? serverTimestamp() : Date.now()) : (window.casosConfig[id].timestamp || null)
-                    };
-                }
-
-                // Guardar siempre en localstorage primero como respaldo seguro
-                localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
-
-                // Intentar guardar en Firebase si está configurado
-                if (isFirebaseConfigured && db) {
-                    try {
-                        const batch = writeBatch(db);
-                        for (let i = 1; i <= 13; i++) {
-                            const id = `caso-${i}`;
-                            const docRef = doc(db, "estado_juego", id);
-                            batch.set(docRef, window.casosConfig[id], { merge: true });
-                        }
-                        await batch.commit();
-                        alert("¡Configuración guardada con éxito en LocalStorage y en la Nube (Firebase)!");
-                    } catch (fbErr) {
-                        console.warn("Fallo al guardar en Firebase, guardado localmente:", fbErr);
-                        alert("⚠️ Guardado localmente con éxito, pero HUBO UN ERROR al sincronizar con Firebase: " + fbErr.message);
-                    }
-                } else {
-                    alert("⚠️ Configuración guardada en LocalStorage (Aviso: Firebase no está configurado, no se ha subido a la nube).");
-                }
-
-                renderMainGrid();
-            } catch (e) {
-                alert("❌ Error general al guardar: " + e.message);
-            }
-        };
-
-        async function cargarConfigFirebase() {
-            if (!isFirebaseConfigured || !db) return;
-            try {
-                const querySnapshot = await getDocs(collection(db, "estado_juego"));
-                querySnapshot.forEach((docSnap) => {
-                    if (docSnap.exists()) {
-                        window.casosConfig[docSnap.id] = docSnap.data();
-                    }
-                });
-                localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
-                renderMainGrid();
-                if (isAdmin) renderAdminEditor();
-            } catch(e) {
-                console.warn("No se pudo cargar desde Firebase, usando respaldo local:", e);
-            }
-        }
-        cargarConfigFirebase();
-
-        // Escuchar cambios en tiempo real solo si Firebase está activo
-        if (isFirebaseConfigured && db) {
-            for (let i = 1; i <= 13; i++) {
-                const casoId = `caso-${i}`;
-                onSnapshot(doc(db, "estado_juego", casoId), (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        window.casosConfig[casoId] = data;
-                        if (data.resuelto === true) {
-                            desbloquearCaso(casoId);
-                            if (data.timestamp && data.timestamp.toMillis) {
-                                window.casoTimestamps[casoId] = data.timestamp.toMillis();
-                            
+            if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
+            if (lock) lock.style.display = 'none';
+            if (btn) {
+                btn.removeAttribute('disabled');
+                btn.classList.remove('bg-slate-
+                                     

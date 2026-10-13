@@ -117,8 +117,8 @@
             casosData[`caso-${i}`] = {
                 titulo: `Caso #${i}: Recuerdo Especial`,
                 descripcion: `Momento inolvidable de la vida de Vane.`,
-                tipo: 'video', // 'video', 'audio', 'foto'
-                recursoId: 'dQw4w9WgXcQ', // ID de YouTube, URL de audio/foto o ruta local (assets/videos/archivo.mp4)
+                tipo: 'video', 
+                recursoId: `assets/videos/caso-${i}.mp4`, // Apunta por defecto al archivo local correspondiente
                 resuelto: false,
                 timestamp: null
             };
@@ -139,7 +139,6 @@
             renderAdminEditor();
         }
 
-        // Renderizar la cuadrícula de los 13 casos
         function renderMainGrid() {
             const grid = document.getElementById('cases-grid');
             grid.innerHTML = '';
@@ -176,13 +175,40 @@
         }
         renderMainGrid();
 
-        // Renderizar editor del administrador con selector de archivos locales
+        // Renderizar editor del administrador con Selector Desplegable de Vídeos de assets/videos/
         function renderAdminEditor() {
             const editor = document.getElementById('admin-cases-editor');
             editor.innerHTML = '';
+            
+            // Lista de opciones predefinidas para el selector de assets/videos/
+            // Puedes añadir más nombres aquí si subes nuevos archivos de vídeo
+            const videoOptions = [
+                `assets/videos/caso-1.mp4`,
+                `assets/videos/caso-2.mp4`,
+                `assets/videos/caso-3.mp4`,
+                `assets/videos/caso-4.mp4`,
+                `assets/videos/caso-5.mp4`,
+                `assets/videos/caso-6.mp4`,
+                `assets/videos/caso-7.mp4`,
+                `assets/videos/caso-8.mp4`,
+                `assets/videos/caso-9.mp4`,
+                `assets/videos/caso-10.mp4`,
+                `assets/videos/caso-11.mp4`,
+                `assets/videos/caso-12.mp4`,
+                `assets/videos/caso-13.mp4`,
+                `assets/videos/especial-cumple.mp4`,
+                `assets/videos/recuerdo-familia.mp4`
+            ];
+
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
                 const c = window.casosConfig[id];
+
+                // Generar las opciones del desplegable marcando la seleccionada actualmente
+                let optionsHtml = videoOptions.map(path => `
+                    <option value="${path}" ${c.recursoId === path ? 'selected' : ''}>📁 ${path}</option>
+                `).join('');
+
                 editor.innerHTML += `
                     <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-2">
                         <div class="flex justify-between font-bold text-amber-400">
@@ -191,35 +217,25 @@
                         </div>
                         <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
                         <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 flex-col">
                             <select id="adm-tipo-${id}" class="bg-slate-900 border border-slate-700 rounded p-1 text-white">
-                                <option value="video" ${c.tipo==='video'?'selected':''}>Vídeo (YouTube o Local)</option>
+                                <option value="video" ${c.tipo==='video'?'selected':''}>Vídeo Local (.mp4)</option>
                                 <option value="audio" ${c.tipo==='audio'?'selected':''}>Audio / Canción</option>
                                 <option value="foto" ${c.tipo==='foto'?'selected':''}>Foto Inédita</option>
                             </select>
-                            <input type="text" id="adm-rec-${id}" value="${c.recursoId}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="ID YouTube, URL o assets/videos/file.mp4">
-                        </div>
-                        <div>
-                            <label class="cursor-pointer inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded border border-slate-700 transition-colors">
-                                <i class="fa-solid fa-folder-open text-amber-400"></i> Seleccionar vídeo local...
-                                <input type="file" accept="video/mp4,video/quicktime" class="hidden" onchange="handleLocalVideoSelect(event, 'adm-rec-${id}')">
-                            </label>
+                            
+                            <!-- Selector desplegable de vídeos alojados en assets/videos/ -->
+                            <div class="flex gap-1 items-center">
+                                <select id="adm-rec-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]">
+                                    ${optionsHtml}
+                                </select>
+                            </div>
                         </div>
                     </div>
                 `;
             }
         }
 
-        window.handleLocalVideoSelect = function(event, inputId) {
-            const file = event.target.files[0];
-            if (file) {
-                const relativePath = `assets/videos/${file.name}`;
-                document.getElementById(inputId).value = relativePath;
-                alert(`Archivo seleccionado: ${file.name}\nRecuerda subir este archivo a la carpeta 'assets/videos/' en tu repositorio de GitHub.`);
-            }
-        };
-
-        // Auto-inicializar los 13 casos en Firebase desde el panel admin
         window.inicializar13CasosFirebase = async function() {
             try {
                 const batch = writeBatch(db);
@@ -235,7 +251,6 @@
             }
         };
 
-        // Guardar cambios del Admin
         window.guardarConfigAdmin = async function() {
             try {
                 const batch = writeBatch(db);
@@ -264,7 +279,6 @@
             }
         };
 
-        // Cargar desde Firebase
         async function cargarConfigFirebase() {
             try {
                 const querySnapshot = await getDocs(collection(db, "estado_juego"));
@@ -282,7 +296,6 @@
         }
         cargarConfigFirebase();
 
-        // Escuchar cambios en tiempo real en Firebase
         for (let i = 1; i <= 13; i++) {
             const casoId = `caso-${i}`;
             onSnapshot(doc(db, "estado_juego", casoId), (docSnap) => {
@@ -353,8 +366,4 @@
         }
 
         function renderModalContent() {
-            const caso = window.casosConfig[activeCasoId];
-            if (!caso) return;
-
-            let startSecond = 0;
-            if (window.casoTimestamps && window.casoTimestamps[activeCas
+            const caso

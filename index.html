@@ -111,7 +111,16 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { firebaseConfig } from "./firebase-config.js";
+
+        // Configuración de Firebase integrada directamente
+     const firebaseConfig = {
+  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
+  authDomain: "vane-cumple-40.firebaseapp.com",
+  projectId: "vane-cumple-40",
+  storageBucket: "vane-cumple-40.firebasestorage.app",
+  messagingSenderId: "757919275158",
+  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+};
 
         function logAdmin(msg, isError = false) {
             console.log(msg);
@@ -333,11 +342,4 @@
                 }
                 window.renderMainGrid();
             } catch (e) {
-                logAdmin("Error al guardar: " + e.message, true);
-                alert("❌ Error al guardar: " + e.message);
-            }
-        };
-
-        const isFirebaseConfigured = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
-        const statusBox = document.getElementById('admin-status');
-        let d
+                logAdmin("Error al 

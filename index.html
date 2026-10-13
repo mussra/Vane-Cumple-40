@@ -10,8 +10,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDKs versión compatible global (CDN) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
 
@@ -19,36 +21,20 @@
     <div id="admin-panel" class="bg-slate-900 border-b border-amber-500/30 p-4 hidden">
         <div class="mx-auto max-w-6xl">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración de Administrador (13 Casos)</h3>
+                <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración de Administrador</h3>
                 <div class="flex gap-2 flex-wrap">
-                    <button onclick="inicializar13CasosFirebase()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-slate-700 transition-all border border-amber-500/30">
-                        <i class="fa-solid fa-database mr-1"></i> Inicializar 13 Casos en Firebase
+                    <button onclick="inicializarCasos()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-slate-700 transition-all border border-amber-500/30">
+                        <i class="fa-solid fa-database mr-1"></i> Inicializar Casos
                     </button>
-                    <button onclick="guardarConfigAdmin()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
+                    <button onclick="guardarCambios()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
                         <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar Cambios
                     </button>
                 </div>
             </div>
-            <!-- Estado de conexión -->
             <div id="admin-status" class="text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-slate-800 text-slate-400">
-                <i class="fa-solid fa-circle-info text-amber-400 mr-1"></i> Comprobando estado de conexión con Firebase...
+                Conectando con Firebase...
             </div>
-
-            <!-- CONSOLA DE LOGS VISIBLE PARA EL ADMIN EN MÓVIL -->
-            <div class="mb-4 bg-black/85 border border-amber-500/30 rounded-lg p-3 text-[11px] font-mono text-amber-300">
-                <div class="flex justify-between items-center mb-1 border-b border-slate-800 pb-1">
-                    <span class="font-bold text-white"><i class="fa-solid fa-terminal mr-1"></i> Monitor de Estado (Admin)</span>
-                    <button onclick="document.getElementById('admin-log-box').innerHTML=''" class="text-slate-400 hover:text-white text-[10px]">Limpiar</button>
-                </div>
-                <div id="admin-log-box" class="max-h-28 overflow-y-auto space-y-1 text-slate-300">
-                    <div>> Sistema iniciado. Esperando eventos...</div>
-                </div>
-            </div>
-
-            <!-- Editor de los 13 casos -->
-            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2">
-                <!-- Inyectado dinámicamente -->
-            </div>
+            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2"></div>
         </div>
     </div>
 
@@ -74,10 +60,7 @@
             <h2 class="font-serif text-2xl font-bold text-white mb-1">Casos del Archivo</h2>
             <p class="text-slate-400 text-xs sm:text-sm">Las tarjetas bloqueadas se iluminarán automáticamente al resolverse en la cena.</p>
         </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" id="cases-grid">
-            <!-- Inyectado dinámicamente -->
-        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" id="cases-grid"></div>
     </main>
 
     <!-- MODAL MULTIMEDIA -->
@@ -85,16 +68,14 @@
         <div class="relative w-full max-w-2xl rounded-2xl bg-[#111827] border border-slate-700 p-6 shadow-2xl">
             <div class="flex items-center justify-between mb-4">
                 <h3 id="modalTitle" class="font-serif text-xl font-bold text-white">Reproductor Sincronizado</h3>
-                <button onclick="closeMediaModal()" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <button onclick="closeModal()" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
             <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative flex items-center justify-center"></div>
             <div class="flex items-center justify-between text-xs text-slate-400" id="audio-control-bar">
-                <span id="audio-status-label"><i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (invitado).</span>
-                <button id="toggle-audio-btn" onclick="toggleAudio()" class="rounded bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 transition-colors">
-                    Activar Audio (Modo Sala)
-                </button>
+                <span id="audio-status-label"><i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.</span>
+                <button onclick="toggleAudio()" class="rounded bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 transition-colors">Activar Audio</button>
             </div>
         </div>
     </div>
@@ -107,13 +88,10 @@
         <p class="font-light tracking-widest text-[11px] uppercase text-slate-400 mt-3">40 Años de Vane 🥂</p>
     </footer>
 
-    <!-- SCRIPT PRINCIPAL UNIFICADO -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, doc, onSnapshot, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // Configuración de Firebase integrada directamente
-     const firebaseConfig = {
+    <!-- SCRIPT DE LÓGICA Y FIREBASE COMPAT (GLOBAL) -->
+    <script>
+        // PEGA AQUÍ TUS CREDENCIALES DE FIREBASE
+         const firebaseConfig = {
   apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
   authDomain: "vane-cumple-40.firebaseapp.com",
   projectId: "vane-cumple-40",
@@ -121,225 +99,189 @@
   messagingSenderId: "757919275158",
   appId: "1:757919275158:web:40e74e06e96d8125948ab7"
 };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        function logAdmin(msg, isError = false) {
-            console.log(msg);
-            const box = document.getElementById('admin-log-box');
-            if (box) {
-                const color = isError ? 'text-red-400' : 'text-slate-300';
-                box.innerHTML += `<div class="${color}">> ${msg}</div>`;
-                box.scrollTop = box.scrollHeight;
-            }
-        }
-
-        logAdmin("Iniciando script principal...");
-
-        let casosData = {};
+        let casosConfig = {};
         for (let i = 1; i <= 13; i++) {
-            casosData[`caso-${i}`] = {
+            casosConfig[`caso-${i}`] = {
                 titulo: `Caso #${i}: Recuerdo Especial`,
                 descripcion: `Momento inolvidable de la vida de Vane.`,
-                tipo: 'video', 
+                tipo: 'video',
                 recursoId: `assets/videos/caso-${i}.mp4`,
-                resuelto: false,
-                timestamp: null
+                resuelto: false
             };
         }
 
-        const localSaved = localStorage.getItem('vane_casos_config');
-        if (localSaved) {
-            try { 
-                casosData = JSON.parse(localSaved); 
-                logAdmin("Configuración cargada desde localStorage.");
-            } catch(e){
-                logAdmin("Error al parsear localStorage: " + e.message, true);
-            }
+        const localData = localStorage.getItem('vane_casos_config');
+        if (localData) {
+            try { casosConfig = JSON.parse(localData); } catch(e){}
         }
 
-        window.casosConfig = casosData;
-        window.casoTimestamps = {};
-
-        window.renderMainGrid = function() {
-            logAdmin("Renderizando cuadrícula de casos...");
+        function renderGrid() {
             const grid = document.getElementById('cases-grid');
-            if (!grid) {
-                logAdmin("¡No se encontró el elemento #cases-grid!", true);
-                return;
-            }
+            if (!grid) return;
             grid.innerHTML = '';
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
-                const caso = window.casosConfig[id] || casosData[id];
-                
-                const html = `
-                    <article id="card-${id}" class="polaroid-card group bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 transition-all duration-300">
-                        <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4 shadow-inner">
-                            <img id="img-${id}" src="assets/recuerdos/foto-${(i%3)+1}.jpg" alt="${id}" class="h-full w-full object-cover filter blur-sm opacity-40 transition-all duration-500" onerror="this.src='https://images.unsplash.com/photo-1523821741446-edb2b68bb7a0?auto=format&fit=crop&w=600&q=80'">
-                            <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px]">
+                const c = casosConfig[id];
+                grid.innerHTML = grid.innerHTML + `
+                    <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60">
+                        <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900 mb-4">
+                            <img id="img-${id}" src="assets/recuerdos/foto-${(i%3)+1}.jpg" class="h-full w-full object-cover filter blur-sm opacity-40">
+                            <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
                                 <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                                <span class="text-xs font-medium text-slate-200 tracking-wider uppercase">Bloqueado</span>
+                                <span class="text-xs font-medium text-slate-200 uppercase">Bloqueado</span>
                             </div>
-                            <span class="absolute top-3 left-3 rounded-md bg-slate-950/80 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-                                Caso #${i < 10 ? '0'+i : i}
-                            </span>
+                            <span class="absolute top-3 left-3 rounded bg-slate-950/80 px-2 py-1 text-xs text-amber-400">Caso #${i}</span>
                         </div>
-                        <div class="px-1">
-                            <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${caso.titulo}</h3>
-                            <p id="desc-${id}" class="text-xs text-slate-300 font-light mb-4 line-clamp-2">${caso.descripcion}</p>
-                            <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
-                                <span id="status-${id}" class="text-xs text-slate-400">Pendiente</span>
-                                <button id="btn-${id}" disabled onclick="openSyncedMedia('${id}')" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed transition-all">
-                                    <i class="fa-solid fa-play"></i> Ver
-                                </button>
-                            </div>
+                        <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${c.titulo}</h3>
+                        <p id="desc-${id}" class="text-xs text-slate-300 mb-4">${c.descripcion}</p>
+                        <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
+                            <span id="status-${id}" class="text-xs text-slate-400">Pendiente</span>
+                            <button id="btn-${id}" disabled onclick="openModal('${id}')" class="rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed">Ver</button>
                         </div>
                     </article>
                 `;
-                grid.innerHTML += html;
             }
+        }
 
-            for (let i = 1; i <= 13; i++) {
-                const id = `caso-${i}`;
-                if (window.casosConfig[id] && window.casosConfig[id].resuelto === true) {
-                    desbloquearCasoUI(id);
-                }
-            }
-            logAdmin("Cuadrícula renderizada correctamente.");
-        };
-
-        window.renderAdminEditor = function() {
+        function renderAdmin() {
             const editor = document.getElementById('admin-cases-editor');
             if (!editor) return;
             editor.innerHTML = '';
-            
-            const videoOptions = [
-                `assets/videos/caso-1.mp4`, `assets/videos/caso-2.mp4`, `assets/videos/caso-3.mp4`,
-                `assets/videos/caso-4.mp4`, `assets/videos/caso-5.mp4`, `assets/videos/caso-6.mp4`,
-                `assets/videos/caso-7.mp4`, `assets/videos/caso-8.mp4`, `assets/videos/caso-9.mp4`,
-                `assets/videos/caso-10.mp4`, `assets/videos/caso-11.mp4`, `assets/videos/caso-12.mp4`,
-                `assets/videos/caso-13.mp4`, `assets/videos/especial-cumple.mp4`, `assets/videos/recuerdo-familia.mp4`
-            ];
-
             for (let i = 1; i <= 13; i++) {
                 const id = `caso-${i}`;
-                const c = window.casosConfig[id] || casosData[id];
-
-                let optionsHtml = videoOptions.map(path => `
-                    <option value="${path}" ${c.recursoId === path ? 'selected' : ''}>📁 ${path}</option>
-                `).join('');
-
-                editor.innerHTML += `
-                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-2">
+                const c = casosConfig[id];
+                editor.innerHTML = editor.innerHTML + `
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 text-xs space-y-2">
                         <div class="flex justify-between font-bold text-amber-400">
                             <span>Caso #${i}</span>
-                            <label class="cursor-pointer"><input type="checkbox" id="adm-res-${id}" ${c.resuelto ? 'checked':''}> Resuelto</label>
+                            <label><input type="checkbox" id="adm-res-${id}" ${c.resuelto?'checked':''}> Resuelto</label>
                         </div>
-                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
-                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
-                        <div class="flex gap-2 flex-col">
-                            <select id="adm-tipo-${id}" class="bg-slate-900 border border-slate-700 rounded p-1 text-white">
-                                <option value="video" ${c.tipo==='video'?'selected':''}>Vídeo Local (.mp4)</option>
-                                <option value="audio" ${c.tipo==='audio'?'selected':''}>Audio / Canción</option>
-                                <option value="foto" ${c.tipo==='foto'?'selected':''}>Foto Inédita</option>
-                            </select>
-                            <select id="adm-rec-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]">
-                                ${optionsHtml}
-                            </select>
-                        </div>
+                        <input type="text" id="adm-title-${id}" value="${c.titulo}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white">
+                        <input type="text" id="adm-desc-${id}" value="${c.descripcion}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white">
+                        <select id="adm-rec-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300">
+                            <option value="assets/videos/caso-${i}.mp4">📁 assets/videos/caso-${i}.mp4</option>
+                        </select>
                     </div>
                 `;
             }
+        }
+
+        function actualizarUI(id, resuelto) {
+            const c = casosConfig[id];
+            const img = document.getElementById(`img-${id}`);
+            const lock = document.getElementById(`lock-${id}`);
+            const btn = document.getElementById(`btn-${id}`);
+            const status = document.getElementById(`status-${id}`);
+            const title = document.getElementById(`title-${id}`);
+            const desc = document.getElementById(`desc-${id}`);
+
+            if (title) title.textContent = c.titulo;
+            if (desc) desc.textContent = c.descripcion;
+
+            if (resuelto) {
+                if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
+                if (lock) lock.style.display = 'none';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.className = "rounded bg-amber-500 px-3 py-1.5 text-xs text-slate-950 font-medium hover:bg-amber-400";
+                }
+                if (status) status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
+            } else {
+                if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
+                if (lock) lock.style.display = 'flex';
+                if (btn) {
+                    btn.disabled = true;
+                    btn.className = "rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed";
+                }
+                if (status) status.innerHTML = 'Pendiente';
+            }
+        }
+
+        // Escuchar cambios de Firebase en tiempo real
+        for (let i = 1; i <= 13; i++) {
+            const id = `caso-${i}`;
+            db.collection("estado_juego").doc(id).onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    const antesResuelto = casosConfig[id].resuelto;
+                    casosConfig[id] = data;
+                    actualizarUI(id, data.resuelto);
+
+                    if (data.resuelto && !antesResuelto) {
+                        openModal(id);
+                    }
+                }
+            });
+        }
+
+        window.inicializarCasos = function() {
+            const batch = db.batch();
+            for (let i = 1; i <= 13; i++) {
+                const ref = db.collection("estado_juego").doc(`caso-${i}`);
+                batch.set(ref, casosConfig[`caso-${i}`], { merge: true });
+            }
+            batch.commit().then(() => alert("¡Casos inicializados en Firebase!"));
         };
 
-        function desbloquearCasoUI(id) {
-            const caso = window.casosConfig[id];
-            const img = document.getElementById(`img-${id}`);
-            const lock = document.getElementById(`lock-${id}`);
-            const btn = document.getElementById(`btn-${id}`);
-            const status = document.getElementById(`status-${id}`);
-            const card = document.getElementById(`card-${id}`);
-            const title = document.getElementById(`title-${id}`);
-            const desc = document.getElementById(`desc-${id}`);
+        window.guardarCambios = function() {
+            const batch = db.batch();
+            for (let i = 1; i <= 13; i++) {
+                const id = `caso-${i}`;
+                casosConfig[id] = {
+                    titulo: document.getElementById(`adm-title-${id}`).value,
+                    descripcion: document.getElementById(`adm-desc-${id}`).value,
+                    tipo: 'video',
+                    recursoId: document.getElementById(`adm-rec-${id}`).value,
+                    resuelto: document.getElementById(`adm-res-${id}`).checked
+                };
+                const ref = db.collection("estado_juego").doc(id);
+                batch.set(ref, casosConfig[id], { merge: true });
+            }
+            localStorage.setItem('vane_casos_config', JSON.stringify(casosConfig));
+            batch.commit().then(() => alert("¡Guardado y sincronizado!"));
+        };
 
-            if (caso) {
-                if (title) title.textContent = caso.titulo;
-                if (desc) desc.textContent = caso.descripcion;
+        let activeId = '';
+        window.openModal = function(id) {
+            activeId = id;
+            const c = casosConfig[id];
+            document.getElementById('modalTitle').textContent = c.titulo;
+            document.getElementById('modalContentContainer').innerHTML = `
+                <video id="player" autoplay controls muted class="h-full w-full object-contain">
+                    <source src="${c.recursoId}" type="video/mp4">
+                </video>
+            `;
+            const m = document.getElementById('mediaModal');
+            m.classList.remove('hidden');
+            setTimeout(() => m.classList.remove('opacity-0'), 10);
+        };
+
+        window.closeModal = function() {
+            const m = document.getElementById('mediaModal');
+            m.classList.add('opacity-0');
+            setTimeout(() => m.classList.add('hidden'), 300);
+        };
+
+        window.toggleAudio = function() {
+            const p = document.getElementById('player');
+            if (p) {
+                p.muted = !p.muted;
+                document.getElementById('audio-status-label').innerHTML = p.muted ? 
+                    '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.' : 
+                    '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
             }
-            if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
-            if (lock) lock.style.display = 'none';
-            if (btn) {
-                btn.removeAttribute('disabled');
-                btn.classList.remove('bg-slate-800', 'text-slate-500', 'cursor-not-allowed');
-                btn.classList.add('bg-amber-500', 'text-slate-950', 'hover:bg-amber-400', 'shadow-md');
-            }
-            if (status) {
-                status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
-                status.classList.add('text-emerald-400', 'font-medium');
-            }
-            if (card) card.classList.add('border-amber-500/50', 'shadow-amber-500/10');
+        };
+
+        // Arranque inicial
+        renderGrid();
+        if (new URLSearchParams(window.location.search).get('admin') === 'vane40') {
+            document.getElementById('admin-panel').classList.remove('hidden');
+            renderAdmin();
+            document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Firebase operativo.';
         }
-
-        function bloquearCasoUI(id) {
-            const caso = window.casosConfig[id];
-            const img = document.getElementById(`img-${id}`);
-            const lock = document.getElementById(`lock-${id}`);
-            const btn = document.getElementById(`btn-${id}`);
-            const status = document.getElementById(`status-${id}`);
-            const card = document.getElementById(`card-${id}`);
-            const title = document.getElementById(`title-${id}`);
-            const desc = document.getElementById(`desc-${id}`);
-
-            if (caso) {
-                if (title) title.textContent = caso.titulo;
-                if (desc) desc.textContent = caso.descripcion;
-            }
-            if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
-            if (lock) lock.style.display = 'flex';
-            if (btn) {
-                btn.setAttribute('disabled', 'true');
-                btn.classList.remove('bg-amber-500', 'text-slate-950', 'hover:bg-amber-400', 'shadow-md');
-                btn.classList.add('bg-slate-800', 'text-slate-500', 'cursor-not-allowed');
-            }
-            if (status) {
-                status.innerHTML = 'Pendiente';
-                status.classList.remove('text-emerald-400', 'font-medium');
-                status.classList.add('text-slate-400');
-            }
-            if (card) card.classList.remove('border-amber-500/50', 'shadow-amber-500/10');
-        }
-
-        window.guardarConfigAdmin = async function() {
-            try {
-                for (let i = 1; i <= 13; i++) {
-                    const id = `caso-${i}`;
-                    const resueltoCheck = document.getElementById(`adm-res-${id}`).checked;
-                    const estadoAnterior = window.casosConfig[id].resuelto;
-
-                    window.casosConfig[id] = {
-                        titulo: document.getElementById(`adm-title-${id}`).value,
-                        descripcion: document.getElementById(`adm-desc-${id}`).value,
-                        tipo: document.getElementById(`adm-tipo-${id}`).value,
-                        recursoId: document.getElementById(`adm-rec-${id}`).value,
-                        resuelto: resueltoCheck,
-                        timestamp: (resueltoCheck && !estadoAnterior) ? (isFirebaseConfigured ? serverTimestamp() : Date.now()) : (window.casosConfig[id].timestamp || null)
-                    };
-                }
-                localStorage.setItem('vane_casos_config', JSON.stringify(window.casosConfig));
-
-                if (isFirebaseConfigured && db) {
-                    const batch = writeBatch(db);
-                    for (let i = 1; i <= 13; i++) {
-                        const id = `caso-${i}`;
-                        const docRef = doc(db, "estado_juego", id);
-                        batch.set(docRef, window.casosConfig[id], { merge: true });
-                    }
-                    await batch.commit();
-                    logAdmin("Configuración guardada en LocalStorage y Firebase.");
-                    alert("¡Configuración guardada correctamente!");
-                } else {
-                    logAdmin("Configuración guardada solo en LocalStorage.");
-                    alert("¡Configuración guardada!");
-                }
-                window.renderMainGrid();
-            } catch (e) {
-                logAdmin("Error al 
+    </script>
+</body>
+</html>

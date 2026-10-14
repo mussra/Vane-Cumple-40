@@ -113,13 +113,14 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
+
         const PASSWORD_ADMIN = "vane40"; 
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -145,6 +146,7 @@
 
         let casosConfig = {};
         let initialLoadDone = false;
+        let adminHeartbeatInterval = null;
 
         function renderGrid() {
             const grid = document.getElementById('cases-grid');
@@ -295,7 +297,6 @@
                                 actualizarUI(id, data.resuelto);
                             }
 
-                            // Comprobación estricta de frescura (< 10s) para evitar autoscrolls fantasmas al recargar la página
                             if (initialLoadDone) {
                                 const esReciente = data.modalAbierto && !antesModalAbierto;
                                 if (esReciente) {
@@ -308,7 +309,7 @@
                                 }
                             }
 
-                            // Sincronización global con control estricto de búfer y tolerancia de 0.5s
+                            // 1. Sincronización inicial de reproducción (cuando el admin pulsa el botón maestro)
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
@@ -328,7 +329,7 @@
                                                 player.currentTime = Math.max(0, diferenciaSegundos);
                                             }
                                             if (player.paused) {
-                                                player.play().catch(e => console.log("Play bloqueado por políticas del navegador:", e));
+                                                player.play().catch(e => console.log("Play bloqueado:", e));
                                             }
                                         };
 
@@ -337,6 +338,17 @@
                                         } else {
                                             player.addEventListener('canplay', aplicarSincronia, { once: true });
                                         }
+                                    }
+                                }
+                            }
+
+                            // 2. Sincronización continua en tiempo real por "Heartbeats" (Latidos del admin)
+                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && activeId === id) {
+                                const player = document.getElementById('player');
+                                if (player && !player.paused) {
+                                    // Si el cliente se desvía más de 0.6 segundos del reloj maestro, se alinea suavemente
+                                    if (Math.abs(player.currentTime - data.tiempoActual) > 0.6) {
+                                        player.currentTime = data.tiempoActual;
                                     }
                                 }
                             }
@@ -403,7 +415,6 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         };
 
-        // Función de inicialización con doble confirmación para evitar errores fatales
         window.inicializarCasosConConfirmacion = function() {
             const seguro = confirm("⚠️ ¿Estás seguro de que quieres inicializar los casos? Esto sobrescribirá la configuración actual y perderás el trabajo guardado.");
             if (seguro) {
@@ -429,7 +440,8 @@
                     recursoId: ``,
                     imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
                     resuelto: false,
-                    modalAbierto: false
+                    modalAbierto: false,
+                    tiempoActual: 0
                 }, { merge: true });
             }
 
@@ -500,6 +512,28 @@
             const player = document.getElementById('player');
             if (player) {
                 player.load();
+                
+                // Si es administrador, arrancamos el emisor de latidos de sincronización (Heartbeat) cada 1.5s
+                if (isAdmin) {
+                    player.addEventListener('play', () => {
+                        if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
+                        adminHeartbeatInterval = setInterval(() => {
+                            if (!player.paused && activeId) {
+                                db.collection("estado_juego").doc(activeId).set({
+                                    tiempoActual: player.currentTime
+                                }, { merge: true });
+                            }
+                        }, 1500);
+                    });
+
+                    player.addEventListener('pause', () => {
+                        if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
+                    });
+
+                    player.addEventListener('ended', () => {
+                        if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
+                    });
+                }
             }
 
             const audioLabel = document.getElementById('audio-status-label');
@@ -525,11 +559,17 @@
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now,
-                modalAbierto: true
+                modalAbierto: true,
+                tiempoActual: 0
             }, { merge: true });
         };
 
         window.closeModal = function() {
+            if (adminHeartbeatInterval) {
+                clearInterval(adminHeartbeatInterval);
+                adminHeartbeatInterval = null;
+            }
+
             const m = document.getElementById('mediaModal');
             m.classList.add('opacity-0');
             setTimeout(() => {
@@ -538,7 +578,8 @@
                 if (isAdmin && activeId) {
                     db.collection("estado_juego").doc(activeId).set({
                         modalAbierto: false,
-                        reproduciendoDesde: null
+                        reproduciendoDesde: null,
+                        tiempoActual: 0
                     }, { merge: true });
                 }
                 activeId = '';

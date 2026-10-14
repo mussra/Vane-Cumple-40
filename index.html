@@ -124,7 +124,6 @@
         const PASSWORD_ADMIN = "vane40"; 
 
         const urlParams = new URLSearchParams(window.location.search);
-        // Validación rigurosa: solo tomamos el parámetro si realmente contiene un valor numérico de caso
         const rawCaso = urlParams.get('caso');
         const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
         
@@ -140,91 +139,13 @@
         }
 
         let db = null;
-        let initialLoadDone = false;
-        let casosConfig = {};
-
         if (apiKeyValida) {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-
-            if (isAdmin) {
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado a Firestore con éxito.';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
-            }
-
-            db.collection("estado_juego").onSnapshot((snapshot) => {
-                if (!snapshot.empty) {
-                    snapshot.docChanges().forEach((change) => {
-                        const id = change.doc.id;
-                        const data = change.doc.data();
-                        
-                        if (change.type === "added" || change.type === "modified") {
-                            const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
-                            casosConfig[id] = { ...casosConfig[id], ...data };
-                            
-                            if (!document.getElementById(`card-${id}`)) {
-                                renderGrid();
-                                if (isAdmin) renderAdmin();
-                            } else {
-                                actualizarUI(id, data.resuelto);
-                            }
-
-                            // Abre el modal automáticamente para el admin al pasar a resuelto en tiempo real
-                            if (initialLoadDone && change.type === "modified" && data.resuelto && !antesResuelto && isAdmin) {
-                                openModal(id);
-                            }
-
-                            // Sincronización global de reproducción
-                            if (data.reproduciendoDesde) {
-                                if (activeId !== id) {
-                                    openModal(id);
-                                }
-
-                                const player = document.getElementById('player');
-                                const adminBar = document.getElementById('admin-sync-bar');
-                                if (adminBar) adminBar.remove();
-
-                                if (player) {
-                                    const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
-                                    const elapsedSeconds = (Date.now() - serverTime) / 1000;
-                                    
-                                    if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
-                                        player.currentTime = Math.max(0, elapsedSeconds);
-                                    }
-                                    if (player.paused) {
-                                        player.play().catch(e => console.log("Play bloqueado:", e));
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-                
-                if (!initialLoadDone) {
-                    initialLoadDone = true;
-                    // Manejo estricto del QR inicial
-                    if (qrCasoNum) {
-                        const casoAEjecutar = qrCasoNum;
-                        window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
-                        
-                        if (isAdmin) {
-                            desbloquearCasoQR(casoAEjecutar);
-                        } else {
-                            document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
-                            document.getElementById('qrPasswordModal').classList.remove('hidden');
-                        }
-                    }
-                }
-            }, (error) => {
-                console.error("Error en el snapshot de Firestore:", error);
-                if (isAdmin) {
-                    document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
-                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
-                }
-            });
-        } else {
-            renderGrid();
         }
+
+        let casosConfig = {};
+        let initialLoadDone = false;
 
         function renderGrid() {
             const grid = document.getElementById('cases-grid');
@@ -340,6 +261,13 @@
             }
         }
 
+        function hacerScrollA(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
         if (apiKeyValida) {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
@@ -350,26 +278,88 @@
             }
 
             db.collection("estado_juego").onSnapshot((snapshot) => {
-                casosConfig = {};
                 if (!snapshot.empty) {
-                    snapshot.forEach((doc) => {
-                        casosConfig[doc.id] = doc.data();
+                    snapshot.docChanges().forEach((change) => {
+                        const id = change.doc.id;
+                        const data = change.doc.data();
+                        
+                        if (change.type === "added" || change.type === "modified") {
+                            const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
+                            const antesModalAbierto = casosConfig[id] ? casosConfig[id].modalAbierto : false;
+                            
+                            casosConfig[id] = { ...casosConfig[id], ...data };
+                            
+                            if (!document.getElementById(`card-${id}`)) {
+                                renderGrid();
+                                if (isAdmin) renderAdmin();
+                            } else {
+                                actualizarUI(id, data.resuelto);
+                            }
+
+                            // Si se acaba de desbloquear o se abrió el modal, hacemos scroll automático al caso
+                            if ((data.resuelto && !antesResuelto) || (data.modalAbierto && !antesModalAbierto)) {
+                                hacerScrollA(id);
+                            }
+
+                            // Sincronización de apertura de modal en tiempo real para TODOS (clientes y admin)
+                            if (initialLoadDone && data.modalAbierto && !antesModalAbierto) {
+                                if (activeId !== id) {
+                                    openModal(id, false); // Abre el modal sin marcar auto-apertura infinita en bucle
+                                }
+                            } else if (initialLoadDone && data.modalAbierto === false && antesModalAbierto) {
+                                if (activeId === id) {
+                                    closeModal();
+                                }
+                            }
+
+                            // Sincronización global con control estricto de búfer y tolerancia de 0.5s
+                            if (data.reproduciendoDesde) {
+                                const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
+                                const diferenciaSegundos = (Date.now() - serverTime) / 1000;
+
+                                if (diferenciaSegundos >= 0 && diferenciaSegundos < 10) {
+                                    if (activeId !== id) {
+                                        openModal(id, false);
+                                    }
+
+                                    const player = document.getElementById('player');
+                                    const adminBar = document.getElementById('admin-sync-bar');
+                                    if (adminBar) adminBar.remove();
+
+                                    if (player) {
+                                        const aplicarSincronia = () => {
+                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.5) {
+                                                player.currentTime = Math.max(0, diferenciaSegundos);
+                                            }
+                                            if (player.paused) {
+                                                player.play().catch(e => console.log("Play bloqueado por políticas del navegador:", e));
+                                            }
+                                        };
+
+                                        if (player.readyState >= 2) {
+                                            aplicarSincronia();
+                                        } else {
+                                            player.addEventListener('canplay', aplicarSincronia, { once: true });
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     });
                 }
                 
-                renderGrid();
-                if (isAdmin) renderAdmin();
-
-                // Manejo estricto del QR solo si qrCasoNum es válido y no es nulo
-                if (qrCasoNum) {
-                    const casoAEjecutar = qrCasoNum;
-                    window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
-                    
-                    if (isAdmin) {
-                        desbloquearCasoQR(casoAEjecutar);
-                    } else {
-                        document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
-                        document.getElementById('qrPasswordModal').classList.remove('hidden');
+                if (!initialLoadDone) {
+                    initialLoadDone = true;
+                    if (qrCasoNum) {
+                        const casoAEjecutar = qrCasoNum;
+                        window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
+                        
+                        if (isAdmin) {
+                            desbloquearCasoQR(casoAEjecutar);
+                        } else {
+                            document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
+                            document.getElementById('qrPasswordModal').classList.remove('hidden');
+                        }
                     }
                 }
             }, (error) => {
@@ -403,13 +393,12 @@
 
         window.desbloquearCasoQR = function(numCaso) {
             const targetId = `caso-${numCaso}`;
+            hacerScrollA(targetId);
             db.collection("estado_juego").doc(targetId).set({
-                resuelto: true
+                resuelto: true,
+                modalAbierto: true
             }, { merge: true }).then(() => {
-                console.log(`Caso #${numCaso} desbloqueado en Firestore.`);
-                if (isAdmin) {
-                    openModal(targetId);
-                }
+                console.log(`Caso #${numCaso} desbloqueado y modal abierto.`);
             }).catch(err => alert("Error al actualizar Firestore: " + err.message));
         };
 
@@ -435,7 +424,8 @@
                     tipo: 'video',
                     recursoId: ``,
                     imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
-                    resuelto: false
+                    resuelto: false,
+                    modalAbierto: false
                 }, { merge: true });
             }
 
@@ -451,13 +441,15 @@
             }
             const batch = db.batch();
             Object.keys(casosConfig).forEach((id) => {
+                const resueltoVal = document.getElementById(`adm-res-${id}`).checked;
                 casosConfig[id] = {
                     titulo: document.getElementById(`adm-title-${id}`).value,
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
                     tipo: 'video',
                     recursoId: document.getElementById(`adm-rec-${id}`).value,
                     imagenUrl: document.getElementById(`adm-img-${id}`).value,
-                    resuelto: document.getElementById(`adm-res-${id}`).checked
+                    resuelto: resueltoVal,
+                    modalAbierto: resueltoVal ? (casosConfig[id].modalAbierto || false) : false
                 };
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
@@ -466,16 +458,17 @@
         };
 
         let activeId = '';
-        window.openModal = function(id) {
+        window.openModal = function(id, sincronizarServidor = true) {
             activeId = id;
             const c = casosConfig[id];
             if (!c) return;
             
+            hacerScrollA(id);
             document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
             const mutedAttr = isAdmin ? '' : 'muted';
 
             let htmlContenido = `
-                <video id="player" controls ${mutedAttr} class="h-full w-full object-contain">
+                <video id="player" preload="auto" playsinline controls ${mutedAttr} class="h-full w-full object-contain">
                     <source src="${c.recursoId}" type="video/mp4">
                     Tu navegador no soporta vídeos HTML5.
                 </video>
@@ -500,6 +493,11 @@
                 </div>
             `;
 
+            const player = document.getElementById('player');
+            if (player) {
+                player.load();
+            }
+
             const audioLabel = document.getElementById('audio-status-label');
             if (isAdmin) {
                 audioLabel.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Salida principal de sala).';
@@ -510,13 +508,21 @@
             const m = document.getElementById('mediaModal');
             m.classList.remove('hidden');
             setTimeout(() => m.classList.remove('opacity-0'), 10);
+
+            // Si lo abre el admin manualmente desde la tarjeta, avisa a Firestore para que se abra en los demás
+            if (isAdmin && sincronizarServidor) {
+                db.collection("estado_juego").doc(id).set({
+                    modalAbierto: true
+                }, { merge: true });
+            }
         };
 
         window.lanzarReproduccionGlobal = function(id) {
             if (!apiKeyValida) return;
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
-                reproduciendoDesde: now
+                reproduciendoDesde: now,
+                modalAbierto: true
             }, { merge: true });
         };
 
@@ -526,6 +532,12 @@
             setTimeout(() => {
                 m.classList.add('hidden');
                 document.getElementById('modalContentContainer').innerHTML = '';
+                if (isAdmin && activeId) {
+                    db.collection("estado_juego").doc(activeId).set({
+                        modalAbierto: false,
+                        reproduciendoDesde: null
+                    }, { merge: true });
+                }
                 activeId = '';
             }, 300);
         };

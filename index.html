@@ -282,12 +282,15 @@
                     document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
                 }
 
-                // SI SE ESCANEA UN QR
+                // SI SE ESCANEA UN QR: Limpiamos la URL inmediatamente para evitar bucles al refrescar
                 if (qrCasoNum) {
+                    const casoAEjecutar = qrCasoNum;
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
                     if (isAdmin) {
-                        desbloquearYDispararQR(qrCasoNum);
+                        desbloquearYDispararQR(casoAEjecutar);
                     } else {
-                        document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${qrCasoNum}`;
+                        document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
                         document.getElementById('qrPasswordModal').classList.remove('hidden');
                     }
                 }
@@ -356,7 +359,10 @@
             if (passInput === PASSWORD_ADMIN) {
                 sessionStorage.setItem('vane_admin_autenticado', 'true');
                 document.getElementById('qrPasswordModal').classList.add('hidden');
-                desbloquearYDispararQR(qrCasoNum);
+                // Si el modal se abrió por QR guardamos temporalmente el número para dispararlo tras introducir el pass
+                if (qrCasoNum) {
+                    desbloquearYDispararQR(qrCasoNum);
+                }
             } else {
                 alert("Contraseña incorrecta. Solo el administrador puede desbloquear los casos.");
                 document.getElementById('qr-secret-input').value = '';
@@ -372,13 +378,11 @@
                 reproduciendoDesde: now
             }, { merge: true }).then(() => {
                 console.log(`Caso ${numCaso} desbloqueado y lanzado.`);
-                window.history.replaceState({}, document.title, window.location.pathname);
             }).catch(err => alert("Error al actualizar Firestore: " + err.message));
         };
 
         window.cancelarActivacionQR = function() {
             document.getElementById('qrPasswordModal').classList.add('hidden');
-            window.history.replaceState({}, document.title, window.location.pathname);
         };
 
         window.inicializarCasos = function() {

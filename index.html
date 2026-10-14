@@ -188,7 +188,7 @@
             keys.forEach((id) => {
                 const c = casosConfig[id];
                 grid.innerHTML += `
-                    <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 flex flex-col justify-between">
+                    <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 flex flex-col justify-between transition-all duration-300">
                         <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
                             <img id="img-${id}" src="${c.imagenUrl || ''}" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
                             <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
@@ -285,6 +285,30 @@
             }
         }
 
+        // Función para aplicar un efecto de parpadeo/destello llamativo en la tarjeta recién resuelta
+        function hacerParpadearTarjeta(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (!card) return;
+
+            // Añadimos clases de destello brillante (anillo dorado/ámbar y escala sutil)
+            card.classList.add('ring-4', 'ring-amber-400', 'scale-[1.02]', 'transition-all', 'duration-500');
+            
+            // Hacemos que parpadee 3 veces alternando opacidad o brillo
+            let contador = 0;
+            const intervalId = setInterval(() => {
+                card.classList.toggle('opacity-75');
+                contador++;
+                if (contador >= 6) { // 6 cambios = 3 parpadeos completos
+                    clearInterval(intervalId);
+                    card.classList.remove('opacity-75');
+                    // Quitamos el anillo brillante tras unos segundos adicionales
+                    setTimeout(() => {
+                        card.classList.remove('ring-4', 'ring-amber-400', 'scale-[1.02]');
+                    }, 1500);
+                }
+            }, 300);
+        }
+
         if (apiKeyValida) {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
@@ -314,8 +338,15 @@
                             }
 
                             if (initialLoadDone) {
-                                const esReciente = data.modalAbierto && !antesModalAbierto;
-                                if (esReciente) {
+                                // DETECCIÓN DE CAMBIO A "RESUELTO": Adelantamos el Autoscroll y el Parpadeo aquí
+                                const seAcabaDeResolver = data.resuelto && !antesResuelto;
+                                if (seAcabaDeResolver) {
+                                    hacerScrollA(id);
+                                    hacerParpadearTarjeta(id);
+                                }
+
+                                const esModalReciente = data.modalAbierto && !antesModalAbierto;
+                                if (esModalReciente) {
                                     hacerScrollA(id);
                                     if (activeId !== id) {
                                         openModal(id, false);
@@ -368,10 +399,8 @@
                                     const tiempoEsperadoReal = data.tiempoActual + latenciaRedSegundos;
                                     const desfaseActual = player.currentTime - tiempoEsperadoReal;
 
-                                    // Actualizamos el widget visual del monitor de sincronización en los clientes
                                     actualizarMonitorSync(desfaseActual);
 
-                                    // Si el desfase supera los 0.5s, corregimos la posición del reproductor
                                     if (Math.abs(desfaseActual) > 0.5) {
                                         player.currentTime = tiempoEsperadoReal;
                                     }
@@ -564,7 +593,6 @@
 
             actualizarBarraControlesAudio();
 
-            // Mostramos el monitor de sync si no es admin, o mostramos rol maestro si es admin
             const syncBadge = document.getElementById('sync-monitor-badge');
             if (syncBadge) {
                 if (isAdmin) {
@@ -597,7 +625,6 @@
             const desfaseStr = desfase > 0 ? `+${desfase.toFixed(2)}s` : `${desfase.toFixed(2)}s`;
             textElement.textContent = `Desfase: ${desfaseStr}`;
 
-            // Cambiamos el color según la calidad de sincronización en tiempo real
             const absDesfase = Math.abs(desfase);
             if (absDesfase < 0.2) {
                 dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";

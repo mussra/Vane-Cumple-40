@@ -36,7 +36,7 @@
                 </div>
             </div>
             <div id="admin-status" class="text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-slate-800 text-slate-400">
-                Verificando conexión con Firestore...
+                Verificando conexión con Firebase...
             </div>
             <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2"></div>
         </div>
@@ -121,12 +121,19 @@
 		appId: "1:757919275158:web:40e74e06e96d8125948ab7"
 		};
 
-        const PASSWORD_ADMIN = "vane40"; // Contraseña requerida para desbloquear QR y panel
+        const PASSWORD_ADMIN = "vane40"; 
 
         const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
         const qrCasoNum = urlParams.get('caso'); 
 
+        // Gestión de sesión activa para no pedir la contraseña repetidamente al escanear varios QR
+        let sesionAdminIniciada = sessionStorage.getItem('vane_admin_autenticado') === 'true';
+        if (urlParams.get('admin') === PASSWORD_ADMIN) {
+            sesionAdminIniciada = true;
+            sessionStorage.setItem('vane_admin_autenticado', 'true');
+        }
+
+        const isAdmin = sesionAdminIniciada;
         const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
 
         if (isAdmin) {
@@ -149,6 +156,7 @@
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
             
+            // Ordenación estricta numérica (caso-1, caso-2 ... caso-10)
             const keys = Object.keys(casosConfig).sort((a, b) => {
                 return parseInt(a.replace('caso-', '')) - parseInt(b.replace('caso-', ''));
             });
@@ -274,10 +282,14 @@
                     document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
                 }
 
-                // SI SE ESCANEA UN QR, EN VEZ DE ACTIVARSE SOLO, PEDIMOS CONTRASEÑA
+                // SI SE ESCANEA UN QR
                 if (qrCasoNum) {
-                    document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${qrCasoNum}`;
-                    document.getElementById('qrPasswordModal').classList.remove('hidden');
+                    if (isAdmin) {
+                        desbloquearYDispararQR(qrCasoNum);
+                    } else {
+                        document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${qrCasoNum}`;
+                        document.getElementById('qrPasswordModal').classList.remove('hidden');
+                    }
                 }
 
             }).catch((error) => {
@@ -337,34 +349,35 @@
             });
         } else {
             renderGrid();
-            if (qrCasoNum) {
-                // Si alguien abre el QR sin estar conectado a la API o sin admin, ignoramos
-                alert("La aplicación no está conectada correctamente.");
-            }
         }
 
         window.verificarYDesbloquearQR = function() {
             const passInput = document.getElementById('qr-secret-input').value;
             if (passInput === PASSWORD_ADMIN) {
+                sessionStorage.setItem('vane_admin_autenticado', 'true');
                 document.getElementById('qrPasswordModal').classList.add('hidden');
-                const targetId = `caso-${qrCasoNum}`;
-                const now = firebase.firestore.FieldValue.serverTimestamp();
-                
-                db.collection("estado_juego").doc(targetId).set({
-                    resuelto: true,
-                    reproduciendoDesde: now
-                }, { merge: true }).then(() => {
-                    console.log(`Caso ${qrCasoNum} desbloqueado con éxito por contraseña.`);
-                }).catch(err => alert("Error al actualizar Firestore: " + err.message));
+                desbloquearYDispararQR(qrCasoNum);
             } else {
                 alert("Contraseña incorrecta. Solo el administrador puede desbloquear los casos.");
                 document.getElementById('qr-secret-input').value = '';
             }
         };
 
+        window.desbloquearYDispararQR = function(numCaso) {
+            const targetId = `caso-${numCaso}`;
+            const now = firebase.firestore.FieldValue.serverTimestamp();
+            
+            db.collection("estado_juego").doc(targetId).set({
+                resuelto: true,
+                reproduciendoDesde: now
+            }, { merge: true }).then(() => {
+                console.log(`Caso ${numCaso} desbloqueado y lanzado.`);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }).catch(err => alert("Error al actualizar Firestore: " + err.message));
+        };
+
         window.cancelarActivacionQR = function() {
             document.getElementById('qrPasswordModal').classList.add('hidden');
-            // Limpiamos el parámetro de la URL sin recargar la página
             window.history.replaceState({}, document.title, window.location.pathname);
         };
 

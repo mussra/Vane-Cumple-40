@@ -113,13 +113,13 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
 
         const PASSWORD_ADMIN = "vane40"; 
 
@@ -342,13 +342,18 @@
                                 }
                             }
 
-                            // 2. Sincronización continua en tiempo real por "Heartbeats" (Latidos del admin)
-                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && activeId === id) {
+                            // 2. Sincronización continua profesional con compensación de latencia de red basada en serverTimestamp
+                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
-                                    // Si el cliente se desvía más de 0.6 segundos del reloj maestro, se alinea suavemente
-                                    if (Math.abs(player.currentTime - data.tiempoActual) > 0.6) {
-                                        player.currentTime = data.tiempoActual;
+                                    const serverTimeMs = data.heartbeatTimestamp.toMillis ? data.heartbeatTimestamp.toMillis() : (data.heartbeatTimestamp.seconds ? data.heartbeatTimestamp.seconds * 1000 : Date.now());
+                                    const latenciaRedSegundos = Math.max(0, (Date.now() - serverTimeMs) / 1000);
+                                    
+                                    // Posición real esperada sumando el tiempo del admin + el retraso del viaje de red
+                                    const tiempoEsperadoReal = data.tiempoActual + latenciaRedSegundos;
+
+                                    if (Math.abs(player.currentTime - tiempoEsperadoReal) > 0.5) {
+                                        player.currentTime = tiempoEsperadoReal;
                                     }
                                 }
                             }
@@ -441,7 +446,8 @@
                     imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
                     resuelto: false,
                     modalAbierto: false,
-                    tiempoActual: 0
+                    tiempoActual: 0,
+                    heartbeatTimestamp: null
                 }, { merge: true });
             }
 
@@ -513,14 +519,15 @@
             if (player) {
                 player.load();
                 
-                // Si es administrador, arrancamos el emisor de latidos de sincronización (Heartbeat) cada 1.5s
+                // Si es administrador, emite latidos con serverTimestamp cada 1.5s
                 if (isAdmin) {
                     player.addEventListener('play', () => {
                         if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
                         adminHeartbeatInterval = setInterval(() => {
                             if (!player.paused && activeId) {
                                 db.collection("estado_juego").doc(activeId).set({
-                                    tiempoActual: player.currentTime
+                                    tiempoActual: player.currentTime,
+                                    heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                                 }, { merge: true });
                             }
                         }, 1500);
@@ -560,7 +567,8 @@
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now,
                 modalAbierto: true,
-                tiempoActual: 0
+                tiempoActual: 0,
+                heartbeatTimestamp: now
             }, { merge: true });
         };
 
@@ -579,7 +587,8 @@
                     db.collection("estado_juego").doc(activeId).set({
                         modalAbierto: false,
                         reproduciendoDesde: null,
-                        tiempoActual: 0
+                        tiempoActual: 0,
+                        heartbeatTimestamp: null
                     }, { merge: true });
                 }
                 activeId = '';

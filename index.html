@@ -124,9 +124,10 @@
         const PASSWORD_ADMIN = "vane40"; 
 
         const urlParams = new URLSearchParams(window.location.search);
-        const qrCasoNum = urlParams.get('caso'); 
+        // Validación rigurosa: solo tomamos el parámetro si realmente contiene un valor numérico de caso
+        const rawCaso = urlParams.get('caso');
+        const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
         
-        // Comprobación estricta del rol de administrador basado exclusivamente en la URL actual
         const isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
         const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
 
@@ -261,91 +262,46 @@
         }
 
         if (apiKeyValida) {
-            db.collection("estado_juego").get().then((querySnapshot) => {
-                if (!querySnapshot.empty) {
-                    casosConfig = {};
-                    querySnapshot.forEach((doc) => {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+
+            if (isAdmin) {
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado a Firestore con éxito.';
+                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
+            }
+
+            db.collection("estado_juego").onSnapshot((snapshot) => {
+                casosConfig = {};
+                if (!snapshot.empty) {
+                    snapshot.forEach((doc) => {
                         casosConfig[doc.id] = doc.data();
                     });
                 }
+                
                 renderGrid();
-                if (isAdmin) {
-                    renderAdmin();
-                    document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado a Firestore con éxito.';
-                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
-                }
+                if (isAdmin) renderAdmin();
 
-                // SI SE ESCANEA UN QR CON ?caso=X
+                // Manejo estricto del QR solo si qrCasoNum es válido y no es nulo
                 if (qrCasoNum) {
                     const casoAEjecutar = qrCasoNum;
+                    window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
+                    
                     if (isAdmin) {
-                        // Si ya está autenticado como admin en la URL, desbloqueamos directamente
                         desbloquearCasoQR(casoAEjecutar);
                     } else {
-                        // Si es un cliente, mostramos el modal de contraseña del QR
                         document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
                         document.getElementById('qrPasswordModal').classList.remove('hidden');
                     }
                 }
-
-            }).catch((error) => {
-                console.error("Error al cargar Firestore:", error);
-                renderGrid();
+            }, (error) => {
+                console.error("Error en el snapshot de Firestore:", error);
                 if (isAdmin) {
                     document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
                     document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
                 }
             });
-
-            db.collection("estado_juego").onSnapshot((snapshot) => {
-                if (!snapshot.empty) {
-                    snapshot.docChanges().forEach((change) => {
-                        const id = change.doc.id;
-                        const data = change.doc.data();
-                        
-                        if (change.type === "added" || change.type === "modified") {
-                            const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
-                            casosConfig[id] = { ...casosConfig[id], ...data };
-                            
-                            if (!document.getElementById(`card-${id}`)) {
-                                renderGrid();
-                                if (isAdmin) renderAdmin();
-                            } else {
-                                actualizarUI(id, data.resuelto);
-                            }
-
-                            // Sincronización en tiempo real: Solo reproduce cuando el admin pulsa el botón global
-                            if (data.reproduciendoDesde) {
-                                if (activeId !== id) {
-                                    openModal(id);
-                                }
-
-                                const player = document.getElementById('player');
-                                const adminBar = document.getElementById('admin-sync-bar');
-                                if (adminBar) adminBar.remove();
-
-                                if (player) {
-                                    const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
-                                    const elapsedSeconds = (Date.now() - serverTime) / 1000;
-                                    
-                                    if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
-                                        player.currentTime = Math.max(0, elapsedSeconds);
-                                    }
-                                    if (player.paused) {
-                                        player.play().catch(e => console.log("Play bloqueado:", e));
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-            });
         } else {
             renderGrid();
-            if (qrCasoNum && !isAdmin) {
-                document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${qrCasoNum}`;
-                document.getElementById('qrPasswordModal').classList.remove('hidden');
-            }
         }
 
         window.verificarYDesbloquearQR = function() {
@@ -353,13 +309,9 @@
             if (passInput === PASSWORD_ADMIN) {
                 document.getElementById('qrPasswordModal').classList.add('hidden');
                 if (qrCasoNum) {
-                    // Actualizamos la URL limpia a ?admin=vane40 para que este terminal asuma el rol de administrador y muestre el panel/botones
                     const nuevaURL = window.location.pathname + `?admin=${PASSWORD_ADMIN}`;
                     window.history.replaceState({}, document.title, nuevaURL);
-                    
                     desbloquearCasoQR(qrCasoNum);
-                    
-                    // Recargamos brevemente para aplicar los permisos de admin en la interfaz
                     setTimeout(() => {
                         window.location.href = nuevaURL;
                     }, 500);
@@ -381,7 +333,6 @@
 
         window.cancelarActivacionQR = function() {
             document.getElementById('qrPasswordModal').classList.add('hidden');
-            // Limpiamos la URL sin el parámetro del caso
             window.history.replaceState({}, document.title, window.location.pathname);
         };
 
@@ -393,25 +344,21 @@
             const total = parseInt(document.getElementById('input-total-casos').value) || 13;
             const batch = db.batch();
             
-            casosConfig = {};
             for (let i = 1; i <= total; i++) {
                 const id = `caso-${i}`;
-                casosConfig[id] = {
+                const ref = db.collection("estado_juego").doc(id);
+                batch.set(ref, {
                     titulo: `Caso #${i}: Recuerdo Especial`,
                     descripcion: `Momento inolvidable de la vida de Vane.`,
                     tipo: 'video',
                     recursoId: ``,
                     imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
                     resuelto: false
-                };
-                const ref = db.collection("estado_juego").doc(id);
-                batch.set(ref, casosConfig[id], { merge: true });
+                }, { merge: true });
             }
 
             batch.commit().then(() => {
                 alert(`¡Se han inicializado ${total} casos en Firestore correctamente!`);
-                renderGrid();
-                if (isAdmin) renderAdmin();
             }).catch(err => alert("Error al inicializar: " + err.message));
         };
 

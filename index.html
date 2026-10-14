@@ -152,7 +152,7 @@
                 document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
             }
 
-            db.collection("estado_juego").onSnapshot((snapshot) => {
+                        db.collection("estado_juego").onSnapshot((snapshot) => {
                 if (!snapshot.empty) {
                     snapshot.docChanges().forEach((change) => {
                         const id = change.doc.id;
@@ -169,36 +169,57 @@
                                 actualizarUI(id, data.resuelto);
                             }
 
-                            // Abre el modal automáticamente para el admin al pasar a resuelto en tiempo real
                             if (initialLoadDone && change.type === "modified" && data.resuelto && !antesResuelto && isAdmin) {
                                 openModal(id);
                             }
 
-                            // Sincronización global de reproducción
+                            // Sincronización global inteligente: Solo reacciona si el evento es actual (< 10 segundos)
                             if (data.reproduciendoDesde) {
-                                if (activeId !== id) {
-                                    openModal(id);
-                                }
+                                const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
+                                const diferenciaSegundos = (Date.now() - serverTime) / 1000;
 
-                                const player = document.getElementById('player');
-                                const adminBar = document.getElementById('admin-sync-bar');
-                                if (adminBar) adminBar.remove();
-
-                                if (player) {
-                                    const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
-                                    const elapsedSeconds = (Date.now() - serverTime) / 1000;
-                                    
-                                    if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
-                                        player.currentTime = Math.max(0, elapsedSeconds);
+                                // Si el timestamp es reciente (menos de 10 segundos), sincronizamos. Si es antiguo, lo ignoramos por completo.
+                                if (diferenciaSegundos >= 0 && diferenciaSegundos < 10) {
+                                    if (activeId !== id) {
+                                        openModal(id);
                                     }
-                                    if (player.paused) {
-                                        player.play().catch(e => console.log("Play bloqueado:", e));
+
+                                    const player = document.getElementById('player');
+                                    const adminBar = document.getElementById('admin-sync-bar');
+                                    if (adminBar) adminBar.remove();
+
+                                    if (player) {
+                                        if (Math.abs(player.currentTime - diferenciaSegundos) > 1.0) {
+                                            player.currentTime = Math.max(0, diferenciaSegundos);
+                                        }
+                                        if (player.paused) {
+                                            player.play().catch(e => console.log("Play bloqueado:", e));
+                                        }
                                     }
                                 }
                             }
                         }
                     });
                 }
+                
+                if (!initialLoadDone) {
+                    initialLoadDone = true;
+                    if (qrCasoNum) {
+                        const casoAEjecutar = qrCasoNum;
+                        window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
+                        
+                        if (isAdmin) {
+                            desbloquearCasoQR(casoAEjecutar);
+                        } else {
+                            document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
+                            document.getElementById('qrPasswordModal').classList.remove('hidden');
+                        }
+                    }
+                }
+            }, (error) => {
+                console.error("Error en el snapshot de Firestore:", error);
+            });
+
                 
                                                 if (!initialLoadDone) {
                     initialLoadDone = true;

@@ -36,7 +36,7 @@
                 </div>
             </div>
             <div id="admin-status" class="text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-slate-800 text-slate-400">
-                Verificando conexión con Firebase...
+                Verificando conexión con Firestore...
             </div>
             <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2"></div>
         </div>
@@ -47,7 +47,7 @@
         <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
         <div class="relative mx-auto max-w-3xl">
             <span class="inline-block mb-3 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
-                Museo Virtual • Edición Coleccionista v3
+                Museo Virtual • Edición Coleccionista
             </span>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
                 40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-2xl font-light mt-1">El Juego de su Memoria</span>
@@ -64,7 +64,6 @@
             <h2 class="font-serif text-2xl font-bold text-white mb-1">Casos del Archivo</h2>
             <p class="text-slate-400 text-xs sm:text-sm">Las tarjetas bloqueadas se iluminarán automáticamente al resolverse en la cena.</p>
         </div>
-        <!-- Contenedor donde se mostrarán los casos o el mensaje de aviso si está vacío -->
         <div id="cases-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"></div>
     </main>
 
@@ -85,6 +84,24 @@
         </div>
     </div>
 
+    <!-- MODAL DE CONTRASEÑA PARA EL QR -->
+    <div id="qrPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 hidden">
+        <div class="relative w-full max-w-md rounded-2xl bg-[#111827] border border-amber-500/40 p-6 shadow-2xl text-center">
+            <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-3 border border-amber-500/30">
+                <i class="fa-solid fa-shield-halved text-xl"></i>
+            </div>
+            <h3 id="qrModalTitle" class="font-serif text-lg font-bold text-white mb-2">Activación de Caso por Administrador</h3>
+            <p class="text-xs text-slate-300 mb-4">Has escaneado un código QR. Introduce la contraseña de control para desbloquearlo y lanzarlo en la sala.</p>
+            
+            <input type="password" id="qr-secret-input" placeholder="Contraseña de administrador" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-center text-amber-400 font-mono mb-4 text-sm focus:outline-none focus:border-amber-500">
+            
+            <div class="flex gap-2">
+                <button onclick="cancelarActivacionQR()" class="flex-1 rounded-lg bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-all">Cancelar</button>
+                <button onclick="verificarYDesbloquearQR()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar y Lanzar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- FOOTER -->
     <footer class="border-t border-slate-800/80 bg-[#0b0f19] py-8 text-center text-xs text-slate-400">
         <p class="font-serif text-slate-300 text-sm sm:text-base italic mb-2 leading-relaxed max-w-md mx-auto px-4">
@@ -96,34 +113,44 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+        apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
+		authDomain: "vane-cumple-40.firebaseapp.com",
+		projectId: "vane-cumple-40",
+		storageBucket: "vane-cumple-40.firebasestorage.app",
+		messagingSenderId: "757919275158",
+		appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+		};
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        const PASSWORD_ADMIN = "vane40"; // Contraseña requerida para desbloquear QR y panel
 
-        let casosConfig = {};
         const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'vane40';
+        const isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
+        const qrCasoNum = urlParams.get('caso'); 
+
+        const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
 
         if (isAdmin) {
             document.getElementById('admin-panel').classList.remove('hidden');
+            if (!apiKeyValida) {
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error: Has dejado la API Key de ejemplo ("TU_API_KEY") o está vacía.';
+                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
+            }
         }
 
-                function renderGrid() {
+        let db = null;
+        if (apiKeyValida) {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+        }
+
+        let casosConfig = {};
+
+        function renderGrid() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
             
-            // Ordenamos las claves numéricamente (caso-1, caso-2, ..., caso-10, caso-11...)
             const keys = Object.keys(casosConfig).sort((a, b) => {
-                const numA = parseInt(a.replace('caso-', ''));
-                const numB = parseInt(b.replace('caso-', ''));
-                return numA - numB;
+                return parseInt(a.replace('caso-', '')) - parseInt(b.replace('caso-', ''));
             });
 
             if (keys.length === 0) {
@@ -170,11 +197,8 @@
             if (!editor) return;
             editor.innerHTML = '';
 
-            // Ordenamos también numéricamente en el panel de administración
             const keys = Object.keys(casosConfig).sort((a, b) => {
-                const numA = parseInt(a.replace('caso-', ''));
-                const numB = parseInt(b.replace('caso-', ''));
-                return numA - numB;
+                return parseInt(a.replace('caso-', '')) - parseInt(b.replace('caso-', ''));
             });
 
             keys.forEach((id) => {
@@ -201,7 +225,6 @@
                 `;
             });
         }
-
 
         function actualizarUI(id, resuelto) {
             const c = casosConfig[id];
@@ -236,79 +259,120 @@
             }
         }
 
-        // Carga inicial y escucha en tiempo real directo desde Firestore
-        db.collection("estado_juego").get().then((querySnapshot) => {
-            if (!querySnapshot.empty) {
-                casosConfig = {};
-                querySnapshot.forEach((doc) => {
-                    casosConfig[doc.id] = doc.data();
-                });
-            }
-            renderGrid();
-            if (isAdmin) {
-                renderAdmin();
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado a Firestore con éxito.';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
-            }
-        }).catch((error) => {
-            console.error("Error al cargar Firestore:", error);
-            renderGrid();
-            if (isAdmin) {
-                document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
-            }
-        });
+        if (apiKeyValida) {
+            db.collection("estado_juego").get().then((querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    casosConfig = {};
+                    querySnapshot.forEach((doc) => {
+                        casosConfig[doc.id] = doc.data();
+                    });
+                }
+                renderGrid();
+                if (isAdmin) {
+                    renderAdmin();
+                    document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado a Firestore con éxito.';
+                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
+                }
 
-        // Escucha en tiempo real de los documentos existentes
-        db.collection("estado_juego").onSnapshot((snapshot) => {
-            if (!snapshot.empty) {
-                snapshot.docChanges().forEach((change) => {
-                    const id = change.doc.id;
-                    const data = change.doc.data();
-                    
-                    if (change.type === "added" || change.type === "modified") {
-                        const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
-                        casosConfig[id] = { ...casosConfig[id], ...data };
+                // SI SE ESCANEA UN QR, EN VEZ DE ACTIVARSE SOLO, PEDIMOS CONTRASEÑA
+                if (qrCasoNum) {
+                    document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${qrCasoNum}`;
+                    document.getElementById('qrPasswordModal').classList.remove('hidden');
+                }
+
+            }).catch((error) => {
+                console.error("Error al cargar Firestore:", error);
+                renderGrid();
+                if (isAdmin) {
+                    document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
+                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
+                }
+            });
+
+            db.collection("estado_juego").onSnapshot((snapshot) => {
+                if (!snapshot.empty) {
+                    snapshot.docChanges().forEach((change) => {
+                        const id = change.doc.id;
+                        const data = change.doc.data();
                         
-                        // Si el documento es nuevo y no estaba pintado en la rejilla, repintamos la rejilla completa
-                        if (!document.getElementById(`card-${id}`)) {
-                            renderGrid();
-                            if (isAdmin) renderAdmin();
-                        } else {
-                            actualizarUI(id, data.resuelto);
-                        }
+                        if (change.type === "added" || change.type === "modified") {
+                            const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
+                            casosConfig[id] = { ...casosConfig[id], ...data };
+                            
+                            if (!document.getElementById(`card-${id}`)) {
+                                renderGrid();
+                                if (isAdmin) renderAdmin();
+                            } else {
+                                actualizarUI(id, data.resuelto);
+                            }
 
-                        if (data.resuelto && !antesResuelto) {
-                            openModal(id);
-                        }
-
-                        if (data.reproduciendoDesde) {
-                            if (activeId !== id) {
+                            if (data.resuelto && !antesResuelto) {
                                 openModal(id);
                             }
 
-                            const player = document.getElementById('player');
-                            const adminBar = document.getElementById('admin-sync-bar');
-                            if (adminBar) adminBar.remove();
-
-                            if (player) {
-                                const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
-                                const elapsedSeconds = (Date.now() - serverTime) / 1000;
-                                
-                                if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
-                                    player.currentTime = Math.max(0, elapsedSeconds);
+                            if (data.reproduciendoDesde) {
+                                if (activeId !== id) {
+                                    openModal(id);
                                 }
-                                if (player.paused) {
-                                    player.play().catch(e => console.log("Play bloqueado:", e));
+
+                                const player = document.getElementById('player');
+                                const adminBar = document.getElementById('admin-sync-bar');
+                                if (adminBar) adminBar.remove();
+
+                                if (player) {
+                                    const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : Date.now());
+                                    const elapsedSeconds = (Date.now() - serverTime) / 1000;
+                                    
+                                    if (elapsedSeconds >= 0 && Math.abs(player.currentTime - elapsedSeconds) > 1.0) {
+                                        player.currentTime = Math.max(0, elapsedSeconds);
+                                    }
+                                    if (player.paused) {
+                                        player.play().catch(e => console.log("Play bloqueado:", e));
+                                    }
                                 }
                             }
                         }
-                    }
-                });
+                    });
+                }
+            });
+        } else {
+            renderGrid();
+            if (qrCasoNum) {
+                // Si alguien abre el QR sin estar conectado a la API o sin admin, ignoramos
+                alert("La aplicación no está conectada correctamente.");
             }
-        });
+        }
+
+        window.verificarYDesbloquearQR = function() {
+            const passInput = document.getElementById('qr-secret-input').value;
+            if (passInput === PASSWORD_ADMIN) {
+                document.getElementById('qrPasswordModal').classList.add('hidden');
+                const targetId = `caso-${qrCasoNum}`;
+                const now = firebase.firestore.FieldValue.serverTimestamp();
+                
+                db.collection("estado_juego").doc(targetId).set({
+                    resuelto: true,
+                    reproduciendoDesde: now
+                }, { merge: true }).then(() => {
+                    console.log(`Caso ${qrCasoNum} desbloqueado con éxito por contraseña.`);
+                }).catch(err => alert("Error al actualizar Firestore: " + err.message));
+            } else {
+                alert("Contraseña incorrecta. Solo el administrador puede desbloquear los casos.");
+                document.getElementById('qr-secret-input').value = '';
+            }
+        };
+
+        window.cancelarActivacionQR = function() {
+            document.getElementById('qrPasswordModal').classList.add('hidden');
+            // Limpiamos el parámetro de la URL sin recargar la página
+            window.history.replaceState({}, document.title, window.location.pathname);
+        };
 
         window.inicializarCasos = function() {
+            if (!apiKeyValida) {
+                alert("Configura una API Key válida antes de inicializar casos.");
+                return;
+            }
             const total = parseInt(document.getElementById('input-total-casos').value) || 13;
             const batch = db.batch();
             
@@ -334,7 +398,11 @@
             }).catch(err => alert("Error al inicializar: " + err.message));
         };
 
-               window.guardarCambios = function() {
+        window.guardarCambios = function() {
+            if (!apiKeyValida) {
+                alert("Configura una API Key válida antes de guardar.");
+                return;
+            }
             const batch = db.batch();
             Object.keys(casosConfig).forEach((id) => {
                 casosConfig[id] = {
@@ -399,6 +467,7 @@
         };
 
         window.lanzarReproduccionGlobal = function(id) {
+            if (!apiKeyValida) return;
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now

@@ -76,10 +76,26 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
+            
             <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-4 shadow-inner relative flex items-center justify-center"></div>
-            <div class="flex items-center justify-between text-xs text-slate-400" id="audio-control-bar">
-                <span id="audio-status-label"><i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.</span>
-                <button onclick="toggleAudio()" class="rounded bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 transition-colors">Activar / Silenciar Audio</button>
+            
+            <!-- BARRA DE CONTROLES EXTERNOS Y MONITOR DE SINCRONIZACIÓN -->
+            <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800 gap-2 flex-wrap">
+                <div id="audio-status-label" class="flex items-center">
+                    <!-- Se rellena dinámicamente -->
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <!-- Indicador visual en tiempo real del desfase / latencia -->
+                    <div id="sync-monitor-badge" class="hidden items-center gap-1.5 bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 font-mono text-[11px]">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="sync-dot"></span>
+                        <span id="sync-status-text" class="text-slate-300">Desfase: 0.00s</span>
+                    </div>
+
+                    <button onclick="toggleFullScreen()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700">
+                        <i class="fa-solid fa-expand text-amber-400"></i> <span>Pantalla Completa</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -342,17 +358,21 @@
                                 }
                             }
 
-                            // 2. Sincronización continua profesional con compensación de latencia de red basada en serverTimestamp
+                            // 2. Sincronización continua profesional con compensación de latencia de red y monitor visual
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
                                     const serverTimeMs = data.heartbeatTimestamp.toMillis ? data.heartbeatTimestamp.toMillis() : (data.heartbeatTimestamp.seconds ? data.heartbeatTimestamp.seconds * 1000 : Date.now());
                                     const latenciaRedSegundos = Math.max(0, (Date.now() - serverTimeMs) / 1000);
                                     
-                                    // Posición real esperada sumando el tiempo del admin + el retraso del viaje de red
                                     const tiempoEsperadoReal = data.tiempoActual + latenciaRedSegundos;
+                                    const desfaseActual = player.currentTime - tiempoEsperadoReal;
 
-                                    if (Math.abs(player.currentTime - tiempoEsperadoReal) > 0.5) {
+                                    // Actualizamos el widget visual del monitor de sincronización en los clientes
+                                    actualizarMonitorSync(desfaseActual);
+
+                                    // Si el desfase supera los 0.5s, corregimos la posición del reproductor
+                                    if (Math.abs(desfaseActual) > 0.5) {
                                         player.currentTime = tiempoEsperadoReal;
                                     }
                                 }
@@ -490,7 +510,7 @@
             const mutedAttr = isAdmin ? '' : 'muted';
 
             let htmlContenido = `
-                <video id="player" preload="auto" playsinline controls ${mutedAttr} class="h-full w-full object-contain">
+                <video id="player" preload="auto" playsinline ${mutedAttr} class="h-full w-full object-contain">
                     <source src="${c.recursoId}" type="video/mp4">
                     Tu navegador no soporta vídeos HTML5.
                 </video>
@@ -509,7 +529,7 @@
             }
 
             document.getElementById('modalContentContainer').innerHTML = `
-                <div class="relative w-full h-full flex items-center justify-center">
+                <div id="video-wrapper" class="relative w-full h-full flex items-center justify-center bg-black">
                     ${panelControlExtra}
                     ${htmlContenido}
                 </div>
@@ -519,7 +539,6 @@
             if (player) {
                 player.load();
                 
-                // Si es administrador, emite latidos con serverTimestamp cada 1.5s
                 if (isAdmin) {
                     player.addEventListener('play', () => {
                         if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
@@ -543,11 +562,20 @@
                 }
             }
 
-            const audioLabel = document.getElementById('audio-status-label');
-            if (isAdmin) {
-                audioLabel.innerHTML = '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO (Salida principal de sala).';
-            } else {
-                audioLabel.innerHTML = '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado (Sincronizado).';
+            actualizarBarraControlesAudio();
+
+            // Mostramos el monitor de sync si no es admin, o mostramos rol maestro si es admin
+            const syncBadge = document.getElementById('sync-monitor-badge');
+            if (syncBadge) {
+                if (isAdmin) {
+                    syncBadge.classList.remove('hidden');
+                    syncBadge.classList.add('flex');
+                    document.getElementById('sync-status-text').textContent = "Reloj Maestro (Admin)";
+                    document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+                } else {
+                    syncBadge.classList.remove('hidden');
+                    syncBadge.classList.add('flex');
+                }
             }
 
             const m = document.getElementById('mediaModal');
@@ -558,6 +586,74 @@
                 db.collection("estado_juego").doc(id).set({
                     modalAbierto: true
                 }, { merge: true });
+            }
+        };
+
+        function actualizarMonitorSync(desfase) {
+            const textElement = document.getElementById('sync-status-text');
+            const dotElement = document.getElementById('sync-dot');
+            if (!textElement || !dotElement) return;
+
+            const desfaseStr = desfase > 0 ? `+${desfase.toFixed(2)}s` : `${desfase.toFixed(2)}s`;
+            textElement.textContent = `Desfase: ${desfaseStr}`;
+
+            // Cambiamos el color según la calidad de sincronización en tiempo real
+            const absDesfase = Math.abs(desfase);
+            if (absDesfase < 0.2) {
+                dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+            } else if (absDesfase < 0.6) {
+                dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+            } else {
+                dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";
+            }
+        }
+
+        window.toggleAudio = function() {
+            const p = document.getElementById('player');
+            if (p) {
+                p.muted = !p.muted;
+                actualizarBarraControlesAudio();
+            }
+        };
+
+        function actualizarBarraControlesAudio() {
+            const p = document.getElementById('player');
+            const audioLabel = document.getElementById('audio-status-label');
+            if (!p || !audioLabel) return;
+
+            if (p.muted) {
+                audioLabel.innerHTML = `
+                    <button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700">
+                        <i class="fa-solid fa-volume-xmark text-amber-400"></i> <span>Activar Audio</span>
+                    </button>
+                `;
+            } else {
+                audioLabel.innerHTML = `
+                    <button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-lg text-xs transition-colors border border-emerald-500/40">
+                        <i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Silenciar</span>
+                    </button>
+                `;
+            }
+        }
+
+        window.toggleFullScreen = function() {
+            const wrapper = document.getElementById('video-wrapper');
+            if (!wrapper) return;
+
+            if (!document.fullscreenElement) {
+                if (wrapper.requestFullscreen) {
+                    wrapper.requestFullscreen();
+                } else if (wrapper.webkitRequestFullscreen) {
+                    wrapper.webkitRequestFullscreen();
+                } else if (wrapper.msRequestFullscreen) {
+                    wrapper.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
             }
         };
 
@@ -583,6 +679,9 @@
             setTimeout(() => {
                 m.classList.add('hidden');
                 document.getElementById('modalContentContainer').innerHTML = '';
+                const syncBadge = document.getElementById('sync-monitor-badge');
+                if (syncBadge) syncBadge.classList.add('hidden');
+
                 if (isAdmin && activeId) {
                     db.collection("estado_juego").doc(activeId).set({
                         modalAbierto: false,
@@ -593,16 +692,6 @@
                 }
                 activeId = '';
             }, 300);
-        };
-
-        window.toggleAudio = function() {
-            const p = document.getElementById('player');
-            if (p) {
-                p.muted = !p.muted;
-                document.getElementById('audio-status-label').innerHTML = p.muted ? 
-                    '<i class="fa-solid fa-volume-xmark text-amber-400 mr-1"></i> Audio silenciado.' : 
-                    '<i class="fa-solid fa-volume-high text-emerald-400 mr-1"></i> Audio ACTIVADO.';
-            }
         };
     </script>
 </body>

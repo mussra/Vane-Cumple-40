@@ -113,13 +113,13 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
 
         const PASSWORD_ADMIN = "vane40"; 
 
@@ -292,7 +292,7 @@
                                 openModal(id);
                             }
 
-                            // Sincronización global inteligente: Solo reacciona si el evento es actual (< 10 segundos)
+                            // Sincronización global inteligente: El admin y los clientes reaccionan exactamente igual al timestamp fresco (< 10s)
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
@@ -476,6 +476,8 @@
 
         window.lanzarReproduccionGlobal = function(id) {
             if (!apiKeyValida) return;
+            // El administrador escribe en Firestore y su propio cliente reaccionará mediante el onSnapshot
+            // exactamente igual que los demás, arrancando desde el mismo instante en el servidor.
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now

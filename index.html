@@ -292,7 +292,7 @@
                                 openModal(id);
                             }
 
-                            // Sincronización global inteligente: El admin y los clientes reaccionan exactamente igual al timestamp fresco (< 10s)
+                            // Sincronización global con control estricto de búfer y tolerancia de 0.5s
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
@@ -307,11 +307,19 @@
                                     if (adminBar) adminBar.remove();
 
                                     if (player) {
-                                        if (Math.abs(player.currentTime - diferenciaSegundos) > 1.0) {
-                                            player.currentTime = Math.max(0, diferenciaSegundos);
-                                        }
-                                        if (player.paused) {
-                                            player.play().catch(e => console.log("Play bloqueado:", e));
+                                        const aplicarSincronia = () => {
+                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.5) {
+                                                player.currentTime = Math.max(0, diferenciaSegundos);
+                                            }
+                                            if (player.paused) {
+                                                player.play().catch(e => console.log("Play bloqueado por políticas del navegador:", e));
+                                            }
+                                        };
+
+                                        if (player.readyState >= 2) {
+                                            aplicarSincronia();
+                                        } else {
+                                            player.addEventListener('canplay', aplicarSincronia, { once: true });
                                         }
                                     }
                                 }
@@ -436,8 +444,9 @@
             document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
             const mutedAttr = isAdmin ? '' : 'muted';
 
+            // Añadimos preload="auto" y playsinline para asegurar la precarga inmediata en caché
             let htmlContenido = `
-                <video id="player" controls ${mutedAttr} class="h-full w-full object-contain">
+                <video id="player" preload="auto" playsinline controls ${mutedAttr} class="h-full w-full object-contain">
                     <source src="${c.recursoId}" type="video/mp4">
                     Tu navegador no soporta vídeos HTML5.
                 </video>
@@ -447,7 +456,7 @@
             if (isAdmin) {
                 panelControlExtra = `
                     <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                        <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: El vídeo está precargado en pausa en todos los dispositivos.</p>
+                        <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: Esperando a que los dispositivos carguen el búfer...</p>
                         <button onclick="lanzarReproduccionGlobal('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
                             <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
                         </button>
@@ -461,6 +470,12 @@
                     ${htmlContenido}
                 </div>
             `;
+
+            // Forzamos la precarga de la caché del reproductor en segundo plano
+            const player = document.getElementById('player');
+            if (player) {
+                player.load();
+            }
 
             const audioLabel = document.getElementById('audio-status-label');
             if (isAdmin) {
@@ -476,8 +491,6 @@
 
         window.lanzarReproduccionGlobal = function(id) {
             if (!apiKeyValida) return;
-            // El administrador escribe en Firestore y su propio cliente reaccionará mediante el onSnapshot
-            // exactamente igual que los demás, arrancando desde el mismo instante en el servidor.
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now
@@ -505,4 +518,8 @@
         };
     </script>
 </body>
-</html>
+</html> 
+
+
+
+        

@@ -91,13 +91,13 @@
                 <i class="fa-solid fa-shield-halved text-xl"></i>
             </div>
             <h3 id="qrModalTitle" class="font-serif text-lg font-bold text-white mb-2">Activación de Caso por Administrador</h3>
-            <p class="text-xs text-slate-300 mb-4">Has escaneado un código QR. Introduce la contraseña de control para desbloquearlo y lanzarlo en la sala.</p>
+            <p class="text-xs text-slate-300 mb-4">Has escaneado un código QR. Introduce la contraseña de control para desbloquearlo en la sala.</p>
             
             <input type="password" id="qr-secret-input" placeholder="Contraseña de administrador" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-center text-amber-400 font-mono mb-4 text-sm focus:outline-none focus:border-amber-500">
             
             <div class="flex gap-2">
                 <button onclick="cancelarActivacionQR()" class="flex-1 rounded-lg bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-all">Cancelar</button>
-                <button onclick="verificarYDesbloquearQR()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar y Lanzar</button>
+                <button onclick="verificarYDesbloquearQR()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar y Desbloquear</button>
             </div>
         </div>
     </div>
@@ -126,7 +126,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         const qrCasoNum = urlParams.get('caso'); 
 
-        // Gestión de sesión activa para no pedir la contraseña repetidamente al escanear varios QR
         let sesionAdminIniciada = sessionStorage.getItem('vane_admin_autenticado') === 'true';
         if (urlParams.get('admin') === PASSWORD_ADMIN) {
             sesionAdminIniciada = true;
@@ -282,13 +281,13 @@
                     document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
                 }
 
-                // SI SE ESCANEA UN QR: Limpiamos la URL inmediatamente para evitar bucles al refrescar
+                // SI SE ESCANEA UN QR: Limpiamos la URL y solo desbloqueamos en base de datos (sin reproducir todavía)
                 if (qrCasoNum) {
                     const casoAEjecutar = qrCasoNum;
                     window.history.replaceState({}, document.title, window.location.pathname);
 
                     if (isAdmin) {
-                        desbloquearYDispararQR(casoAEjecutar);
+                        desbloquearCasoQR(casoAEjecutar);
                     } else {
                         document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
                         document.getElementById('qrPasswordModal').classList.remove('hidden');
@@ -321,10 +320,7 @@
                                 actualizarUI(id, data.resuelto);
                             }
 
-                            if (data.resuelto && !antesResuelto) {
-                                openModal(id);
-                            }
-
+                            // Solo abre el modal si se pulsa explícitamente el botón de lanzar reproducción global
                             if (data.reproduciendoDesde) {
                                 if (activeId !== id) {
                                     openModal(id);
@@ -359,9 +355,8 @@
             if (passInput === PASSWORD_ADMIN) {
                 sessionStorage.setItem('vane_admin_autenticado', 'true');
                 document.getElementById('qrPasswordModal').classList.add('hidden');
-                // Si el modal se abrió por QR guardamos temporalmente el número para dispararlo tras introducir el pass
                 if (qrCasoNum) {
-                    desbloquearYDispararQR(qrCasoNum);
+                    desbloquearCasoQR(qrCasoNum);
                 }
             } else {
                 alert("Contraseña incorrecta. Solo el administrador puede desbloquear los casos.");
@@ -369,15 +364,13 @@
             }
         };
 
-        window.desbloquearYDispararQR = function(numCaso) {
+        // Solo marca como resuelto en la base de datos sin disparar el reproductor
+        window.desbloquearCasoQR = function(numCaso) {
             const targetId = `caso-${numCaso}`;
-            const now = firebase.firestore.FieldValue.serverTimestamp();
-            
             db.collection("estado_juego").doc(targetId).set({
-                resuelto: true,
-                reproduciendoDesde: now
+                resuelto: true
             }, { merge: true }).then(() => {
-                console.log(`Caso ${numCaso} desbloqueado y lanzado.`);
+                alert(`¡Caso #${numCaso} desbloqueado con éxito en el archivo! Ya puedes abrirlo o lanzarlo desde el panel.`);
             }).catch(err => alert("Error al actualizar Firestore: " + err.message));
         };
 

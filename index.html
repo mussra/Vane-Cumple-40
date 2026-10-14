@@ -200,9 +200,9 @@
                     });
                 }
                 
-                if (!initialLoadDone) {
+                                if (!initialLoadDone) {
                     initialLoadDone = true;
-                    // Manejo estricto del QR inicial
+                    // Manejo estricto del QR inicial: SOLO si viene un parámetro 'caso' válido en la URL
                     if (qrCasoNum) {
                         const casoAEjecutar = qrCasoNum;
                         window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
@@ -215,6 +215,7 @@
                         }
                     }
                 }
+
             }, (error) => {
                 console.error("Error en el snapshot de Firestore:", error);
                 if (isAdmin) {

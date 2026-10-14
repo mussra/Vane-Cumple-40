@@ -200,7 +200,7 @@
                     });
                 }
                 
-                                if (!initialLoadDone) {
+                                                if (!initialLoadDone) {
                     initialLoadDone = true;
                     // Manejo estricto del QR inicial: SOLO si viene un parámetro 'caso' válido en la URL
                     if (qrCasoNum) {
@@ -214,6 +214,8 @@
                             document.getElementById('qrPasswordModal').classList.remove('hidden');
                         }
                     }
+                }
+
                 }
 
             }, (error) => {

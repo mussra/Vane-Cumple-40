@@ -46,9 +46,14 @@
     <header class="relative overflow-hidden border-b border-slate-800/80 bg-gradient-to-b from-[#111827] to-[#0b0f19] py-12 px-4 text-center sm:py-16">
         <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
         <div class="relative mx-auto max-w-3xl">
-            <span class="inline-block mb-3 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
-                Museo Virtual • Edición Coleccionista v20
-            </span>
+            <div class="flex items-center justify-center gap-2 mb-3 flex-wrap">
+                <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
+                    Museo Virtual • Edición Coleccionista
+                </span>
+                <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
+                    v2.4-stable
+                </span>
+            </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
                 40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-2xl font-light mt-1">El Juego de su Memoria</span>
             </h1>
@@ -351,7 +356,7 @@
                                 }
                             }
 
-                            // 1. Sincronización inicial con ventana estable y segura de arranque (< 10 segundos)
+                            // 1. Sincronización inicial optimizada (Precarga + Salto Preventivo inmediato)
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
@@ -366,8 +371,9 @@
                                     if (adminBar) adminBar.remove();
 
                                     if (player) {
-                                        const aplicarSincronia = () => {
-                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.5) {
+                                        const aplicarSincroniaOptimizada = () => {
+                                            // Salto preventivo instantáneo aprovechando los segundos de cortesía inicial
+                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.3) {
                                                 player.currentTime = Math.max(0, diferenciaSegundos);
                                             }
                                             if (player.paused) {
@@ -375,16 +381,17 @@
                                             }
                                         };
 
+                                        // Si ya está listo el búfer (gracias a preload="auto"), disparamos sin esperar
                                         if (player.readyState >= 2) {
-                                            aplicarSincronia();
+                                            aplicarSincroniaOptimizada();
                                         } else {
-                                            player.addEventListener('canplay', aplicarSincronia, { once: true });
+                                            player.addEventListener('canplay', aplicarSincroniaOptimizada, { once: true });
                                         }
                                     }
                                 }
                             }
 
-                            // 2. Sincronización continua robusta con latidos cada 1.5s y tolerancia fluida de 0.5s
+                            // 2. Sincronización continua robusta (latidos estables de 1.5s)
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
@@ -533,6 +540,7 @@
             document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
             const mutedAttr = isAdmin ? '' : 'muted';
 
+            // Precarga agresiva y activa (preload="auto") para que el navegador descargue el búfer de inmediato
             let htmlContenido = `
                 <video id="player" preload="auto" playsinline ${mutedAttr} class="h-full w-full object-contain">
                     <source src="${c.recursoId}" type="video/mp4">
@@ -561,9 +569,9 @@
 
             const player = document.getElementById('player');
             if (player) {
+                // Forzamos la carga explícita del recurso en el DOM de forma anticipada
                 player.load();
                 
-                // Administrador emitiendo latidos estables cada 1.5s
                 if (isAdmin) {
                     player.addEventListener('play', () => {
                         if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
@@ -574,7 +582,7 @@
                                     heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                                 }, { merge: true });
                             }
-                        }, 1500); // 1.5 segundos
+                        }, 1500);
                     });
 
                     player.addEventListener('pause', () => {

@@ -51,7 +51,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v2.5-stable
+                    v2.6-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -391,11 +391,10 @@
                                 }
                             }
 
-                            // 1. SINCRONIZACIÓN INICIAL OPTIMIZADA (Arranque ultra rápido < 3s, sin bloqueos artificiales)
-                            if (data.reproduciendoDesde) {
+                            // 1. SINCRONIZACIÓN INICIAL OPTIMIZADA (Exclusiva para clientes invitados)
+                            if (!isAdmin && data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 
-                                // Validamos que el timestamp sea real y no un objeto centinela pendiente de servidor (0 o nulo)
                                 if (serverTime > 0) {
                                     const diferenciaSegundos = (Date.now() - serverTime) / 1000;
 
@@ -410,7 +409,6 @@
 
                                         if (player) {
                                             const aplicarSincroniaOptimizada = () => {
-                                                // Aplicamos el salto de inmediato si hay desviación
                                                 if (Math.abs(player.currentTime - diferenciaSegundos) > 0.2) {
                                                     player.currentTime = Math.max(0, diferenciaSegundos);
                                                 }
@@ -429,7 +427,7 @@
                                 }
                             }
 
-                            // 2. Sincronización continua robusta
+                            // 2. SINCRONIZACIÓN CONTINUA ROBUSTA (Exclusiva para clientes invitados)
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {

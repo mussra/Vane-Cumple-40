@@ -51,7 +51,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v2.7-stable
+                    v2.8-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -151,6 +151,15 @@
         const isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
         const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
 
+        // Generar o recuperar ID único de dispositivo para su tabla de calibración independiente
+        let clientId = localStorage.getItem('vane_client_id');
+        if (!clientId) {
+            clientId = 'user_' + Math.random().toString(36).substring(2, 9);
+            localStorage.setItem('vane_client_id', clientId);
+        }
+
+        let clockOffsetMs = 0; // Diferencia entre reloj local y servidor
+
         if (isAdmin) {
             document.getElementById('admin-panel').classList.remove('hidden');
             if (!apiKeyValida) {
@@ -163,6 +172,29 @@
         if (apiKeyValida) {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
+
+            // CALIBRACIÓN AUTOMÁTICA DE RELOJ (Offset individual por cliente)
+            const calibrarRelojCliente = () => {
+                const tLocalAntes = Date.now();
+                db.collection("calibracion_reloj").doc(clientId).set({
+                    ping: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: tLocalAntes
+                }, { merge: true }).then(() => {
+                    db.collection("calibracion_reloj").doc(clientId).get().then((doc) => {
+                        if (doc.exists && doc.data().ping) {
+                            const servidorTime = doc.data().ping.toMillis ? doc.data().ping.toMillis() : (doc.data().ping.seconds ? doc.data().ping.seconds * 1000 : 0);
+                            if (servidorTime > 0) {
+                                const tLocalDespues = Date.now();
+                                const rtt = tLocalDespues - tLocalAntes;
+                                const estimatedServerNow = servidorTime + (rtt / 2);
+                                clockOffsetMs = estimatedServerNow - tLocalDespues;
+                                console.log(`Reloj calibrado para ${clientId}. Offset aplicado: ${clockOffsetMs} ms`);
+                            }
+                        }
+                    });
+                }).catch(e => console.log("Aviso de calibración:", e));
+            };
+            calibrarRelojCliente();
         }
 
         let casosConfig = {};
@@ -346,7 +378,6 @@
         }
 
         if (apiKeyValida) {
-            firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
 
             if (isAdmin) {
@@ -391,12 +422,14 @@
                                 }
                             }
 
-                            // 1. SINCRONIZACIÓN INICIAL OPTIMIZADA (Exclusiva para clientes invitados)
+                            // 1. SINCRONIZACIÓN INICIAL OPTIMIZADA CON OFFSET DE RELOJ
                             if (!isAdmin && data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 
                                 if (serverTime > 0) {
-                                    const diferenciaSegundos = (Date.now() - serverTime) / 1000;
+                                    // Hora local corregida con el offset calibrado del dispositivo
+                                    const nowCorregido = Date.now() + clockOffsetMs;
+                                    const diferenciaSegundos = (nowCorregido - serverTime) / 1000;
 
                                     if (diferenciaSegundos >= 0 && diferenciaSegundos < 30) {
                                         if (activeId !== id) {
@@ -427,12 +460,13 @@
                                 }
                             }
 
-                            // 2. SINCRONIZACIÓN CONTINUA ROBUSTA (Exclusiva para clientes invitados)
+                            // 2. SINCRONIZACIÓN CONTINUA ROBUSTA CON OFFSET DE RELOJ
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
                                     const serverTimeMs = data.heartbeatTimestamp.toMillis ? data.heartbeatTimestamp.toMillis() : (data.heartbeatTimestamp.seconds ? data.heartbeatTimestamp.seconds * 1000 : Date.now());
-                                    const latenciaRedSegundos = Math.max(0, (Date.now() - serverTimeMs) / 1000);
+                                    const nowCorregido = Date.now() + clockOffsetMs;
+                                    const latenciaRedSegundos = Math.max(0, (nowCorregido - serverTimeMs) / 1000);
                                     
                                     const tiempoEsperadoReal = data.tiempoActual + latenciaRedSegundos;
                                     const desfaseActual = player.currentTime - tiempoEsperadoReal;
@@ -735,18 +769,15 @@
         window.lanzarReproduccionGlobal = function(id) {
             if (!apiKeyValida) return;
             
-            // 1. Quitamos la barra superpuesta del admin inmediatamente
             const adminBar = document.getElementById('admin-sync-bar');
             if (adminBar) adminBar.remove();
 
-            // 2. Arrancamos el vídeo local del admin de forma fluida e instantánea
             const player = document.getElementById('player');
             if (player) {
                 player.currentTime = 0;
                 player.play().catch(e => console.log("Play local del admin bloqueado:", e));
             }
 
-            // 3. Enviamos la orden y el sello de tiempo maestro a Firestore para los esclavos
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now,

@@ -310,6 +310,44 @@
             }, 300);
         }
 
+        // FUNCIÓN DE VERIFICACIÓN GLOBAL (Polling de Respaldo y Reconexión)
+        function verificarEstadoRemoto() {
+            if (!db || !initialLoadDone) return;
+            db.collection("estado_juego").get().then((snapshot) => {
+                snapshot.forEach((doc) => {
+                    const id = doc.id;
+                    const data = doc.data();
+                    const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
+                    const antesModalAbierto = casosConfig[id] ? casosConfig[id].modalAbierto : false;
+
+                    casosConfig[id] = { ...casosConfig[id], ...data };
+
+                    if (!document.getElementById(`card-${id}`)) {
+                        renderGrid();
+                        if (isAdmin) renderAdmin();
+                    } else {
+                        actualizarUI(id, data.resuelto);
+                    }
+
+                    // Si el respaldo detecta que se resolvió y antes no lo estaba
+                    if (data.resuelto && !antesResuelto) {
+                        hacerScrollA(id);
+                        hacerParpadearTarjeta(id);
+                    }
+
+                    // Si el respaldo detecta que se abrió el modal en remoto
+                    if (data.modalAbierto && !antesModalAbierto) {
+                        hacerScrollA(id);
+                        if (activeId !== id) {
+                            openModal(id, false);
+                        }
+                    } else if (data.modalAbierto === false && antesModalAbierto && activeId === id) {
+                        closeModal();
+                    }
+                });
+            }).catch(err => console.log("Aviso de sondeo de respaldo:", err));
+        }
+
         if (apiKeyValida) {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
@@ -319,6 +357,7 @@
                 document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
             }
 
+            // Escuchador en tiempo real principal
             db.collection("estado_juego").onSnapshot((snapshot) => {
                 if (!snapshot.empty) {
                     snapshot.docChanges().forEach((change) => {
@@ -356,7 +395,7 @@
                                 }
                             }
 
-                            // 1. Sincronización inicial optimizada (Precarga + Salto Preventivo inmediato)
+                            // 1. Sincronización inicial optimizada
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
@@ -372,7 +411,6 @@
 
                                     if (player) {
                                         const aplicarSincroniaOptimizada = () => {
-                                            // Salto preventivo instantáneo aprovechando los segundos de cortesía inicial
                                             if (Math.abs(player.currentTime - diferenciaSegundos) > 0.3) {
                                                 player.currentTime = Math.max(0, diferenciaSegundos);
                                             }
@@ -381,7 +419,6 @@
                                             }
                                         };
 
-                                        // Si ya está listo el búfer (gracias a preload="auto"), disparamos sin esperar
                                         if (player.readyState >= 2) {
                                             aplicarSincroniaOptimizada();
                                         } else {
@@ -391,7 +428,7 @@
                                 }
                             }
 
-                            // 2. Sincronización continua robusta (latidos estables de 1.5s)
+                            // 2. Sincronización continua robusta
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
@@ -433,6 +470,18 @@
                     document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
                 }
             });
+
+            // POLLING DE RESPALDO: Comprueba cada 12 segundos por si se perdió una notificación
+            setInterval(verificarEstadoRemoto, 12000);
+
+            // REENGANCHE INMEDIATO AL RECUPERAR FOCO O CONEXIÓN
+            document.addEventListener("visibilitychange", () => {
+                if (!document.hidden) {
+                    verificarEstadoRemoto();
+                }
+            });
+            window.addEventListener("online", verificarEstadoRemoto);
+
         } else {
             renderGrid();
         }
@@ -540,7 +589,6 @@
             document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
             const mutedAttr = isAdmin ? '' : 'muted';
 
-            // Precarga agresiva y activa (preload="auto") para que el navegador descargue el búfer de inmediato
             let htmlContenido = `
                 <video id="player" preload="auto" playsinline ${mutedAttr} class="h-full w-full object-contain">
                     <source src="${c.recursoId}" type="video/mp4">
@@ -569,7 +617,6 @@
 
             const player = document.getElementById('player');
             if (player) {
-                // Forzamos la carga explícita del recurso en el DOM de forma anticipada
                 player.load();
                 
                 if (isAdmin) {

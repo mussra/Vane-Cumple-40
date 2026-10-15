@@ -351,12 +351,12 @@
                                 }
                             }
 
-                            // 1. Sincronización inicial desde el segundo 0.0 exacta (Ventana ampliada a 15s)
+                            // 1. Sincronización inicial global sin límite de tiempo arbitrario para adaptarse a cualquier momento de entrada
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
 
-                                if (diferenciaSegundos >= 0 && diferenciaSegundos < 15) {
+                                if (diferenciaSegundos >= 0) {
                                     if (activeId !== id) {
                                         openModal(id, false);
                                     }
@@ -367,8 +367,8 @@
 
                                     if (player) {
                                         const aplicarSincronia = () => {
-                                            // Aplicamos corrección estricta si hay más de 0.2s de diferencia desde el inicio (0.0s)
-                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.2) {
+                                            // Corrección ultra-estricta (tolerancia de 0.15s) para alcanzar el 100% de sincronía en los primeros segundos
+                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.15) {
                                                 player.currentTime = Math.max(0, diferenciaSegundos);
                                             }
                                             if (player.paused) {
@@ -385,7 +385,7 @@
                                 }
                             }
 
-                            // 2. Sincronización continua profesional de alta velocidad (Latidos cada 1s y tolerancia estricta de 0.3s)
+                            // 2. Sincronización continua de alta velocidad (latidos cada 0.5s y tolerancia estricta de 0.2s)
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
@@ -397,8 +397,8 @@
 
                                     actualizarMonitorSync(desfaseActual);
 
-                                    // Si el desfase supera los 0.3s corregimos inmediatamente para que vaya clavado
-                                    if (Math.abs(desfaseActual) > 0.3) {
+                                    // Si el desfase supera los 0.2s corregimos inmediatamente para una precisión impecable
+                                    if (Math.abs(desfaseActual) > 0.2) {
                                         player.currentTime = tiempoEsperadoReal;
                                     }
                                 }
@@ -565,7 +565,7 @@
             if (player) {
                 player.load();
                 
-                // Si es administrador, emitimos latidos de alta velocidad cada 1s (1000ms) desde el segundo 0.0
+                // Si es administrador, emitimos latidos de alta frecuencia cada 0.5s (500ms) para máxima precisión en vídeos cortos
                 if (isAdmin) {
                     player.addEventListener('play', () => {
                         if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
@@ -576,7 +576,7 @@
                                     heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                                 }, { merge: true });
                             }
-                        }, 1000); // 1 segundo exacto para máxima precisión
+                        }, 500); // Latido cada 0.5 segundos exactos
                     });
 
                     player.addEventListener('pause', () => {
@@ -624,9 +624,9 @@
             textElement.textContent = `Desfase: ${desfaseStr}`;
 
             const absDesfase = Math.abs(desfase);
-            if (absDesfase < 0.15) {
+            if (absDesfase < 0.1) {
                 dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-            } else if (absDesfase < 0.4) {
+            } else if (absDesfase < 0.3) {
                 dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
             } else {
                 dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";

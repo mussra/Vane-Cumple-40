@@ -51,7 +51,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v2.4-stable
+                    v2.5-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -310,7 +310,6 @@
             }, 300);
         }
 
-        // FUNCIÓN DE VERIFICACIÓN GLOBAL (Polling de Respaldo y Reconexión)
         function verificarEstadoRemoto() {
             if (!db || !initialLoadDone) return;
             db.collection("estado_juego").get().then((snapshot) => {
@@ -329,13 +328,11 @@
                         actualizarUI(id, data.resuelto);
                     }
 
-                    // Si el respaldo detecta que se resolvió y antes no lo estaba
                     if (data.resuelto && !antesResuelto) {
                         hacerScrollA(id);
                         hacerParpadearTarjeta(id);
                     }
 
-                    // Si el respaldo detecta que se abrió el modal en remoto
                     if (data.modalAbierto && !antesModalAbierto) {
                         hacerScrollA(id);
                         if (activeId !== id) {
@@ -357,7 +354,6 @@
                 document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
             }
 
-            // Escuchador en tiempo real principal
             db.collection("estado_juego").onSnapshot((snapshot) => {
                 if (!snapshot.empty) {
                     snapshot.docChanges().forEach((change) => {
@@ -395,34 +391,39 @@
                                 }
                             }
 
-                            // 1. Sincronización inicial optimizada
+                            // 1. SINCRONIZACIÓN INICIAL OPTIMIZADA (Arranque ultra rápido < 3s, sin bloqueos artificiales)
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
-                                const diferenciaSegundos = (Date.now() - serverTime) / 1000;
+                                
+                                // Validamos que el timestamp sea real y no un objeto centinela pendiente de servidor (0 o nulo)
+                                if (serverTime > 0) {
+                                    const diferenciaSegundos = (Date.now() - serverTime) / 1000;
 
-                                if (diferenciaSegundos >= 0 && diferenciaSegundos < 10) {
-                                    if (activeId !== id) {
-                                        openModal(id, false);
-                                    }
+                                    if (diferenciaSegundos >= 0 && diferenciaSegundos < 30) {
+                                        if (activeId !== id) {
+                                            openModal(id, false);
+                                        }
 
-                                    const player = document.getElementById('player');
-                                    const adminBar = document.getElementById('admin-sync-bar');
-                                    if (adminBar) adminBar.remove();
+                                        const player = document.getElementById('player');
+                                        const adminBar = document.getElementById('admin-sync-bar');
+                                        if (adminBar) adminBar.remove();
 
-                                    if (player) {
-                                        const aplicarSincroniaOptimizada = () => {
-                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.3) {
-                                                player.currentTime = Math.max(0, diferenciaSegundos);
+                                        if (player) {
+                                            const aplicarSincroniaOptimizada = () => {
+                                                // Aplicamos el salto de inmediato si hay desviación
+                                                if (Math.abs(player.currentTime - diferenciaSegundos) > 0.2) {
+                                                    player.currentTime = Math.max(0, diferenciaSegundos);
+                                                }
+                                                if (player.paused) {
+                                                    player.play().catch(e => console.log("Play bloqueado:", e));
+                                                }
+                                            };
+
+                                            if (player.readyState >= 2) {
+                                                aplicarSincroniaOptimizada();
+                                            } else {
+                                                player.addEventListener('canplay', aplicarSincroniaOptimizada, { once: true });
                                             }
-                                            if (player.paused) {
-                                                player.play().catch(e => console.log("Play bloqueado:", e));
-                                            }
-                                        };
-
-                                        if (player.readyState >= 2) {
-                                            aplicarSincroniaOptimizada();
-                                        } else {
-                                            player.addEventListener('canplay', aplicarSincroniaOptimizada, { once: true });
                                         }
                                     }
                                 }
@@ -471,10 +472,8 @@
                 }
             });
 
-            // POLLING DE RESPALDO: Comprueba cada 12 segundos por si se perdió una notificación
             setInterval(verificarEstadoRemoto, 12000);
 
-            // REENGANCHE INMEDIATO AL RECUPERAR FOCO O CONEXIÓN
             document.addEventListener("visibilitychange", () => {
                 if (!document.hidden) {
                     verificarEstadoRemoto();
@@ -729,8 +728,8 @@
             } else {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
+                } else if (wrapper.webkitExitFullscreen) {
+                    wrapper.webkitExitFullscreen();
                 }
             }
         };

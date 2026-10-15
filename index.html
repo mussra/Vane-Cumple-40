@@ -47,7 +47,7 @@
         <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
         <div class="relative mx-auto max-w-3xl">
             <span class="inline-block mb-3 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
-                Museo Virtual • Edición Coleccionista
+                Museo Virtual • Edición Coleccionista v20
             </span>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
                 40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-2xl font-light mt-1">El Juego de su Memoria</span>
@@ -351,12 +351,12 @@
                                 }
                             }
 
-                            // 1. Sincronización inicial global
+                            // 1. Sincronización inicial con ventana estable y segura de arranque (< 10 segundos)
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
 
-                                if (diferenciaSegundos >= 0) {
+                                if (diferenciaSegundos >= 0 && diferenciaSegundos < 10) {
                                     if (activeId !== id) {
                                         openModal(id, false);
                                     }
@@ -367,8 +367,7 @@
 
                                     if (player) {
                                         const aplicarSincronia = () => {
-                                            // Tolerancia suave de 0.4s para evitar tirones o parpadeos molestos en el arranque
-                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.4) {
+                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.5) {
                                                 player.currentTime = Math.max(0, diferenciaSegundos);
                                             }
                                             if (player.paused) {
@@ -385,7 +384,7 @@
                                 }
                             }
 
-                            // 2. Sincronización continua profesional (Latidos cada 1.0s y tolerancia fluida de 0.4s)
+                            // 2. Sincronización continua robusta con latidos cada 1.5s y tolerancia fluida de 0.5s
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
@@ -397,8 +396,7 @@
 
                                     actualizarMonitorSync(desfaseActual);
 
-                                    // Si el desfase supera los 0.4s se ajusta de forma suave y limpia sin parpadeos bruscos
-                                    if (Math.abs(desfaseActual) > 0.4) {
+                                    if (Math.abs(desfaseActual) > 0.5) {
                                         player.currentTime = tiempoEsperadoReal;
                                     }
                                 }
@@ -565,7 +563,7 @@
             if (player) {
                 player.load();
                 
-                // Si es administrador, emitimos latidos estables cada 1.0 segundo (1000ms)
+                // Administrador emitiendo latidos estables cada 1.5s
                 if (isAdmin) {
                     player.addEventListener('play', () => {
                         if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
@@ -576,7 +574,7 @@
                                     heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                                 }, { merge: true });
                             }
-                        }, 1000); // Latido cada 1 segundo exacto
+                        }, 1500); // 1.5 segundos
                     });
 
                     player.addEventListener('pause', () => {
@@ -624,9 +622,9 @@
             textElement.textContent = `Desfase: ${desfaseStr}`;
 
             const absDesfase = Math.abs(desfase);
-            if (absDesfase < 0.2) {
+            if (absDesfase < 0.3) {
                 dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-            } else if (absDesfase < 0.5) {
+            } else if (absDesfase < 0.7) {
                 dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
             } else {
                 dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";

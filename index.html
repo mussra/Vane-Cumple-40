@@ -351,7 +351,7 @@
                                 }
                             }
 
-                            // 1. Sincronización inicial global sin límite de tiempo arbitrario para adaptarse a cualquier momento de entrada
+                            // 1. Sincronización inicial global
                             if (data.reproduciendoDesde) {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 const diferenciaSegundos = (Date.now() - serverTime) / 1000;
@@ -367,8 +367,8 @@
 
                                     if (player) {
                                         const aplicarSincronia = () => {
-                                            // Corrección ultra-estricta (tolerancia de 0.15s) para alcanzar el 100% de sincronía en los primeros segundos
-                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.15) {
+                                            // Tolerancia suave de 0.4s para evitar tirones o parpadeos molestos en el arranque
+                                            if (Math.abs(player.currentTime - diferenciaSegundos) > 0.4) {
                                                 player.currentTime = Math.max(0, diferenciaSegundos);
                                             }
                                             if (player.paused) {
@@ -385,7 +385,7 @@
                                 }
                             }
 
-                            // 2. Sincronización continua de alta velocidad (latidos cada 0.5s y tolerancia estricta de 0.2s)
+                            // 2. Sincronización continua profesional (Latidos cada 1.0s y tolerancia fluida de 0.4s)
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
                                 const player = document.getElementById('player');
                                 if (player && !player.paused) {
@@ -397,8 +397,8 @@
 
                                     actualizarMonitorSync(desfaseActual);
 
-                                    // Si el desfase supera los 0.2s corregimos inmediatamente para una precisión impecable
-                                    if (Math.abs(desfaseActual) > 0.2) {
+                                    // Si el desfase supera los 0.4s se ajusta de forma suave y limpia sin parpadeos bruscos
+                                    if (Math.abs(desfaseActual) > 0.4) {
                                         player.currentTime = tiempoEsperadoReal;
                                     }
                                 }
@@ -565,7 +565,7 @@
             if (player) {
                 player.load();
                 
-                // Si es administrador, emitimos latidos de alta frecuencia cada 0.5s (500ms) para máxima precisión en vídeos cortos
+                // Si es administrador, emitimos latidos estables cada 1.0 segundo (1000ms)
                 if (isAdmin) {
                     player.addEventListener('play', () => {
                         if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
@@ -576,7 +576,7 @@
                                     heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                                 }, { merge: true });
                             }
-                        }, 500); // Latido cada 0.5 segundos exactos
+                        }, 1000); // Latido cada 1 segundo exacto
                     });
 
                     player.addEventListener('pause', () => {
@@ -624,9 +624,9 @@
             textElement.textContent = `Desfase: ${desfaseStr}`;
 
             const absDesfase = Math.abs(desfase);
-            if (absDesfase < 0.1) {
+            if (absDesfase < 0.2) {
                 dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-            } else if (absDesfase < 0.3) {
+            } else if (absDesfase < 0.5) {
                 dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
             } else {
                 dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";

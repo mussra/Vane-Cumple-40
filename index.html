@@ -54,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.4-stable
+                    v3.5-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -87,6 +87,17 @@
             
             <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-3 shadow-inner relative flex items-center justify-center"></div>
             
+            <!-- BARRA DE ESTADO Y PRECARGA DE BÚFER -->
+            <div id="buffer-status-bar" class="hidden flex-col gap-1.5 mb-3 bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-xs">
+                <div class="flex justify-between text-[11px] text-slate-300 font-mono">
+                    <span id="buffer-text"><i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Precargando búfer...</span>
+                    <span id="buffer-percentage">0%</span>
+                </div>
+                <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                    <div id="buffer-progress-bar" class="bg-rose-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
             <!-- CONTROLES AVANZADOS PARA ADMINISTRADOR Y ESTADO -->
             <div id="admin-controls-bar" class="hidden flex-col gap-2 mb-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
                 <div class="flex items-center justify-between gap-2">
@@ -218,7 +229,6 @@
         let adminHeartbeatInterval = null;
         let isSeekingByAdmin = false;
 
-        // SISTEMA DE TOASTS (NOTIFICACIONES TEMPORALES)
         function mostrarToast(mensaje, tipo = 'success') {
             const container = document.getElementById('toast-container');
             if (!container) return;
@@ -363,7 +373,6 @@
             }
         }
 
-        // SCROLL ROBUSTO CON RETARDO MULTI-INTENTO PARA EVITAR QUE SE PIERDA
         function hacerScrollA(id, reintentos = 5) {
             const ejecutarScroll = () => {
                 const card = document.getElementById(`card-${id}`);
@@ -373,7 +382,6 @@
                     setTimeout(() => hacerScrollA(id, reintentos - 1), 250);
                 }
             };
-            // Espera a que el DOM y las alturas del panel de admin se estabilicen
             setTimeout(ejecutarScroll, 150);
         }
 
@@ -563,7 +571,6 @@
                             document.getElementById('qrPasswordModal').classList.remove('hidden');
                         }
 
-                        // Forzar scroll múltiple tras inicialización
                         hacerScrollA(`caso-${casoAEjecutar}`);
                     }
                 }
@@ -657,7 +664,6 @@
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
 
-                // SI SE ACABA DE MARCAR COMO RESUELTO DESDE EL PANEL DE ADMIN, HACER SCROLL Y PARPADEO
                 if (resueltoVal && !antesResueltoLocal) {
                     hacerScrollA(id);
                     hacerParpadearTarjeta(id);
@@ -719,17 +725,49 @@
             `;
 
             const adminControlsBar = document.getElementById('admin-controls-bar');
-            if (isAdmin && tipo === 'video') {
-                adminControlsBar.classList.remove('hidden');
-                adminControlsBar.classList.add('flex');
-            } else {
-                adminControlsBar.classList.add('hidden');
-            }
+            const bufferStatusBar = document.getElementById('buffer-status-bar');
 
             if (tipo === 'video') {
+                bufferStatusBar.classList.remove('hidden');
+                bufferStatusBar.classList.add('flex');
+
+                if (isAdmin) {
+                    adminControlsBar.classList.remove('hidden');
+                    adminControlsBar.classList.add('flex');
+                } else {
+                    adminControlsBar.classList.add('hidden');
+                }
+
                 const player = document.getElementById('player');
                 if (player) {
+                    // PRECARGA DE BÚFER ACTIVA INMEDIATA
                     player.load();
+
+                    player.addEventListener('progress', () => {
+                        if (player.buffered && player.buffered.length > 0 && player.duration > 0) {
+                            const bufferedEnd = player.buffered.end(player.buffered.length - 1);
+                            const percent = Math.min(100, Math.round((bufferedEnd / player.duration) * 100));
+                            
+                            const progressBar = document.getElementById('buffer-progress-bar');
+                            const percentageText = document.getElementById('buffer-percentage');
+                            const bufferText = document.getElementById('buffer-text');
+
+                            if (progressBar && percentageText && bufferText) {
+                                progressBar.style.width = percent + '%';
+                                percentageText.textContent = percent + '%';
+
+                                // Color dinámico: rojo si < 50%, verde si >= 50%
+                                if (percent < 50) {
+                                    progressBar.className = "bg-rose-500 h-full transition-all duration-300";
+                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-rose-400 mr-1.5"></i> Precargando búfer...`;
+                                } else {
+                                    progressBar.className = "bg-emerald-500 h-full transition-all duration-300";
+                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i> Búfer listo para reproducir`;
+                                }
+                            }
+                        }
+                    });
+
                     player.addEventListener('timeupdate', () => {
                         if (!player.duration) return;
                         const curMin = Math.floor(player.currentTime / 60);
@@ -755,6 +793,9 @@
                         });
                     }
                 }
+            } else {
+                bufferStatusBar.classList.add('hidden');
+                adminControlsBar.classList.add('hidden');
             }
 
             actualizarBarraControlesAudio();
@@ -938,6 +979,12 @@
                 if (adminControlsBar) {
                     adminControlsBar.classList.remove('flex');
                     adminControlsBar.classList.add('hidden');
+                }
+
+                const bufferStatusBar = document.getElementById('buffer-status-bar');
+                if (bufferStatusBar) {
+                    bufferStatusBar.classList.remove('flex');
+                    bufferStatusBar.classList.add('hidden');
                 }
 
                 if (isAdmin && activeId) {

@@ -17,6 +17,9 @@
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
 
+    <!-- CONTENEDOR DE NOTIFICACIONES FLOTANTES (TOASTS) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
     <!-- PANEL DE ADMINISTRADOR -->
     <div id="admin-panel" class="bg-slate-900 border-b border-amber-500/30 p-4 hidden">
         <div class="mx-auto max-w-6xl">
@@ -51,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.1-stable
+                    v3.3-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -215,6 +218,27 @@
         let adminHeartbeatInterval = null;
         let isSeekingByAdmin = false;
 
+        // SISTEMA DE TOASTS (NOTIFICACIONES TEMPORALES)
+        function mostrarToast(mensaje, tipo = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgClass = tipo === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200' : 'bg-slate-900/90 border-amber-500/50 text-amber-300';
+            const icon = tipo === 'error' ? 'fa-triangle-exclamation text-rose-400' : 'fa-circle-check text-amber-400';
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border ${bgClass} shadow-2xl backdrop-blur-md text-xs font-medium transform translate-y-4 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i><span>${mensaje}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
         function renderGrid() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
@@ -288,7 +312,6 @@
                                 <label class="text-slate-400 text-[10px]">Tipo de Contenido:</label>
                                 <select id="adm-tipo-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-400 font-mono text-[11px]">
                                     <option value="video" ${tipoActual==='video'?'selected':''}>Vídeo Local (.mp4)</option>
-                                    <option value="youtube" ${tipoActual==='youtube'?'selected':''}>YouTube / Enlace</option>
                                     <option value="texto" ${tipoActual==='texto'?'selected':''}>Texto / Explicación en vivo</option>
                                 </select>
                             </div>
@@ -299,7 +322,7 @@
                         </div>
 
                         <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Recurso (URL Cloudinary, ID de YouTube o Texto Descriptivo):</label>
+                            <label class="text-slate-400 text-[10px]">Recurso (URL Cloudinary o Texto Descriptivo):</label>
                             <textarea id="adm-rec-${id}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]" placeholder="https://... o texto para hablar en vivo">${c.recursoId || ''}</textarea>
                         </div>
                     </div>
@@ -340,10 +363,12 @@
             }
         }
 
-        function hacerScrollA(id) {
+        function hacerScrollA(id, reintentos = 3) {
             const card = document.getElementById(`card-${id}`);
             if (card) {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (reintentos > 0) {
+                setTimeout(() => hacerScrollA(id, reintentos - 1), 300);
             }
         }
 
@@ -447,7 +472,7 @@
                                 }
                             }
 
-                            // Sincronización para tipo vídeo local
+                            // Sincronización para vídeo local
                             if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video') {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 
@@ -486,7 +511,7 @@
                                 }
                             }
 
-                            // Sincronización continua de vídeo local
+                            // Sincronización continua
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
                                 if (player) {
@@ -520,18 +545,28 @@
                     initialLoadDone = true;
                     if (qrCasoNum) {
                         const casoAEjecutar = qrCasoNum;
-                        window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
                         
+                        // Limpieza segura de parámetros conservando el estado admin si procede
+                        const limpiarURLConRetraso = () => {
+                            window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
+                        };
+
                         if (isAdmin) {
                             desbloquearCasoQR(casoAEjecutar);
+                            setTimeout(limpiarURLConRetraso, 800);
                         } else {
                             document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
                             document.getElementById('qrPasswordModal').classList.remove('hidden');
                         }
+
+                        // Forzar scroll asegurado tras la carga de la cuadrícula
+                        setTimeout(() => {
+                            hacerScrollA(`caso-${casoAEjecutar}`);
+                        }, 500);
                     }
                 }
             }, (error) => {
-                console.error("Error en el snapshot de Firestore:", error);
+                console.error("Error en Firestore:", error);
             });
 
             setInterval(verificarEstadoRemoto, 12000);
@@ -552,7 +587,7 @@
                     setTimeout(() => { window.location.href = nuevaURL; }, 500);
                 }
             } else {
-                alert("Contraseña incorrecta.");
+                mostrarToast("Contraseña incorrecta.", "error");
                 document.getElementById('qr-secret-input').value = '';
             }
         };
@@ -563,7 +598,9 @@
             db.collection("estado_juego").doc(targetId).set({
                 resuelto: true,
                 modalAbierto: true
-            }, { merge: true }).catch(err => alert("Error: " + err.message));
+            }, { merge: true }).then(() => {
+                mostrarToast(`Caso #${numCaso} desbloqueado con éxito.`);
+            }).catch(err => mostrarToast("Error al actualizar: " + err.message, "error"));
         };
 
         window.cancelarActivacionQR = function() {
@@ -596,7 +633,7 @@
                     heartbeatTimestamp: null
                 }, { merge: true });
             }
-            batch.commit().then(() => alert(`¡${total} casos inicializados!`)).catch(err => alert("Error: " + err.message));
+            batch.commit().then(() => mostrarToast(`¡${total} casos inicializados!`)).catch(err => mostrarToast("Error: " + err.message, "error"));
         };
 
         window.guardarCambios = function() {
@@ -616,7 +653,7 @@
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
             });
-            batch.commit().then(() => alert("¡Guardado con éxito!")).catch(err => alert("Error: " + err.message));
+            batch.commit().then(() => mostrarToast("¡Guardado y sincronizado con éxito!")).catch(err => mostrarToast("Error al guardar: " + err.message, "error"));
         };
 
         let activeId = '';
@@ -650,22 +687,16 @@
                         </div>
                     `;
                 }
-            } else if (tipo === 'youtube') {
-                // Soporte para enlaces o IDs directos de YouTube
-                let ytEmbed = c.recursoId;
-                if (!ytEmbed.includes('embed/')) {
-                    const cleanId = ytEmbed.includes('v=') ? ytEmbed.split('v=')[1].split('&')[0] : ytEmbed;
-                    ytEmbed = `https://www.youtube.com/embed/${cleanId}?autoplay=1`;
-                }
-                htmlContenido = `<iframe src="${ytEmbed}" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
             } else if (tipo === 'texto') {
                 htmlContenido = `
-                    <div class="flex flex-col items-center justify-center p-6 text-center h-full bg-slate-900 overflow-y-auto">
-                        <div class="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mb-4 border border-amber-500/30">
-                            <i class="fa-solid fa-microphone-lines text-2xl"></i>
+                    <div class="flex flex-col items-center justify-center p-4 text-center h-full bg-slate-900 overflow-y-auto gap-3">
+                        <div class="relative w-36 sm:w-44 aspect-[3/4] overflow-hidden rounded-lg bg-slate-950 shadow-xl border border-slate-700">
+                            <img src="${c.imagenUrl || ''}" class="h-full w-full object-contain" alt="Imagen del caso">
                         </div>
-                        <h4 class="font-serif text-lg font-bold text-white mb-2">Explicación en Vivo</h4>
-                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md">${c.recursoId || c.descripcion}</p>
+                        <div>
+                            <h4 class="font-serif text-base font-bold text-white mb-1"><i class="fa-solid fa-microphone-lines text-amber-400 mr-1.5"></i> Explicación en Vivo</h4>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md">${c.recursoId || c.descripcion}</p>
+                        </div>
                     </div>
                 `;
             }

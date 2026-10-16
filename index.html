@@ -54,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.3-stable
+                    v3.4-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -363,13 +363,18 @@
             }
         }
 
-        function hacerScrollA(id, reintentos = 3) {
-            const card = document.getElementById(`card-${id}`);
-            if (card) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (reintentos > 0) {
-                setTimeout(() => hacerScrollA(id, reintentos - 1), 300);
-            }
+        // SCROLL ROBUSTO CON RETARDO MULTI-INTENTO PARA EVITAR QUE SE PIERDA
+        function hacerScrollA(id, reintentos = 5) {
+            const ejecutarScroll = () => {
+                const card = document.getElementById(`card-${id}`);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (reintentos > 0) {
+                    setTimeout(() => hacerScrollA(id, reintentos - 1), 250);
+                }
+            };
+            // Espera a que el DOM y las alturas del panel de admin se estabilicen
+            setTimeout(ejecutarScroll, 150);
         }
 
         function hacerParpadearTarjeta(id) {
@@ -546,7 +551,6 @@
                     if (qrCasoNum) {
                         const casoAEjecutar = qrCasoNum;
                         
-                        // Limpieza segura de parámetros conservando el estado admin si procede
                         const limpiarURLConRetraso = () => {
                             window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
                         };
@@ -559,10 +563,8 @@
                             document.getElementById('qrPasswordModal').classList.remove('hidden');
                         }
 
-                        // Forzar scroll asegurado tras la carga de la cuadrícula
-                        setTimeout(() => {
-                            hacerScrollA(`caso-${casoAEjecutar}`);
-                        }, 500);
+                        // Forzar scroll múltiple tras inicialización
+                        hacerScrollA(`caso-${casoAEjecutar}`);
                     }
                 }
             }, (error) => {
@@ -641,6 +643,8 @@
             const batch = db.batch();
             Object.keys(casosConfig).forEach((id) => {
                 const resueltoVal = document.getElementById(`adm-res-${id}`).checked;
+                const antesResueltoLocal = casosConfig[id].resuelto;
+
                 casosConfig[id] = {
                     titulo: document.getElementById(`adm-title-${id}`).value,
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
@@ -652,6 +656,12 @@
                 };
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
+
+                // SI SE ACABA DE MARCAR COMO RESUELTO DESDE EL PANEL DE ADMIN, HACER SCROLL Y PARPADEO
+                if (resueltoVal && !antesResueltoLocal) {
+                    hacerScrollA(id);
+                    hacerParpadearTarjeta(id);
+                }
             });
             batch.commit().then(() => mostrarToast("¡Guardado y sincronizado con éxito!")).catch(err => mostrarToast("Error al guardar: " + err.message, "error"));
         };

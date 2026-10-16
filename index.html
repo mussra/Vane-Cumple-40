@@ -54,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.9-stable
+                    v3.10-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -229,6 +229,7 @@
         let adminHeartbeatInterval = null;
         let isSeekingByAdmin = false;
         let isBackgroundPreloadingPaused = false;
+        let activeBufferInterval = null;
 
         function mostrarToast(mensaje, tipo = 'success') {
             const container = document.getElementById('toast-container');
@@ -424,7 +425,6 @@
             }, 300);
         }
 
-        // RED DE SEGURIDAD ROBUSTA: COMPROBACIÓN ACTIVA PERIÓDICA DE CAMBIOS EN SEGUNDO PLANO
         function verificarEstadoRemoto() {
             if (!db || !initialLoadDone) return;
             db.collection("estado_juego").get().then((snapshot) => {
@@ -443,23 +443,20 @@
                         actualizarUI(id, data.resuelto);
                     }
 
-                    // Si detectamos que se resolvió y el cliente lo había perdido, lo activamos ahora
                     if (data.resuelto && !antesResuelto) {
                         hacerScrollA(id);
                         hacerParpadearTarjeta(id);
                     }
 
-                    // Si se abrió el modal en el servidor y el cliente estaba desacoplado, lo abrimos
                     if (data.modalAbierto && !antesModalAbierto) {
                         hacerScrollA(id);
                         if (activeId !== id) {
                             openModal(id, false);
                         }
-                    } else if (data.modalAbierto === false && antesModalAbierto && activeId === id) {
+                    } else if (data.modalAbierto === false &&antesModalAbierto && activeId === id) {
                         closeModal();
                     }
 
-                    // Sincronización robusta de reproducción si el cliente perdió el evento en directo
                     if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
                         const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                         if (serverTime > 0) {
@@ -521,7 +518,6 @@
                                 }
                             }
 
-                            // Sincronización para vídeo local
                             if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video') {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 
@@ -560,7 +556,6 @@
                                 }
                             }
 
-                            // Sincronización continua
                             if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
                                 if (player) {
@@ -614,7 +609,6 @@
                 console.error("Error en Firestore:", error);
             });
 
-            // Intervalo de comprobación rápida cada 6 segundos como red de seguridad adicional ante microcortes de red
             setInterval(verificarEstadoRemoto, 6000);
             document.addEventListener("visibilitychange", () => { if (!document.hidden) verificarEstadoRemoto(); });
             window.addEventListener("online", verificarEstadoRemoto);
@@ -715,7 +709,7 @@
         let activeId = '';
         window.openModal = function(id, sincronizarServidor = true) {
             activeId = id;
-            isBackgroundPreloadingPaused = true;
+            isBackgroundPreloadingPaused = true; // Pausar precarga silenciosa para dar prioridad absoluta al vídeo activo
             
             const c = casosConfig[id];
             if (!c) return;
@@ -738,7 +732,7 @@
                 if (isAdmin) {
                     panelControlExtra = `
                         <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: Vídeo precargado en pausa.</p>
+                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: Vídeo precargando búfer al 100%...</p>
                             <button onclick="lanzarReproduccionGlobal('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
                                 <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
                             </button>
@@ -783,12 +777,26 @@
                 const player = document.getElementById('player');
                 if (player) {
                     player.load();
-                    player.play().then(() => {
-                        player.pause();
-                        player.currentTime = 0;
-                    }).catch(e => {
-                        player.load();
-                    });
+
+                    // TRUCO DE FORZADO DE DESCARGA ACTIVA HASTA EL 100% EN PAUSA
+                    if (activeBufferInterval) clearInterval(activeBufferInterval);
+                    activeBufferInterval = setInterval(() => {
+                        if (!player || player.paused === false || player.ended) {
+                            clearInterval(activeBufferInterval);
+                            return;
+                        }
+                        // Si el navegador suspende la carga antes del 95%, forzamos un mini salto de red imperceptible
+                        if (player.duration > 0 && player.buffered.length > 0) {
+                            const bufferedEnd = player.buffered.end(player.buffered.length - 1);
+                            const percent = (bufferedEnd / player.duration) * 100;
+                            if (percent < 95 && player.currentTime < bufferedEnd - 0.5) {
+                                // Forzar reconexión de buffer
+                                const t = player.currentTime;
+                                player.currentTime = t + 0.01;
+                                player.currentTime = t;
+                            }
+                        }
+                    }, 2000);
 
                     player.addEventListener('progress', () => {
                         if (player.buffered && player.buffered.length > 0 && player.duration > 0) {
@@ -806,9 +814,16 @@
                                 if (percent < 50) {
                                     progressBar.className = "bg-rose-500 h-full transition-all duration-300";
                                     bufferText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-rose-400 mr-1.5"></i> Precargando búfer (${percent}%)...`;
+                                } else if (percent < 100) {
+                                    progressBar.className = "bg-amber-500 h-full transition-all duration-300";
+                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Descargando al 100% (${percent}%)...`;
                                 } else {
                                     progressBar.className = "bg-emerald-500 h-full transition-all duration-300";
-                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i> Búfer listo (${percent}%)`;
+                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i> Búfer listo al 100%`;
+                                    if (activeBufferInterval) {
+                                        clearInterval(activeBufferInterval);
+                                        activeBufferInterval = null;
+                                    }
                                 }
                             }
                         }
@@ -830,6 +845,7 @@
 
                     if (isAdmin) {
                         player.addEventListener('play', () => {
+                            if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
                             document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
                             iniciarHeartbeatAdmin(player);
                         });
@@ -988,6 +1004,7 @@
 
         window.lanzarReproduccionGlobal = function(id) {
             if (!apiKeyValida) return;
+            if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
             const adminBar = document.getElementById('admin-sync-bar');
             if (adminBar) adminBar.remove();
 
@@ -1011,6 +1028,10 @@
             if (adminHeartbeatInterval) {
                 clearInterval(adminHeartbeatInterval);
                 adminHeartbeatInterval = null;
+            }
+            if (activeBufferInterval) {
+                clearInterval(activeBufferInterval);
+                activeBufferInterval = null;
             }
 
             const m = document.getElementById('mediaModal');
@@ -1044,7 +1065,7 @@
                 }
                 
                 activeId = '';
-                isBackgroundPreloadingPaused = false;
+                isBackgroundPreloadingPaused = false; // REANUDAR PRECARGA SILENCIOSA AL CERRAR EL MODAL
                 setTimeout(iniciarPrecargaGlobalSilenciosa, 3000);
             }, 300);
         };

@@ -54,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.5-stable
+                    v3.7-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -249,6 +249,23 @@
             }, 3500);
         }
 
+        // PRECARGA SILENCIOSA EN SEGUNDO PLANO DE TODOS LOS VÍDEOS DE LA WEB
+        function iniciarPrecargaGlobalSilenciosa() {
+            Object.keys(casosConfig).forEach((id) => {
+                const c = casosConfig[id];
+                if (c && c.tipo === 'video' && c.recursoId && c.recursoId.trim() !== '') {
+                    // Usamos fetch con modo cors y cache para almacenar el video en la caché del navegador de forma pasiva
+                    fetch(c.recursoId, { mode: 'cors', credentials: 'omit' }).then(response => {
+                        if (response.ok) {
+                            console.log(`[Precarga Fondo] Vídeo ${id} precargado correctamente.`);
+                        }
+                    }).catch(err => {
+                        // Silenciamos fallos de red puntuales en segundo plano para no molestar
+                    });
+                }
+            });
+        }
+
         function renderGrid() {
             const grid = document.getElementById('cases-grid');
             if (!grid) return;
@@ -294,6 +311,9 @@
                 `;
                 actualizarUI(id, c.resuelto);
             });
+
+            // Disparar precarga silenciosa de todos los vídeos en segundo plano
+            iniciarPrecargaGlobalSilenciosa();
         }
 
         function renderAdmin() {
@@ -669,7 +689,10 @@
                     hacerParpadearTarjeta(id);
                 }
             });
-            batch.commit().then(() => mostrarToast("¡Guardado y sincronizado con éxito!")).catch(err => mostrarToast("Error al guardar: " + err.message, "error"));
+            batch.commit().then(() => {
+                mostrarToast("¡Guardado y sincronizado con éxito!");
+                iniciarPrecargaGlobalSilenciosa();
+            }).catch(err => mostrarToast("Error al guardar: " + err.message, "error"));
         };
 
         let activeId = '';
@@ -688,7 +711,7 @@
             if (tipo === 'video') {
                 const mutedAttr = isAdmin ? '' : 'muted';
                 htmlContenido = `
-                    <video id="player" preload="auto" playsinline ${mutedAttr} class="h-full w-full object-contain">
+                    <video id="player" preload="auto" autobuffer playsinline ${mutedAttr} class="h-full w-full object-contain">
                         <source src="${c.recursoId}" type="video/mp4">
                         Tu navegador no soporta vídeos HTML5.
                     </video>
@@ -740,8 +763,13 @@
 
                 const player = document.getElementById('player');
                 if (player) {
-                    // PRECARGA DE BÚFER ACTIVA INMEDIATA
                     player.load();
+                    player.play().then(() => {
+                        player.pause();
+                        player.currentTime = 0;
+                    }).catch(e => {
+                        player.load();
+                    });
 
                     player.addEventListener('progress', () => {
                         if (player.buffered && player.buffered.length > 0 && player.duration > 0) {
@@ -756,13 +784,12 @@
                                 progressBar.style.width = percent + '%';
                                 percentageText.textContent = percent + '%';
 
-                                // Color dinámico: rojo si < 50%, verde si >= 50%
                                 if (percent < 50) {
                                     progressBar.className = "bg-rose-500 h-full transition-all duration-300";
-                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-rose-400 mr-1.5"></i> Precargando búfer...`;
+                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-rose-400 mr-1.5"></i> Precargando búfer (${percent}%)...`;
                                 } else {
                                     progressBar.className = "bg-emerald-500 h-full transition-all duration-300";
-                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i> Búfer listo para reproducir`;
+                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i> Búfer listo (${percent}%)`;
                                 }
                             }
                         }

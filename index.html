@@ -54,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.8-stable
+                    v3.9-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -228,7 +228,7 @@
         let initialLoadDone = false;
         let adminHeartbeatInterval = null;
         let isSeekingByAdmin = false;
-        let isBackgroundPreloadingPaused = false; // Bandera para pausar el fondo cuando hay un caso abierto
+        let isBackgroundPreloadingPaused = false;
 
         function mostrarToast(mensaje, tipo = 'success') {
             const container = document.getElementById('toast-container');
@@ -250,9 +250,8 @@
             }, 3500);
         }
 
-        // PRECARGA SILENCIOSA EN SEGUNDO PLANO (RESPETA SI HAY UN CASO ABIERTO)
         function iniciarPrecargaGlobalSilenciosa() {
-            if (isBackgroundPreloadingPaused || activeId) return; // Si hay modal abierto, no consumir ancho de banda
+            if (isBackgroundPreloadingPaused || activeId) return;
 
             Object.keys(casosConfig).forEach((id) => {
                 if (isBackgroundPreloadingPaused || activeId) return;
@@ -260,11 +259,9 @@
                 if (c && c.tipo === 'video' && c.recursoId && c.recursoId.trim() !== '') {
                     fetch(c.recursoId, { mode: 'cors', credentials: 'omit' }).then(response => {
                         if (response.ok) {
-                            console.log(`[Precarga Fondo] Vídeo ${id} precargado correctamente.`);
+                            // Silencioso
                         }
-                    }).catch(err => {
-                        // Silenciar fallos de red puntuales
-                    });
+                    }).catch(err => {});
                 }
             });
         }
@@ -427,6 +424,7 @@
             }, 300);
         }
 
+        // RED DE SEGURIDAD ROBUSTA: COMPROBACIÓN ACTIVA PERIÓDICA DE CAMBIOS EN SEGUNDO PLANO
         function verificarEstadoRemoto() {
             if (!db || !initialLoadDone) return;
             db.collection("estado_juego").get().then((snapshot) => {
@@ -445,11 +443,13 @@
                         actualizarUI(id, data.resuelto);
                     }
 
+                    // Si detectamos que se resolvió y el cliente lo había perdido, lo activamos ahora
                     if (data.resuelto && !antesResuelto) {
                         hacerScrollA(id);
                         hacerParpadearTarjeta(id);
                     }
 
+                    // Si se abrió el modal en el servidor y el cliente estaba desacoplado, lo abrimos
                     if (data.modalAbierto && !antesModalAbierto) {
                         hacerScrollA(id);
                         if (activeId !== id) {
@@ -457,6 +457,20 @@
                         }
                     } else if (data.modalAbierto === false && antesModalAbierto && activeId === id) {
                         closeModal();
+                    }
+
+                    // Sincronización robusta de reproducción si el cliente perdió el evento en directo
+                    if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
+                        const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
+                        if (serverTime > 0) {
+                            const nowCorregido = Date.now() + clockOffsetMs;
+                            const diferenciaSegundos = (nowCorregido - serverTime) / 1000;
+                            const player = document.getElementById('player');
+                            if (player && player.paused && !data.isPaused && diferenciaSegundos >= 0 && diferenciaSegundos < 120) {
+                                player.currentTime = Math.max(0, diferenciaSegundos);
+                                player.play().catch(e => {});
+                            }
+                        }
                     }
                 });
             }).catch(err => console.log("Aviso de sondeo de respaldo:", err));
@@ -600,7 +614,8 @@
                 console.error("Error en Firestore:", error);
             });
 
-            setInterval(verificarEstadoRemoto, 12000);
+            // Intervalo de comprobación rápida cada 6 segundos como red de seguridad adicional ante microcortes de red
+            setInterval(verificarEstadoRemoto, 6000);
             document.addEventListener("visibilitychange", () => { if (!document.hidden) verificarEstadoRemoto(); });
             window.addEventListener("online", verificarEstadoRemoto);
         } else {
@@ -677,7 +692,7 @@
                 casosConfig[id] = {
                     titulo: document.getElementById(`adm-title-${id}`).value,
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
-                    tipo: document.getElementById(`adm-tipo-${id}` ).value,
+                    tipo: document.getElementById(`adm-tipo-${id}`).value,
                     recursoId: document.getElementById(`adm-rec-${id}`).value,
                     imagenUrl: document.getElementById(`adm-img-${id}`).value,
                     resuelto: resueltoVal,
@@ -700,7 +715,7 @@
         let activeId = '';
         window.openModal = function(id, sincronizarServidor = true) {
             activeId = id;
-            isBackgroundPreloadingPaused = true; // PAUSAR PRECARGA SILENCIOSA DE FONDO
+            isBackgroundPreloadingPaused = true;
             
             const c = casosConfig[id];
             if (!c) return;
@@ -1029,9 +1044,7 @@
                 }
                 
                 activeId = '';
-                isBackgroundPreloadingPaused = false; // REANUDAR PRECARGA SILENCIOSA AL CERRAR EL MODAL
-                
-                // Opcional: reanudar la precarga de fondo tras un breve margen
+                isBackgroundPreloadingPaused = false;
                 setTimeout(iniciarPrecargaGlobalSilenciosa, 3000);
             }, 300);
         };

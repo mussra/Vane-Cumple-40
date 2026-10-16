@@ -54,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.7-stable
+                    v3.8-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -228,6 +228,7 @@
         let initialLoadDone = false;
         let adminHeartbeatInterval = null;
         let isSeekingByAdmin = false;
+        let isBackgroundPreloadingPaused = false; // Bandera para pausar el fondo cuando hay un caso abierto
 
         function mostrarToast(mensaje, tipo = 'success') {
             const container = document.getElementById('toast-container');
@@ -249,18 +250,20 @@
             }, 3500);
         }
 
-        // PRECARGA SILENCIOSA EN SEGUNDO PLANO DE TODOS LOS VÍDEOS DE LA WEB
+        // PRECARGA SILENCIOSA EN SEGUNDO PLANO (RESPETA SI HAY UN CASO ABIERTO)
         function iniciarPrecargaGlobalSilenciosa() {
+            if (isBackgroundPreloadingPaused || activeId) return; // Si hay modal abierto, no consumir ancho de banda
+
             Object.keys(casosConfig).forEach((id) => {
+                if (isBackgroundPreloadingPaused || activeId) return;
                 const c = casosConfig[id];
                 if (c && c.tipo === 'video' && c.recursoId && c.recursoId.trim() !== '') {
-                    // Usamos fetch con modo cors y cache para almacenar el video en la caché del navegador de forma pasiva
                     fetch(c.recursoId, { mode: 'cors', credentials: 'omit' }).then(response => {
                         if (response.ok) {
                             console.log(`[Precarga Fondo] Vídeo ${id} precargado correctamente.`);
                         }
                     }).catch(err => {
-                        // Silenciamos fallos de red puntuales en segundo plano para no molestar
+                        // Silenciar fallos de red puntuales
                     });
                 }
             });
@@ -312,7 +315,6 @@
                 actualizarUI(id, c.resuelto);
             });
 
-            // Disparar precarga silenciosa de todos los vídeos en segundo plano
             iniciarPrecargaGlobalSilenciosa();
         }
 
@@ -675,7 +677,7 @@
                 casosConfig[id] = {
                     titulo: document.getElementById(`adm-title-${id}`).value,
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
-                    tipo: document.getElementById(`adm-tipo-${id}`).value,
+                    tipo: document.getElementById(`adm-tipo-${id}` ).value,
                     recursoId: document.getElementById(`adm-rec-${id}`).value,
                     imagenUrl: document.getElementById(`adm-img-${id}`).value,
                     resuelto: resueltoVal,
@@ -698,6 +700,8 @@
         let activeId = '';
         window.openModal = function(id, sincronizarServidor = true) {
             activeId = id;
+            isBackgroundPreloadingPaused = true; // PAUSAR PRECARGA SILENCIOSA DE FONDO
+            
             const c = casosConfig[id];
             if (!c) return;
             
@@ -1023,7 +1027,12 @@
                         heartbeatTimestamp: null
                     }, { merge: true });
                 }
+                
                 activeId = '';
+                isBackgroundPreloadingPaused = false; // REANUDAR PRECARGA SILENCIOSA AL CERRAR EL MODAL
+                
+                // Opcional: reanudar la precarga de fondo tras un breve margen
+                setTimeout(iniciarPrecargaGlobalSilenciosa, 3000);
             }, 300);
         };
     </script>

@@ -51,7 +51,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.0-stable
+                    v3.1-stable
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -98,17 +98,14 @@
                         <input type="range" id="admin-volume-slider" min="0" max="1" step="0.05" value="1" oninput="adminChangeVolume(this.value)" class="w-20 accent-amber-500 cursor-pointer">
                     </div>
                 </div>
-                <!-- Barra de tiempo (Seeker) interactiva -->
                 <div class="w-full flex items-center gap-2">
                     <input type="range" id="admin-seek-bar" min="0" max="100" value="0" step="0.1" oninput="adminSeeking(this.value)" onchange="adminSeekEnd(this.value)" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded">
                 </div>
             </div>
 
-            <!-- BARRA DE CONTROLES EXTERNOS Y MONITOR DE SINCRONIZACIÓN -->
+            <!-- BARRA DE CONTROLES EXTERNOS Y MONITOR -->
             <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800 gap-2 flex-wrap">
-                <div id="audio-status-label" class="flex items-center">
-                    <!-- Se rellena dinámicamente -->
-                </div>
+                <div id="audio-status-label" class="flex items-center"></div>
                 
                 <div class="flex items-center gap-2">
                     <div id="sync-monitor-badge" class="hidden items-center gap-1.5 bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 font-mono text-[11px]">
@@ -276,6 +273,7 @@
 
             keys.forEach((id) => {
                 const c = casosConfig[id];
+                const tipoActual = c.tipo || 'video';
                 editor.innerHTML += `
                     <div class="bg-slate-950 p-3 rounded border border-slate-800 text-xs space-y-2">
                         <div class="flex justify-between font-bold text-amber-400">
@@ -285,14 +283,24 @@
                         <input type="text" id="adm-title-${id}" value="${c.titulo || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
                         <input type="text" id="adm-desc-${id}" value="${c.descripcion || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
                         
-                        <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Ruta/URL de la Foto (Vertical/Polaroid):</label>
-                            <input type="text" id="adm-img-${id}" value="${c.imagenUrl || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200 font-mono text-[11px]" placeholder="Ej: assets/recuerdos/foto-vane.png">
+                        <div class="flex gap-2">
+                            <div class="w-1/2">
+                                <label class="text-slate-400 text-[10px]">Tipo de Contenido:</label>
+                                <select id="adm-tipo-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-400 font-mono text-[11px]">
+                                    <option value="video" ${tipoActual==='video'?'selected':''}>Vídeo Local (.mp4)</option>
+                                    <option value="youtube" ${tipoActual==='youtube'?'selected':''}>YouTube / Enlace</option>
+                                    <option value="texto" ${tipoActual==='texto'?'selected':''}>Texto / Explicación en vivo</option>
+                                </select>
+                            </div>
+                            <div class="w-1/2">
+                                <label class="text-slate-400 text-[10px]">Ruta/URL Foto (Polaroid):</label>
+                                <input type="text" id="adm-img-${id}" value="${c.imagenUrl || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200 font-mono text-[11px]" placeholder="assets/foto.jpg">
+                            </div>
                         </div>
 
                         <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">URL de Cloudinary (Vídeo .mp4):</label>
-                            <input type="text" id="adm-rec-${id}" value="${c.recursoId || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]" placeholder="https://res.cloudinary.com/...">
+                            <label class="text-slate-400 text-[10px]">Recurso (URL Cloudinary, ID de YouTube o Texto Descriptivo):</label>
+                            <textarea id="adm-rec-${id}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]" placeholder="https://... o texto para hablar en vivo">${c.recursoId || ''}</textarea>
                         </div>
                     </div>
                 `;
@@ -439,8 +447,8 @@
                                 }
                             }
 
-                            // 1. SINCRONIZACIÓN INICIAL OPTIMIZADA CON OFFSET DE RELOJ
-                            if (!isAdmin && data.reproduciendoDesde) {
+                            // Sincronización para tipo vídeo local
+                            if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video') {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 
                                 if (serverTime > 0) {
@@ -464,7 +472,7 @@
                                                 if (data.isPaused) {
                                                     player.pause();
                                                 } else if (player.paused) {
-                                                    player.play().catch(e => console.log("Play bloqueado:", e));
+                                                    player.play().catch(e => {});
                                                 }
                                             };
 
@@ -478,11 +486,10 @@
                                 }
                             }
 
-                            // 2. SINCRONIZACIÓN CONTINUA ROBUSTA CON OFFSET DE RELOJ Y ESTADO DE PAUSA
-                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id) {
+                            // Sincronización continua de vídeo local
+                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
                                 if (player) {
-                                    // Sincronizar estado de pausa/reproducción enviado por el maestro
                                     if (data.isPaused && !player.paused) {
                                         player.pause();
                                     } else if (!data.isPaused && player.paused && data.reproduciendoDesde) {
@@ -525,21 +532,11 @@
                 }
             }, (error) => {
                 console.error("Error en el snapshot de Firestore:", error);
-                if (isAdmin) {
-                    document.getElementById('admin-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error de conexión: ${error.message}`;
-                    document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
-                }
             });
 
             setInterval(verificarEstadoRemoto, 12000);
-
-            document.addEventListener("visibilitychange", () => {
-                if (!document.hidden) {
-                    verificarEstadoRemoto();
-                }
-            });
+            document.addEventListener("visibilitychange", () => { if (!document.hidden) verificarEstadoRemoto(); });
             window.addEventListener("online", verificarEstadoRemoto);
-
         } else {
             renderGrid();
         }
@@ -552,12 +549,10 @@
                     const nuevaURL = window.location.pathname + `?admin=${PASSWORD_ADMIN}`;
                     window.history.replaceState({}, document.title, nuevaURL);
                     desbloquearCasoQR(qrCasoNum);
-                    setTimeout(() => {
-                        window.location.href = nuevaURL;
-                    }, 500);
+                    setTimeout(() => { window.location.href = nuevaURL; }, 500);
                 }
             } else {
-                alert("Contraseña incorrecta. Solo el administrador puede desbloquear los casos.");
+                alert("Contraseña incorrecta.");
                 document.getElementById('qr-secret-input').value = '';
             }
         };
@@ -568,9 +563,7 @@
             db.collection("estado_juego").doc(targetId).set({
                 resuelto: true,
                 modalAbierto: true
-            }, { merge: true }).then(() => {
-                console.log(`Caso #${numCaso} desbloqueado y modal abierto.`);
-            }).catch(err => alert("Error al actualizar Firestore: " + err.message));
+            }, { merge: true }).catch(err => alert("Error: " + err.message));
         };
 
         window.cancelarActivacionQR = function() {
@@ -579,17 +572,11 @@
         };
 
         window.inicializarCasosConConfirmacion = function() {
-            const seguro = confirm("⚠️ ¿Estás seguro de que quieres inicializar los casos? Esto sobrescribirá la configuración actual y perderás el trabajo guardado.");
-            if (seguro) {
-                inicializarCasos();
-            }
+            if (confirm("⚠️ ¿Estás seguro de inicializar los casos?")) inicializarCasos();
         };
 
         window.inicializarCasos = function() {
-            if (!apiKeyValida) {
-                alert("Configura una API Key válida antes de inicializar casos.");
-                return;
-            }
+            if (!apiKeyValida) return;
             const total = parseInt(document.getElementById('input-total-casos').value) || 13;
             const batch = db.batch();
             
@@ -609,24 +596,18 @@
                     heartbeatTimestamp: null
                 }, { merge: true });
             }
-
-            batch.commit().then(() => {
-                alert(`¡Se han inicializado ${total} casos en Firestore correctamente!`);
-            }).catch(err => alert("Error al inicializar: " + err.message));
+            batch.commit().then(() => alert(`¡${total} casos inicializados!`)).catch(err => alert("Error: " + err.message));
         };
 
         window.guardarCambios = function() {
-            if (!apiKeyValida) {
-                alert("Configura una API Key válida antes de guardar.");
-                return;
-            }
+            if (!apiKeyValida) return;
             const batch = db.batch();
             Object.keys(casosConfig).forEach((id) => {
                 const resueltoVal = document.getElementById(`adm-res-${id}`).checked;
                 casosConfig[id] = {
                     titulo: document.getElementById(`adm-title-${id}`).value,
                     descripcion: document.getElementById(`adm-desc-${id}`).value,
-                    tipo: 'video',
+                    tipo: document.getElementById(`adm-tipo-${id}`).value,
                     recursoId: document.getElementById(`adm-rec-${id}`).value,
                     imagenUrl: document.getElementById(`adm-img-${id}`).value,
                     resuelto: resueltoVal,
@@ -635,7 +616,7 @@
                 const ref = db.collection("estado_juego").doc(id);
                 batch.set(ref, casosConfig[id], { merge: true });
             });
-            batch.commit().then(() => alert("¡Guardado y sincronizado en la nube con éxito!")).catch(err => alert("Error al guardar: " + err.message));
+            batch.commit().then(() => alert("¡Guardado con éxito!")).catch(err => alert("Error: " + err.message));
         };
 
         let activeId = '';
@@ -646,23 +627,45 @@
             
             hacerScrollA(id);
             document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
-            const mutedAttr = isAdmin ? '' : 'muted';
+            const tipo = c.tipo || 'video';
 
-            let htmlContenido = `
-                <video id="player" preload="auto" playsinline ${mutedAttr} class="h-full w-full object-contain">
-                    <source src="${c.recursoId}" type="video/mp4">
-                    Tu navegador no soporta vídeos HTML5.
-                </video>
-            `;
-
+            let htmlContenido = '';
             let panelControlExtra = '';
-            if (isAdmin) {
-                panelControlExtra = `
-                    <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                        <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: El vídeo está precargado en pausa en el panel de control.</p>
-                        <button onclick="lanzarReproduccionGlobal('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
-                            <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
-                        </button>
+
+            if (tipo === 'video') {
+                const mutedAttr = isAdmin ? '' : 'muted';
+                htmlContenido = `
+                    <video id="player" preload="auto" playsinline ${mutedAttr} class="h-full w-full object-contain">
+                        <source src="${c.recursoId}" type="video/mp4">
+                        Tu navegador no soporta vídeos HTML5.
+                    </video>
+                `;
+                if (isAdmin) {
+                    panelControlExtra = `
+                        <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
+                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: Vídeo precargado en pausa.</p>
+                            <button onclick="lanzarReproduccionGlobal('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
+                                <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
+                            </button>
+                        </div>
+                    `;
+                }
+            } else if (tipo === 'youtube') {
+                // Soporte para enlaces o IDs directos de YouTube
+                let ytEmbed = c.recursoId;
+                if (!ytEmbed.includes('embed/')) {
+                    const cleanId = ytEmbed.includes('v=') ? ytEmbed.split('v=')[1].split('&')[0] : ytEmbed;
+                    ytEmbed = `https://www.youtube.com/embed/${cleanId}?autoplay=1`;
+                }
+                htmlContenido = `<iframe src="${ytEmbed}" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            } else if (tipo === 'texto') {
+                htmlContenido = `
+                    <div class="flex flex-col items-center justify-center p-6 text-center h-full bg-slate-900 overflow-y-auto">
+                        <div class="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mb-4 border border-amber-500/30">
+                            <i class="fa-solid fa-microphone-lines text-2xl"></i>
+                        </div>
+                        <h4 class="font-serif text-lg font-bold text-white mb-2">Explicación en Vivo</h4>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md">${c.recursoId || c.descripcion}</p>
                     </div>
                 `;
             }
@@ -674,66 +677,57 @@
                 </div>
             `;
 
-            // Mostrar controles avanzados si es Admin
             const adminControlsBar = document.getElementById('admin-controls-bar');
-            if (isAdmin) {
+            if (isAdmin && tipo === 'video') {
                 adminControlsBar.classList.remove('hidden');
                 adminControlsBar.classList.add('flex');
             } else {
                 adminControlsBar.classList.add('hidden');
             }
 
-            const player = document.getElementById('player');
-            if (player) {
-                player.load();
-                
-                player.addEventListener('timeupdate', () => {
-                    if (!player.duration) return;
-                    const currentMinutes = Math.floor(player.currentTime / 60);
-                    const currentSeconds = Math.floor(player.currentTime % 60);
-                    const durationMinutes = Math.floor(player.duration / 60);
-                    const durationSeconds = Math.floor(player.duration % 60);
-
-                    const tiempoStr = `${String(currentMinutes).padStart(2, '0')}:${String(currentSeconds).padStart(2, '0')} / ${String(durationMinutes).padStart(2, '0')}:${String(durationSeconds).padStart(2, '0')}`;
-                    
-                    const timeDisplay = document.getElementById('time-display');
-                    if (timeDisplay) timeDisplay.textContent = tiempoStr;
-
-                    const seekBar = document.getElementById('admin-seek-bar');
-                    if (seekBar && !isSeekingByAdmin) {
-                        seekBar.value = (player.currentTime / player.duration) * 100;
-                    }
-                });
-
-                if (isAdmin) {
-                    player.addEventListener('play', () => {
-                        document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
-                        iniciarHeartbeatAdmin(player);
-                    });
-
-                    player.addEventListener('pause', () => {
-                        document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                        if (!isSeekingByAdmin) {
-                            pararHeartbeatAdmin(true);
+            if (tipo === 'video') {
+                const player = document.getElementById('player');
+                if (player) {
+                    player.load();
+                    player.addEventListener('timeupdate', () => {
+                        if (!player.duration) return;
+                        const curMin = Math.floor(player.currentTime / 60);
+                        const curSec = Math.floor(player.currentTime % 60);
+                        const durMin = Math.floor(player.duration / 60);
+                        const durSec = Math.floor(player.duration % 60);
+                        document.getElementById('time-display').textContent = `${String(curMin).padStart(2,'0')}:${String(curSec).padStart(2,'0')} / ${String(durMin).padStart(2,'0')}:${String(durSec).padStart(2,'0')}`;
+                        
+                        const seekBar = document.getElementById('admin-seek-bar');
+                        if (seekBar && !isSeekingByAdmin) {
+                            seekBar.value = (player.currentTime / player.duration) * 100;
                         }
                     });
 
-                    player.addEventListener('ended', () => {
-                        document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                        pararHeartbeatAdmin(true);
-                    });
+                    if (isAdmin) {
+                        player.addEventListener('play', () => {
+                            document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
+                            iniciarHeartbeatAdmin(player);
+                        });
+                        player.addEventListener('pause', () => {
+                            document.getElementById('admin-play-icon').className = "fa-solid fa-play";
+                            if (!isSeekingByAdmin) pararHeartbeatAdmin(true);
+                        });
+                    }
                 }
             }
 
             actualizarBarraControlesAudio();
-
             const syncBadge = document.getElementById('sync-monitor-badge');
             if (syncBadge) {
-                syncBadge.classList.remove('hidden');
-                syncBadge.classList.add('flex');
-                if (isAdmin) {
-                    document.getElementById('sync-status-text').textContent = "Reloj Maestro (Admin)";
-                    document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+                if (tipo === 'video') {
+                    syncBadge.classList.remove('hidden');
+                    syncBadge.classList.add('flex');
+                    if (isAdmin) {
+                        document.getElementById('sync-status-text').textContent = "Reloj Maestro (Admin)";
+                        document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+                    }
+                } else {
+                    syncBadge.classList.add('hidden');
                 }
             }
 
@@ -779,12 +773,9 @@
 
         window.adminTogglePlayPause = function() {
             const player = document.getElementById('player');
-            if (!player) return;
-
-            if (player.paused) {
-                player.play().catch(e => console.log("Play error:", e));
-            } else {
-                player.pause();
+            if (player) {
+                if (player.paused) player.play().catch(e => {});
+                else player.pause();
             }
         };
 
@@ -802,10 +793,7 @@
         window.adminSeeking = function(val) {
             isSeekingByAdmin = true;
             const player = document.getElementById('player');
-            if (player && player.duration) {
-                const targetTime = (val / 100) * player.duration;
-                player.currentTime = targetTime;
-            }
+            if (player && player.duration) player.currentTime = (val / 100) * player.duration;
         };
 
         window.adminSeekEnd = function(val) {
@@ -814,7 +802,6 @@
                 const targetTime = (val / 100) * player.duration;
                 player.currentTime = targetTime;
                 isSeekingByAdmin = false;
-
                 if (activeId && isAdmin) {
                     db.collection("estado_juego").doc(activeId).set({
                         tiempoActual: targetTime,
@@ -832,15 +819,10 @@
 
             const desfaseStr = desfase > 0 ? `+${desfase.toFixed(2)}s` : `${desfase.toFixed(2)}s`;
             textElement.textContent = `Desfase: ${desfaseStr}`;
-
             const absDesfase = Math.abs(desfase);
-            if (absDesfase < 0.3) {
-                dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-            } else if (absDesfase < 0.7) {
-                dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-            } else {
-                dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";
-            }
+            if (absDesfase < 0.3) dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+            else if (absDesfase < 0.7) dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+            else dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";
         }
 
         window.toggleAudio = function() {
@@ -854,54 +836,37 @@
         function actualizarBarraControlesAudio() {
             const p = document.getElementById('player');
             const audioLabel = document.getElementById('audio-status-label');
-            if (!p || !audioLabel) return;
+            if (!p || !audioLabel) {
+                if (audioLabel) audioLabel.innerHTML = '';
+                return;
+            }
 
             if (p.muted) {
-                audioLabel.innerHTML = `
-                    <button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700">
-                        <i class="fa-solid fa-volume-xmark text-amber-400"></i> <span>Activar Audio</span>
-                    </button>
-                `;
+                audioLabel.innerHTML = `<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700"><i class="fa-solid fa-volume-xmark text-amber-400"></i> <span>Activar Audio</span></button>`;
             } else {
-                audioLabel.innerHTML = `
-                    <button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-lg text-xs transition-colors border border-emerald-500/40">
-                        <i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Silenciar</span>
-                    </button>
-                `;
+                audioLabel.innerHTML = `<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-lg text-xs transition-colors border border-emerald-500/40"><i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Silenciar</span></button>`;
             }
         }
 
         window.toggleFullScreen = function() {
             const wrapper = document.getElementById('video-wrapper');
             if (!wrapper) return;
-
             if (!document.fullscreenElement) {
-                if (wrapper.requestFullscreen) {
-                    wrapper.requestFullscreen();
-                } else if (wrapper.webkitRequestFullscreen) {
-                    wrapper.webkitRequestFullscreen();
-                } else if (wrapper.msRequestFullscreen) {
-                    wrapper.msRequestFullscreen();
-                }
+                if (wrapper.requestFullscreen) wrapper.requestFullscreen();
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (wrapper.webkitExitFullscreen) {
-                    wrapper.webkitExitFullscreen();
-                }
+                if (document.exitFullscreen) document.exitFullscreen();
             }
         };
 
         window.lanzarReproduccionGlobal = function(id) {
             if (!apiKeyValida) return;
-            
             const adminBar = document.getElementById('admin-sync-bar');
             if (adminBar) adminBar.remove();
 
             const player = document.getElementById('player');
             if (player) {
                 player.currentTime = 0;
-                player.play().catch(e => console.log("Play local del admin bloqueado:", e));
+                player.play().catch(e => {});
             }
 
             const now = firebase.firestore.FieldValue.serverTimestamp();

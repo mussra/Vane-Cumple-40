@@ -24,7 +24,7 @@
     <div id="admin-panel" class="bg-slate-900 border-b border-amber-500/30 p-4 hidden">
         <div class="mx-auto max-w-6xl">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Configuración de Administrador</h3>
+                <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Control Remoto (Admin)</h3>
                 <div class="flex gap-2 flex-wrap items-center">
                     <div class="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded border border-slate-800 text-xs">
                         <span class="text-slate-400">Nº de Casos:</span>
@@ -53,8 +53,8 @@
                 <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
                     Museo Virtual • Edición Coleccionista
                 </span>
-                <span class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v3.10-stable
+                <span id="badge-role" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
+                    v4.1-master-device
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -179,6 +179,7 @@
         const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
         
         const isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
+        const isMaster = urlParams.get('role') === 'master';
         const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
 
         let clientId = localStorage.getItem('vane_client_id');
@@ -188,6 +189,14 @@
         }
 
         let clockOffsetMs = 0;
+
+        // Actualizar etiqueta visual del rol en cabecera
+        const badgeRole = document.getElementById('badge-role');
+        if (badgeRole) {
+            if (isAdmin) badgeRole.textContent = 'v4.1 • Control Remoto (Admin)';
+            else if (isMaster) badgeRole.textContent = 'v4.1 • Reproductor Principal (TV Sala)';
+            else badgeRole.textContent = 'v4.1 • Invitado Sincronizado';
+        }
 
         if (isAdmin) {
             document.getElementById('admin-panel').classList.remove('hidden');
@@ -226,7 +235,7 @@
 
         let casosConfig = {};
         let initialLoadDone = false;
-        let adminHeartbeatInterval = null;
+        let masterHeartbeatInterval = null;
         let isSeekingByAdmin = false;
         let isBackgroundPreloadingPaused = false;
         let activeBufferInterval = null;
@@ -453,11 +462,12 @@
                         if (activeId !== id) {
                             openModal(id, false);
                         }
-                    } else if (data.modalAbierto === false &&antesModalAbierto && activeId === id) {
+                    } else if (data.modalAbierto === false && antesModalAbierto && activeId === id) {
                         closeModal();
                     }
 
-                    if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
+                    // Sincronización para invitados contra el Master Device / Reproductor Principal
+                    if (!isAdmin && !isMaster && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
                         const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                         if (serverTime > 0) {
                             const nowCorregido = Date.now() + clockOffsetMs;
@@ -477,8 +487,10 @@
             db = firebase.firestore();
 
             if (isAdmin) {
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado a Firestore con éxito.';
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado como Administrador (Control Remoto).';
                 document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
+            } else if (isMaster) {
+                console.log("Conectado como Reproductor Principal (TV de Sala).");
             }
 
             db.collection("estado_juego").onSnapshot((snapshot) => {
@@ -518,6 +530,7 @@
                                 }
                             }
 
+                            // Sincronización de invitados y master al recibir eventos de reproducción
                             if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video') {
                                 const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                                 
@@ -541,7 +554,7 @@
                                                 }
                                                 if (data.isPaused) {
                                                     player.pause();
-                                                } else if (player.paused) {
+                                                } else if (player.paused && !isMaster) {
                                                     player.play().catch(e => {});
                                                 }
                                             };
@@ -556,7 +569,8 @@
                                 }
                             }
 
-                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
+                            // Sincronización continua de tiempo para clientes estándar contra el Reproductor Principal
+                            if (!isAdmin && !isMaster && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
                                 if (player) {
                                     if (data.isPaused && !player.paused) {
@@ -591,7 +605,7 @@
                         const casoAEjecutar = qrCasoNum;
                         
                         const limpiarURLConRetraso = () => {
-                            window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
+                            window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : (isMaster ? '?role=master' : '')));
                         };
 
                         if (isAdmin) {
@@ -670,7 +684,8 @@
                     modalAbierto: false,
                     tiempoActual: 0,
                     isPaused: true,
-                    heartbeatTimestamp: null
+                    heartbeatTimestamp: null,
+                    masterClientId: null
                 }, { merge: true });
             }
             batch.commit().then(() => mostrarToast(`¡${total} casos inicializados!`)).catch(err => mostrarToast("Error: " + err.message, "error"));
@@ -709,7 +724,7 @@
         let activeId = '';
         window.openModal = function(id, sincronizarServidor = true) {
             activeId = id;
-            isBackgroundPreloadingPaused = true; // Pausar precarga silenciosa para dar prioridad absoluta al vídeo activo
+            isBackgroundPreloadingPaused = true;
             
             const c = casosConfig[id];
             if (!c) return;
@@ -722,7 +737,8 @@
             let panelControlExtra = '';
 
             if (tipo === 'video') {
-                const mutedAttr = isAdmin ? '' : 'muted';
+                // Si es master device, el audio va activo por defecto (sin mute). Invitados normales entran silenciados por defecto.
+                const mutedAttr = (isAdmin || isMaster) ? '' : 'muted';
                 htmlContenido = `
                     <video id="player" preload="auto" autobuffer playsinline ${mutedAttr} class="h-full w-full object-contain">
                         <source src="${c.recursoId}" type="video/mp4">
@@ -732,7 +748,7 @@
                 if (isAdmin) {
                     panelControlExtra = `
                         <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Modo Sala: Vídeo precargando búfer al 100%...</p>
+                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control Admin: Lanzar reproducción al Reproductor Principal de la sala.</p>
                             <button onclick="lanzarReproduccionGlobal('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
                                 <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
                             </button>
@@ -767,7 +783,7 @@
                 bufferStatusBar.classList.remove('hidden');
                 bufferStatusBar.classList.add('flex');
 
-                if (isAdmin) {
+                if (isAdmin || isMaster) {
                     adminControlsBar.classList.remove('hidden');
                     adminControlsBar.classList.add('flex');
                 } else {
@@ -778,19 +794,16 @@
                 if (player) {
                     player.load();
 
-                    // TRUCO DE FORZADO DE DESCARGA ACTIVA HASTA EL 100% EN PAUSA
                     if (activeBufferInterval) clearInterval(activeBufferInterval);
                     activeBufferInterval = setInterval(() => {
                         if (!player || player.paused === false || player.ended) {
                             clearInterval(activeBufferInterval);
                             return;
                         }
-                        // Si el navegador suspende la carga antes del 95%, forzamos un mini salto de red imperceptible
                         if (player.duration > 0 && player.buffered.length > 0) {
                             const bufferedEnd = player.buffered.end(player.buffered.length - 1);
                             const percent = (bufferedEnd / player.duration) * 100;
                             if (percent < 95 && player.currentTime < bufferedEnd - 0.5) {
-                                // Forzar reconexión de buffer
                                 const t = player.currentTime;
                                 player.currentTime = t + 0.01;
                                 player.currentTime = t;
@@ -843,15 +856,26 @@
                         }
                     });
 
-                    if (isAdmin) {
+                    // Si este cliente es el Reproductor Principal (Master), él gestiona y escribe el pulso de sincronización
+                    if (isMaster) {
                         player.addEventListener('play', () => {
                             if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
                             document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
-                            iniciarHeartbeatAdmin(player);
+                            iniciarHeartbeatMaster(player);
                         });
                         player.addEventListener('pause', () => {
                             document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                            if (!isSeekingByAdmin) pararHeartbeatAdmin(true);
+                            if (!isSeekingByAdmin) pararHeartbeatMaster(true);
+                        });
+                    }
+
+                    // Si es Admin, también puede controlar el play/pause del reproductor local si lo desea o emitir órdenes
+                    if (isAdmin) {
+                        player.addEventListener('play', () => {
+                            document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
+                        });
+                        player.addEventListener('pause', () => {
+                            document.getElementById('admin-play-icon').className = "fa-solid fa-play";
                         });
                     }
                 }
@@ -867,8 +891,14 @@
                     syncBadge.classList.remove('hidden');
                     syncBadge.classList.add('flex');
                     if (isAdmin) {
-                        document.getElementById('sync-status-text').textContent = "Reloj Maestro (Admin)";
+                        document.getElementById('sync-status-text').textContent = "Mando Admin (Control Remoto)";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+                    } else if (isMaster) {
+                        document.getElementById('sync-status-text').textContent = "Nodo Maestro (TV Sala)";
+                        document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                    } else {
+                        document.getElementById('sync-status-text').textContent = "Sincronizado con TV Sala";
+                        document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                     }
                 } else {
                     syncBadge.classList.add('hidden');
@@ -887,29 +917,32 @@
             }
         };
 
-        function iniciarHeartbeatAdmin(player) {
-            if (adminHeartbeatInterval) clearInterval(adminHeartbeatInterval);
-            adminHeartbeatInterval = setInterval(() => {
-                if (!player.paused && activeId && isAdmin) {
+        // Heartbeat específico del Reproductor Principal (Master Device)
+        function iniciarHeartbeatMaster(player) {
+            if (masterHeartbeatInterval) clearInterval(masterHeartbeatInterval);
+            masterHeartbeatInterval = setInterval(() => {
+                if (!player.paused && activeId && isMaster) {
                     db.collection("estado_juego").doc(activeId).set({
                         tiempoActual: player.currentTime,
                         isPaused: false,
+                        masterClientId: clientId,
                         heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 }
-            }, 1500);
+            }, 1000);
         }
 
-        function pararHeartbeatAdmin(marcarPausa = false) {
-            if (adminHeartbeatInterval) {
-                clearInterval(adminHeartbeatInterval);
-                adminHeartbeatInterval = null;
+        function pararHeartbeatMaster(marcarPausa = false) {
+            if (masterHeartbeatInterval) {
+                clearInterval(masterHeartbeatInterval);
+                masterHeartbeatInterval = null;
             }
-            if (activeId && isAdmin) {
+            if (activeId && isMaster) {
                 const player = document.getElementById('player');
                 db.collection("estado_juego").doc(activeId).set({
                     tiempoActual: player ? player.currentTime : 0,
                     isPaused: marcarPausa,
+                    masterClientId: clientId,
                     heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
             }
@@ -918,8 +951,17 @@
         window.adminTogglePlayPause = function() {
             const player = document.getElementById('player');
             if (player) {
-                if (player.paused) player.play().catch(e => {});
-                else player.pause();
+                if (player.paused) {
+                    player.play().catch(e => {});
+                    if (isAdmin && activeId) {
+                        db.collection("estado_juego").doc(activeId).set({ isPaused: false }, { merge: true });
+                    }
+                } else {
+                    player.pause();
+                    if (isAdmin && activeId) {
+                        db.collection("estado_juego").doc(activeId).set({ isPaused: true }, { merge: true });
+                    }
+                }
             }
         };
 
@@ -946,7 +988,7 @@
                 const targetTime = (val / 100) * player.duration;
                 player.currentTime = targetTime;
                 isSeekingByAdmin = false;
-                if (activeId && isAdmin) {
+                if (activeId && (isAdmin || isMaster)) {
                     db.collection("estado_juego").doc(activeId).set({
                         tiempoActual: targetTime,
                         isPaused: player.paused,
@@ -959,7 +1001,7 @@
         function actualizarMonitorSync(desfase) {
             const textElement = document.getElementById('sync-status-text');
             const dotElement = document.getElementById('sync-dot');
-            if (!textElement || !dotElement || isAdmin) return;
+            if (!textElement || !dotElement || isAdmin || isMaster) return;
 
             const desfaseStr = desfase > 0 ? `+${desfase.toFixed(2)}s` : `${desfase.toFixed(2)}s`;
             textElement.textContent = `Desfase: ${desfaseStr}`;
@@ -1025,9 +1067,9 @@
         };
 
         window.closeModal = function() {
-            if (adminHeartbeatInterval) {
-                clearInterval(adminHeartbeatInterval);
-                adminHeartbeatInterval = null;
+            if (masterHeartbeatInterval) {
+                clearInterval(masterHeartbeatInterval);
+                masterHeartbeatInterval = null;
             }
             if (activeBufferInterval) {
                 clearInterval(activeBufferInterval);
@@ -1054,7 +1096,7 @@
                     bufferStatusBar.classList.add('hidden');
                 }
 
-                if (isAdmin && activeId) {
+                if ((isAdmin || isMaster) && activeId) {
                     db.collection("estado_juego").doc(activeId).set({
                         modalAbierto: false,
                         reproduciendoDesde: null,
@@ -1065,7 +1107,7 @@
                 }
                 
                 activeId = '';
-                isBackgroundPreloadingPaused = false; // REANUDAR PRECARGA SILENCIOSA AL CERRAR EL MODAL
+                isBackgroundPreloadingPaused = false;
                 setTimeout(iniciarPrecargaGlobalSilenciosa, 3000);
             }, 300);
         };

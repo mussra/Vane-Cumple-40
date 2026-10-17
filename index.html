@@ -54,7 +54,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span id="badge-role" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v4.1-master-device
+                    v4.2-exclusive-master
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -190,12 +190,11 @@
 
         let clockOffsetMs = 0;
 
-        // Actualizar etiqueta visual del rol en cabecera
         const badgeRole = document.getElementById('badge-role');
         if (badgeRole) {
-            if (isAdmin) badgeRole.textContent = 'v4.1 • Control Remoto (Admin)';
-            else if (isMaster) badgeRole.textContent = 'v4.1 • Reproductor Principal (TV Sala)';
-            else badgeRole.textContent = 'v4.1 • Invitado Sincronizado';
+            if (isAdmin) badgeRole.textContent = 'v4.2 • Control Remoto (Admin)';
+            else if (isMaster) badgeRole.textContent = 'v4.2 • Reproductor Principal (TV Sala)';
+            else badgeRole.textContent = 'v4.2 • Invitado Sincronizado';
         }
 
         if (isAdmin) {
@@ -235,7 +234,7 @@
 
         let casosConfig = {};
         let initialLoadDone = false;
-        let masterHeartbeatInterval = null;
+        let broadcasterHeartbeatInterval = null;
         let isSeekingByAdmin = false;
         let isBackgroundPreloadingPaused = false;
         let activeBufferInterval = null;
@@ -267,11 +266,7 @@
                 if (isBackgroundPreloadingPaused || activeId) return;
                 const c = casosConfig[id];
                 if (c && c.tipo === 'video' && c.recursoId && c.recursoId.trim() !== '') {
-                    fetch(c.recursoId, { mode: 'cors', credentials: 'omit' }).then(response => {
-                        if (response.ok) {
-                            // Silencioso
-                        }
-                    }).catch(err => {});
+                    fetch(c.recursoId, { mode: 'cors', credentials: 'omit' }).catch(err => {});
                 }
             });
         }
@@ -466,8 +461,9 @@
                         closeModal();
                     }
 
-                    // Sincronización para invitados contra el Master Device / Reproductor Principal
-                    if (!isAdmin && !isMaster && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
+                    // Sincronización para invitados contra el emisor activo oficial de la sala
+                    const soyEmisorActivo = (isAdmin || isMaster) && (data.activeBroadcasterId === clientId);
+                    if (!soyEmisorActivo && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
                         const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                         if (serverTime > 0) {
                             const nowCorregido = Date.now() + clockOffsetMs;
@@ -480,14 +476,14 @@
                         }
                     }
                 });
-            }).catch(err => console.log("Aviso de sondeo de respaldo:", err));
+            }).catch(e => {});
         }
 
         if (apiKeyValida) {
             db = firebase.firestore();
 
             if (isAdmin) {
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado como Administrador (Control Remoto).';
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado como Administrador (Control Remoto con Arbitraje).';
                 document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
             } else if (isMaster) {
                 console.log("Conectado como Reproductor Principal (TV de Sala).");
@@ -530,47 +526,10 @@
                                 }
                             }
 
-                            // Sincronización de invitados y master al recibir eventos de reproducción
-                            if (!isAdmin && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video') {
-                                const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
-                                
-                                if (serverTime > 0) {
-                                    const nowCorregido = Date.now() + clockOffsetMs;
-                                    const diferenciaSegundos = (nowCorregido - serverTime) / 1000;
+                            const soyEmisorActivo = (isAdmin || isMaster) && (data.activeBroadcasterId === clientId);
 
-                                    if (diferenciaSegundos >= 0 && diferenciaSegundos < 60) {
-                                        if (activeId !== id) {
-                                            openModal(id, false);
-                                        }
-
-                                        const player = document.getElementById('player');
-                                        const adminBar = document.getElementById('admin-sync-bar');
-                                        if (adminBar) adminBar.remove();
-
-                                        if (player) {
-                                            const aplicarSincroniaOptimizada = () => {
-                                                if (Math.abs(player.currentTime - diferenciaSegundos) > 0.2) {
-                                                    player.currentTime = Math.max(0, diferenciaSegundos);
-                                                }
-                                                if (data.isPaused) {
-                                                    player.pause();
-                                                } else if (player.paused && !isMaster) {
-                                                    player.play().catch(e => {});
-                                                }
-                                            };
-
-                                            if (player.readyState >= 2) {
-                                                aplicarSincroniaOptimizada();
-                                            } else {
-                                                player.addEventListener('canplay', aplicarSincroniaOptimizada, { once: true });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Sincronización continua de tiempo para clientes estándar contra el Reproductor Principal
-                            if (!isAdmin && !isMaster && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
+                            // Sincronización continua de tiempo para clientes estándar contra el emisor activo
+                            if (!soyEmisorActivo && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
                                 if (player) {
                                     if (data.isPaused && !player.paused) {
@@ -619,9 +578,7 @@
                         hacerScrollA(`caso-${casoAEjecutar}`);
                     }
                 }
-            }, (error) => {
-                console.error("Error en Firestore:", error);
-            });
+            }, (error) => {});
 
             setInterval(verificarEstadoRemoto, 6000);
             document.addEventListener("visibilitychange", () => { if (!document.hidden) verificarEstadoRemoto(); });
@@ -685,7 +642,7 @@
                     tiempoActual: 0,
                     isPaused: true,
                     heartbeatTimestamp: null,
-                    masterClientId: null
+                    activeBroadcasterId: null
                 }, { merge: true });
             }
             batch.commit().then(() => mostrarToast(`¡${total} casos inicializados!`)).catch(err => mostrarToast("Error: " + err.message, "error"));
@@ -737,7 +694,6 @@
             let panelControlExtra = '';
 
             if (tipo === 'video') {
-                // Si es master device, el audio va activo por defecto (sin mute). Invitados normales entran silenciados por defecto.
                 const mutedAttr = (isAdmin || isMaster) ? '' : 'muted';
                 htmlContenido = `
                     <video id="player" preload="auto" autobuffer playsinline ${mutedAttr} class="h-full w-full object-contain">
@@ -748,10 +704,15 @@
                 if (isAdmin) {
                     panelControlExtra = `
                         <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control Admin: Lanzar reproducción al Reproductor Principal de la sala.</p>
-                            <button onclick="lanzarReproduccionGlobal('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
-                                <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción al Unísono!
-                            </button>
+                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control Admin: Selecciona el emisor del ritmo.</p>
+                            <div class="flex gap-3 flex-wrap justify-center">
+                                <button onclick="lanzarReproduccionConRol('${id}', 'admin')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs transition-all">
+                                    <i class="fa-solid fa-crown"></i> Emitir desde Admin
+                                </button>
+                                <button onclick="lanzarReproduccionConRol('${id}', 'master')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs transition-all">
+                                    <i class="fa-solid fa-tv"></i> Forzar Reproductor Principal (Master)
+                                </button>
+                            </div>
                         </div>
                     `;
                 }
@@ -856,28 +817,27 @@
                         }
                     });
 
-                    // Si este cliente es el Reproductor Principal (Master), él gestiona y escribe el pulso de sincronización
-                    if (isMaster) {
-                        player.addEventListener('play', () => {
-                            if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
-                            document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
-                            iniciarHeartbeatMaster(player);
+                    // Arbitraje inteligente de emisor: si este dispositivo es Master y Firestore dice que él es el emisor activo, o si es Admin y eligió emitir él mismo
+                    player.addEventListener('play', () => {
+                        if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
+                        document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
+                        
+                        db.collection("estado_juego").doc(id).get().then((doc) => {
+                            const broadcaster = doc.data()?.activeBroadcasterId;
+                            // Si es master y nadie ha tomado el rol, o si soy el emisor designado
+                            if (isMaster && (!broadcaster || broadcaster === clientId)) {
+                                iniciarHeartbeatBroadcaster(player, clientId);
+                            } else if (isAdmin) {
+                                // Si el admin le da al play, toma el control de emisión si lo desea
+                                iniciarHeartbeatBroadcaster(player, clientId);
+                            }
                         });
-                        player.addEventListener('pause', () => {
-                            document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                            if (!isSeekingByAdmin) pararHeartbeatMaster(true);
-                        });
-                    }
+                    });
 
-                    // Si es Admin, también puede controlar el play/pause del reproductor local si lo desea o emitir órdenes
-                    if (isAdmin) {
-                        player.addEventListener('play', () => {
-                            document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
-                        });
-                        player.addEventListener('pause', () => {
-                            document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                        });
-                    }
+                    player.addEventListener('pause', () => {
+                        document.getElementById('admin-play-icon').className = "fa-solid fa-play";
+                        if (!isSeekingByAdmin) pararHeartbeatBroadcaster(true);
+                    });
                 }
             } else {
                 bufferStatusBar.classList.add('hidden');
@@ -897,7 +857,7 @@
                         document.getElementById('sync-status-text').textContent = "Nodo Maestro (TV Sala)";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                     } else {
-                        document.getElementById('sync-status-text').textContent = "Sincronizado con TV Sala";
+                        document.getElementById('sync-status-text').textContent = "Sincronizado con Emisor Activo";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                     }
                 } else {
@@ -917,32 +877,30 @@
             }
         };
 
-        // Heartbeat específico del Reproductor Principal (Master Device)
-        function iniciarHeartbeatMaster(player) {
-            if (masterHeartbeatInterval) clearInterval(masterHeartbeatInterval);
-            masterHeartbeatInterval = setInterval(() => {
-                if (!player.paused && activeId && isMaster) {
+        function iniciarHeartbeatBroadcaster(player, broadcasterId) {
+            if (broadcasterHeartbeatInterval) clearInterval(broadcasterHeartbeatInterval);
+            broadcasterHeartbeatInterval = setInterval(() => {
+                if (!player.paused && activeId) {
                     db.collection("estado_juego").doc(activeId).set({
                         tiempoActual: player.currentTime,
                         isPaused: false,
-                        masterClientId: clientId,
+                        activeBroadcasterId: broadcasterId,
                         heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 }
             }, 1000);
         }
 
-        function pararHeartbeatMaster(marcarPausa = false) {
-            if (masterHeartbeatInterval) {
-                clearInterval(masterHeartbeatInterval);
-                masterHeartbeatInterval = null;
+        function pararHeartbeatBroadcaster(marcarPausa = false) {
+            if (broadcasterHeartbeatInterval) {
+                clearInterval(broadcasterHeartbeatInterval);
+                broadcasterHeartbeatInterval = null;
             }
-            if (activeId && isMaster) {
+            if (activeId) {
                 const player = document.getElementById('player');
                 db.collection("estado_juego").doc(activeId).set({
                     tiempoActual: player ? player.currentTime : 0,
                     isPaused: marcarPausa,
-                    masterClientId: clientId,
                     heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
             }
@@ -954,7 +912,7 @@
                 if (player.paused) {
                     player.play().catch(e => {});
                     if (isAdmin && activeId) {
-                        db.collection("estado_juego").doc(activeId).set({ isPaused: false }, { merge: true });
+                        iniciarHeartbeatBroadcaster(player, clientId);
                     }
                 } else {
                     player.pause();
@@ -992,6 +950,7 @@
                     db.collection("estado_juego").doc(activeId).set({
                         tiempoActual: targetTime,
                         isPaused: player.paused,
+                        activeBroadcasterId: clientId,
                         heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 }
@@ -1044,9 +1003,9 @@
             }
         };
 
-        window.lanzarReproduccionGlobal = function(id) {
+        window.lanzarReproduccionConRol = function(id, quienEmite) {
             if (!apiKeyValida) return;
-            if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
+            if (broadcasterHeartbeatInterval) { clearInterval(broadcasterHeartbeatInterval); broadcasterHeartbeatInterval = null; }
             const adminBar = document.getElementById('admin-sync-bar');
             if (adminBar) adminBar.remove();
 
@@ -1056,20 +1015,28 @@
                 player.play().catch(e => {});
             }
 
+            // Si el admin decide que emita él o que emita el Master de la sala
+            const broadcasterIdToSet = (quienEmite === 'admin') ? clientId : 'master_device_sala'; 
+
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now,
                 modalAbierto: true,
                 tiempoActual: 0,
                 isPaused: false,
+                activeBroadcasterId: broadcasterIdToSet,
                 heartbeatTimestamp: now
             }, { merge: true });
+
+            if (quienEmite === 'admin') {
+                iniciarHeartbeatBroadcaster(player, clientId);
+            }
         };
 
         window.closeModal = function() {
-            if (masterHeartbeatInterval) {
-                clearInterval(masterHeartbeatInterval);
-                masterHeartbeatInterval = null;
+            if (broadcasterHeartbeatInterval) {
+                clearInterval(broadcasterHeartbeatInterval);
+                broadcasterHeartbeatInterval = null;
             }
             if (activeBufferInterval) {
                 clearInterval(activeBufferInterval);
@@ -1102,6 +1069,7 @@
                         reproduciendoDesde: null,
                         tiempoActual: 0,
                         isPaused: true,
+                        activeBroadcasterId: null,
                         heartbeatTimestamp: null
                     }, { merge: true });
                 }

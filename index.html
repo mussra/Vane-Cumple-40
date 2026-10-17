@@ -20,28 +20,54 @@
     <!-- CONTENEDOR DE NOTIFICACIONES FLOTANTES (TOASTS) -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- PANEL DE ADMINISTRADOR -->
-    <div id="admin-panel" class="bg-slate-900 border-b border-amber-500/30 p-4 hidden">
+    <!-- BARRA FLOTANTE DE SELECTOR DE ROL -->
+    <div class="bg-slate-950/90 border-b border-slate-800 px-4 py-2 text-xs sticky top-0 z-40 backdrop-blur-md shadow-lg">
+        <div class="mx-auto max-w-6xl flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-medium"><i class="fa-solid fa-user-shield text-amber-400 mr-1"></i> Rol actual:</span>
+                <span id="current-role-badge" class="px-2.5 py-1 rounded-full font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono text-[11px]">Visor Básico</span>
+            </div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <button onclick="cambiarRol('guest')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium transition-all border border-slate-700">
+                    <i class="fa-solid fa-eye mr-1 text-slate-400"></i> Visor Básico
+                </button>
+                <button onclick="cambiarRol('master')" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 font-medium transition-all border border-indigo-500/40">
+                    <i class="fa-solid fa-tv mr-1 text-indigo-400"></i> Visor Maestro (TV)
+                </button>
+                <button onclick="intentarActivarAdmin()" class="px-3 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900 text-amber-300 font-medium transition-all border border-amber-500/40">
+                    <i class="fa-solid fa-crown mr-1 text-amber-400"></i> Administrador
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL DE ADMINISTRADOR REDISEÑADO -->
+    <div id="admin-panel" class="bg-gradient-to-br from-slate-900 via-[#111827] to-slate-950 border-b border-amber-500/40 p-6 shadow-2xl hidden">
         <div class="mx-auto max-w-6xl">
-            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <h3 class="font-serif text-lg font-bold text-amber-400"><i class="fa-solid fa-gear mr-2"></i> Panel de Control Remoto (Admin)</h3>
+            <div class="flex items-center justify-between mb-5 flex-wrap gap-3 pb-4 border-b border-slate-800">
+                <div>
+                    <h3 class="font-serif text-xl font-bold text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-amber-500"></i> Panel de Control del Administrador
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Gestión centralizada del archivo de recuerdos y emisión en directo.</p>
+                </div>
                 <div class="flex gap-2 flex-wrap items-center">
-                    <div class="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded border border-slate-800 text-xs">
-                        <span class="text-slate-400">Nº de Casos:</span>
-                        <input type="number" id="input-total-casos" value="13" min="1" max="50" class="w-12 bg-slate-900 text-amber-400 font-bold text-center rounded border border-slate-700 p-0.5">
+                    <div class="flex items-center gap-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 text-xs shadow-inner">
+                        <span class="text-slate-400">Casos totales:</span>
+                        <input type="number" id="input-total-casos" value="13" min="1" max="50" class="w-12 bg-slate-900 text-amber-400 font-bold text-center rounded border border-slate-700 p-1">
                     </div>
-                    <button onclick="inicializarCasosConConfirmacion()" class="rounded-lg bg-rose-950/60 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-900 transition-all border border-rose-500/40">
-                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> Inicializar Casos
+                    <button onclick="inicializarCasosConConfirmacion()" class="rounded-xl bg-rose-950/70 px-3.5 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-900 transition-all border border-rose-500/40 shadow">
+                        <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Inicializar
                     </button>
-                    <button onclick="guardarCambios()" class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">
-                        <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar Cambios
+                    <button onclick="guardarCambios()" class="rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-all shadow-lg flex items-center gap-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Cambios
                     </button>
                 </div>
             </div>
-            <div id="admin-status" class="text-xs font-medium mb-3 p-2 rounded bg-slate-950 border border-slate-800 text-slate-400">
-                Verificando conexión con Firebase...
+            <div id="admin-status" class="text-xs font-medium mb-4 p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 flex items-center gap-2 shadow-inner">
+                <i class="fa-solid fa-circle-notch fa-spin text-amber-400"></i> Verificando conexión con Firebase...
             </div>
-            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto p-2"></div>
+            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-h-[500px] overflow-y-auto p-2 pr-3"></div>
         </div>
     </div>
 
@@ -53,8 +79,8 @@
                 <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
                     Museo Virtual • Edición Coleccionista
                 </span>
-                <span id="badge-role" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v4.2-exclusive-master
+                <span id="badge-role-header" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
+                    v4.3-role-selector
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -98,7 +124,7 @@
                 </div>
             </div>
 
-            <!-- CONTROLES AVANZADOS PARA ADMINISTRADOR Y ESTADO -->
+            <!-- CONTROLES AVANZADOS PARA ADMINISTRADOR Y MASTER -->
             <div id="admin-controls-bar" class="hidden flex-col gap-2 mb-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
@@ -135,20 +161,20 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONTRASEÑA PARA EL QR -->
+    <!-- MODAL DE CONTRASEÑA ADMIN / QR -->
     <div id="qrPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 hidden">
         <div class="relative w-full max-w-md rounded-2xl bg-[#111827] border border-amber-500/40 p-6 shadow-2xl text-center">
             <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-3 border border-amber-500/30">
                 <i class="fa-solid fa-shield-halved text-xl"></i>
             </div>
-            <h3 id="qrModalTitle" class="font-serif text-lg font-bold text-white mb-2">Activación de Caso por Administrador</h3>
-            <p class="text-xs text-slate-300 mb-4">Has escaneado un código QR. Introduce la contraseña de control para desbloquearlo en la sala.</p>
+            <h3 id="qrModalTitle" class="font-serif text-lg font-bold text-white mb-2">Acceso de Administrador</h3>
+            <p class="text-xs text-slate-300 mb-4">Introduce la contraseña de control para desbloquear el panel de administrador.</p>
             
             <input type="password" id="qr-secret-input" placeholder="Contraseña de administrador" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-center text-amber-400 font-mono mb-4 text-sm focus:outline-none focus:border-amber-500">
             
             <div class="flex gap-2">
                 <button onclick="cancelarActivacionQR()" class="flex-1 rounded-lg bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-all">Cancelar</button>
-                <button onclick="verificarYDesbloquearQR()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar y Desbloquear</button>
+                <button onclick="verificarYDesbloquearAdmin()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar</button>
             </div>
         </div>
     </div>
@@ -164,13 +190,13 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef..."
+        };
 
         const PASSWORD_ADMIN = "vane40"; 
 
@@ -178,9 +204,9 @@
         const rawCaso = urlParams.get('caso');
         const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
         
-        const isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
-        const isMaster = urlParams.get('role') === 'master';
-        const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
+        let isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
+        let currentRole = localStorage.getItem('vane_role') || 'guest'; // 'guest', 'master'
+        if (isAdmin) currentRole = 'admin';
 
         let clientId = localStorage.getItem('vane_client_id');
         if (!clientId) {
@@ -189,26 +215,125 @@
         }
 
         let clockOffsetMs = 0;
+        const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
 
-        const badgeRole = document.getElementById('badge-role');
-        if (badgeRole) {
-            if (isAdmin) badgeRole.textContent = 'v4.2 • Control Remoto (Admin)';
-            else if (isMaster) badgeRole.textContent = 'v4.2 • Reproductor Principal (TV Sala)';
-            else badgeRole.textContent = 'v4.2 • Invitado Sincronizado';
+        function actualizarInterfazRol() {
+            const badge = document.getElementById('current-role-badge');
+            const badgeHeader = document.getElementById('badge-role-header');
+            const adminPanel = document.getElementById('admin-panel');
+
+            if (isAdmin) {
+                currentRole = 'admin';
+                if (badge) badge.textContent = 'Administrador';
+                if (badgeHeader) badgeHeader.textContent = 'v4.3 • Administrador';
+                if (adminPanel) adminPanel.classList.remove('hidden');
+            } else if (currentRole === 'master') {
+                if (badge) badge.textContent = 'Visor Maestro (TV)';
+                if (badgeHeader) badgeHeader.textContent = 'v4.3 • Visor Maestro';
+                if (adminPanel) adminPanel.classList.add('hidden');
+            } else {
+                currentRole = 'guest';
+                if (badge) badge.textContent = 'Visor Básico';
+                if (badgeHeader) badgeHeader.textContent = 'v4.3 • Visor Básico';
+                if (adminPanel) adminPanel.classList.add('hidden');
+            }
+            localStorage.setItem('vane_role', currentRole);
         }
 
-        if (isAdmin) {
-            document.getElementById('admin-panel').classList.remove('hidden');
-            if (!apiKeyValida) {
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Error: Has dejado la API Key de ejemplo ("TU_API_KEY") o está vacía.';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-rose-950/40 border border-rose-500/30 text-rose-300';
+        window.cambiarRol = function(nuevoRol) {
+            if (nuevoRol === 'admin') {
+                intentarActivarAdmin();
+                return;
             }
+            if (nuevoRol === 'master') {
+                isAdmin = false;
+                currentRole = 'master';
+                // Registrar este clientId como el master global único en Firestore o localmente
+                registrarMasterGlobalEnFirebase();
+                mostrarToast("Modo Visor Maestro activado en este dispositivo.");
+            } else {
+                isAdmin = false;
+                currentRole = 'guest';
+                liberarMasterGlobalEnFirebase();
+                mostrarToast("Modo Visor Básico activado.");
+            }
+            actualizarInterfazRol();
+        };
+
+        window.intentarActivarAdmin = function() {
+            if (isAdmin) {
+                mostrarToast("Ya estás en modo Administrador.");
+                return;
+            }
+            document.getElementById('qrPasswordModal').classList.remove('hidden');
+        };
+
+        window.verificarYDesbloquearAdmin = function() {
+            const passInput = document.getElementById('qr-secret-input').value;
+            if (passInput === PASSWORD_ADMIN) {
+                isAdmin = true;
+                currentRole = 'admin';
+                document.getElementById('qrPasswordModal').classList.add('hidden');
+                document.getElementById('qr-secret-input').value = '';
+                actualizarInterfazRol();
+                mostrarToast("¡Modo Administrador activado con éxito!");
+                if (apiKeyValida && db) {
+                    db.collection("estado_juego").get().then(snapshot => {
+                        snapshot.forEach(doc => {
+                            casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
+                        });
+                        renderAdmin();
+                    });
+                }
+            } else {
+                mostrarToast("Contraseña incorrecta.", "error");
+                document.getElementById('qr-secret-input').value = '';
+            }
+        };
+
+        window.cancelarActivacionQR = function() {
+            document.getElementById('qrPasswordModal').classList.add('hidden');
+            document.getElementById('qr-secret-input').value = '';
+        };
+
+        function registrarMasterGlobalEnFirebase() {
+            if (!db) return;
+            // Guardamos un documento global de control de master para asegurar exclusividad única
+            db.collection("config_sistema").doc("master_global").set({
+                masterClientId: clientId,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).catch(e => {});
+        }
+
+        function liberarMasterGlobalEnFirebase() {
+            if (!db) return;
+            db.collection("config_sistema").doc("master_global").get().then(doc => {
+                if (doc.exists && doc.data().masterClientId === clientId) {
+                    db.collection("config_sistema").doc("master_global").set({
+                        masterClientId: null,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                }
+            }).catch(e => {});
         }
 
         let db = null;
         if (apiKeyValida) {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
+
+            // Comprobar si otro dispositivo tomó el rol master global
+            db.collection("config_sistema").doc("master_global").onSnapshot(doc => {
+                if (doc.exists) {
+                    const masterId = doc.data().masterClientId;
+                    if (masterId && masterId !== clientId && currentRole === 'master') {
+                        // Otro dispositivo se convirtió en master, este pasa a guest automáticamente para exclusividad
+                        currentRole = 'guest';
+                        actualizarInterfazRol();
+                        mostrarToast("Otro dispositivo ha asumido el rol de Visor Maestro. Este pasa a Visor Básico.", "error");
+                    }
+                }
+            });
 
             const calibrarRelojCliente = () => {
                 const tLocalAntes = Date.now();
@@ -227,7 +352,7 @@
                             }
                         }
                     });
-                }).catch(e => console.log("Aviso de calibración:", e));
+                }).catch(e => {});
             };
             calibrarRelojCliente();
         }
@@ -285,7 +410,6 @@
                         <i class="fa-solid fa-folder-open text-amber-400/50 text-4xl mb-3"></i>
                         <h3 class="font-serif text-lg font-bold text-white mb-1">No hay casos configurados todavía</h3>
                         <p class="text-slate-400 text-xs max-w-sm mx-auto mb-4">El archivo está vacío en este momento. Accede al panel de administración para inicializar los casos.</p>
-                        ${isAdmin ? '<span class="text-amber-400 text-xs font-mono bg-amber-500/10 px-3 py-1 rounded border border-amber-500/30">Usa el botón "Inicializar Casos" arriba</span>' : ''}
                     </div>
                 `;
                 return;
@@ -333,31 +457,37 @@
                 const c = casosConfig[id];
                 const tipoActual = c.tipo || 'video';
                 editor.innerHTML += `
-                    <div class="bg-slate-950 p-3 rounded border border-slate-800 text-xs space-y-2">
-                        <div class="flex justify-between font-bold text-amber-400">
-                            <span>${id.toUpperCase()}</span>
-                            <label><input type="checkbox" id="adm-res-${id}" ${c.resuelto?'checked':''}> Resuelto</label>
+                    <div class="bg-slate-950/90 p-4 rounded-xl border border-slate-800 text-xs space-y-3 shadow-md hover:border-amber-500/40 transition-all">
+                        <div class="flex justify-between font-bold text-amber-400 border-b border-slate-800 pb-2">
+                            <span class="font-mono text-sm">${id.toUpperCase()}</span>
+                            <label class="flex items-center gap-1.5 cursor-pointer bg-slate-900 px-2 py-1 rounded border border-slate-800"><input type="checkbox" id="adm-res-${id}" ${c.resuelto?'checked':''}> Resuelto</label>
                         </div>
-                        <input type="text" id="adm-title-${id}" value="${c.titulo || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Título">
-                        <input type="text" id="adm-desc-${id}" value="${c.descripcion || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white" placeholder="Descripción">
+                        <div class="space-y-1">
+                            <label class="text-slate-400 text-[10px]">Título:</label>
+                            <input type="text" id="adm-title-${id}" value="${c.titulo || ''}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-medium" placeholder="Título">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-slate-400 text-[10px]">Descripción:</label>
+                            <input type="text" id="adm-desc-${id}" value="${c.descripcion || ''}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-300" placeholder="Descripción">
+                        </div>
                         
-                        <div class="flex gap-2">
-                            <div class="w-1/2">
-                                <label class="text-slate-400 text-[10px]">Tipo de Contenido:</label>
-                                <select id="adm-tipo-${id}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-400 font-mono text-[11px]">
-                                    <option value="video" ${tipoActual==='video'?'selected':''}>Vídeo Local (.mp4)</option>
-                                    <option value="texto" ${tipoActual==='texto'?'selected':''}>Texto / Explicación en vivo</option>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-slate-400 text-[10px]">Tipo Contenido:</label>
+                                <select id="adm-tipo-${id}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-400 font-mono text-[11px]">
+                                    <option value="video" ${tipoActual==='video'?'selected':''}>Vídeo (.mp4)</option>
+                                    <option value="texto" ${tipoActual==='texto'?'selected':''}>Texto en vivo</option>
                                 </select>
                             </div>
-                            <div class="w-1/2">
-                                <label class="text-slate-400 text-[10px]">Ruta/URL Foto (Polaroid):</label>
-                                <input type="text" id="adm-img-${id}" value="${c.imagenUrl || ''}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200 font-mono text-[11px]" placeholder="assets/foto.jpg">
+                            <div>
+                                <label class="text-slate-400 text-[10px]">Foto Polaroid (URL):</label>
+                                <input type="text" id="adm-img-${id}" value="${c.imagenUrl || ''}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 font-mono text-[11px]" placeholder="assets/foto.jpg">
                             </div>
                         </div>
 
                         <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Recurso (URL Cloudinary o Texto Descriptivo):</label>
-                            <textarea id="adm-rec-${id}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-mono text-[11px]" placeholder="https://... o texto para hablar en vivo">${c.recursoId || ''}</textarea>
+                            <label class="text-slate-400 text-[10px]">Recurso (URL Vídeo o Texto):</label>
+                            <textarea id="adm-rec-${id}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono text-[11px]" placeholder="https://...">${c.recursoId || ''}</textarea>
                         </div>
                     </div>
                 `;
@@ -461,8 +591,7 @@
                         closeModal();
                     }
 
-                    // Sincronización para invitados contra el emisor activo oficial de la sala
-                    const soyEmisorActivo = (isAdmin || isMaster) && (data.activeBroadcasterId === clientId);
+                    const soyEmisorActivo = (isAdmin || currentRole === 'master') && (data.activeBroadcasterId === clientId);
                     if (!soyEmisorActivo && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
                         const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                         if (serverTime > 0) {
@@ -483,10 +612,8 @@
             db = firebase.firestore();
 
             if (isAdmin) {
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado como Administrador (Control Remoto con Arbitraje).';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-3 p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300';
-            } else if (isMaster) {
-                console.log("Conectado como Reproductor Principal (TV de Sala).");
+                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado como Administrador.';
+                document.getElementById('admin-status').className = 'text-xs font-medium mb-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 flex items-center gap-2 shadow-inner';
             }
 
             db.collection("estado_juego").onSnapshot((snapshot) => {
@@ -526,9 +653,8 @@
                                 }
                             }
 
-                            const soyEmisorActivo = (isAdmin || isMaster) && (data.activeBroadcasterId === clientId);
+                            const soyEmisorActivo = (isAdmin || currentRole === 'master') && (data.activeBroadcasterId === clientId);
 
-                            // Sincronización continua de tiempo para clientes estándar contra el emisor activo
                             if (!soyEmisorActivo && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
                                 if (player) {
@@ -564,7 +690,7 @@
                         const casoAEjecutar = qrCasoNum;
                         
                         const limpiarURLConRetraso = () => {
-                            window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : (isMaster ? '?role=master' : '')));
+                            window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
                         };
 
                         if (isAdmin) {
@@ -587,15 +713,30 @@
             renderGrid();
         }
 
-        window.verificarYDesbloquearQR = function() {
+        window.verificarYDesbloquearAdmin = function() {
+            // Reutilizado para la contraseña del QR o del botón
+            verificarYDesbloquearAdminPanel();
+        };
+
+        window.verificarYDesbloquearAdminPanel = function() {
             const passInput = document.getElementById('qr-secret-input').value;
             if (passInput === PASSWORD_ADMIN) {
+                isAdmin = true;
+                currentRole = 'admin';
                 document.getElementById('qrPasswordModal').classList.add('hidden');
+                document.getElementById('qr-secret-input').value = '';
+                actualizarInterfazRol();
+                mostrarToast("Acceso de Administrador concedido.");
                 if (qrCasoNum) {
-                    const nuevaURL = window.location.pathname + `?admin=${PASSWORD_ADMIN}`;
-                    window.history.replaceState({}, document.title, nuevaURL);
                     desbloquearCasoQR(qrCasoNum);
-                    setTimeout(() => { window.location.href = nuevaURL; }, 500);
+                }
+                if (db) {
+                    db.collection("estado_juego").get().then(snapshot => {
+                        snapshot.forEach(doc => {
+                            casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
+                        });
+                        renderAdmin();
+                    });
                 }
             } else {
                 mostrarToast("Contraseña incorrecta.", "error");
@@ -616,7 +757,6 @@
 
         window.cancelarActivacionQR = function() {
             document.getElementById('qrPasswordModal').classList.add('hidden');
-            window.history.replaceState({}, document.title, window.location.pathname);
         };
 
         window.inicializarCasosConConfirmacion = function() {
@@ -694,25 +834,20 @@
             let panelControlExtra = '';
 
             if (tipo === 'video') {
-                const mutedAttr = (isAdmin || isMaster) ? '' : 'muted';
+                const mutedAttr = (isAdmin || currentRole === 'master') ? '' : 'muted';
                 htmlContenido = `
                     <video id="player" preload="auto" autobuffer playsinline ${mutedAttr} class="h-full w-full object-contain">
                         <source src="${c.recursoId}" type="video/mp4">
                         Tu navegador no soporta vídeos HTML5.
                     </video>
                 `;
-                if (isAdmin) {
+                if (isAdmin || currentRole === 'master') {
                     panelControlExtra = `
                         <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control Admin: Selecciona el emisor del ritmo.</p>
-                            <div class="flex gap-3 flex-wrap justify-center">
-                                <button onclick="lanzarReproduccionConRol('${id}', 'admin')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs transition-all">
-                                    <i class="fa-solid fa-crown"></i> Emitir desde Admin
-                                </button>
-                                <button onclick="lanzarReproduccionConRol('${id}', 'master')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs transition-all">
-                                    <i class="fa-solid fa-tv"></i> Forzar Reproductor Principal (Master)
-                                </button>
-                            </div>
+                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control: Lanzar reproducción al unísono.</p>
+                            <button onclick="lanzarReproduccionActiva('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
+                                <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción!
+                            </button>
                         </div>
                     `;
                 }
@@ -744,7 +879,7 @@
                 bufferStatusBar.classList.remove('hidden');
                 bufferStatusBar.classList.add('flex');
 
-                if (isAdmin || isMaster) {
+                if (isAdmin || currentRole === 'master') {
                     adminControlsBar.classList.remove('hidden');
                     adminControlsBar.classList.add('flex');
                 } else {
@@ -817,26 +952,19 @@
                         }
                     });
 
-                    // Arbitraje inteligente de emisor: si este dispositivo es Master y Firestore dice que él es el emisor activo, o si es Admin y eligió emitir él mismo
                     player.addEventListener('play', () => {
                         if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
                         document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
-                        
-                        db.collection("estado_juego").doc(id).get().then((doc) => {
-                            const broadcaster = doc.data()?.activeBroadcasterId;
-                            // Si es master y nadie ha tomado el rol, o si soy el emisor designado
-                            if (isMaster && (!broadcaster || broadcaster === clientId)) {
-                                iniciarHeartbeatBroadcaster(player, clientId);
-                            } else if (isAdmin) {
-                                // Si el admin le da al play, toma el control de emisión si lo desea
-                                iniciarHeartbeatBroadcaster(player, clientId);
-                            }
-                        });
+                        if (isAdmin || currentRole === 'master') {
+                            iniciarHeartbeatBroadcaster(player, clientId);
+                        }
                     });
 
                     player.addEventListener('pause', () => {
                         document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                        if (!isSeekingByAdmin) pararHeartbeatBroadcaster(true);
+                        if (!isSeekingByAdmin && (isAdmin || currentRole === 'master')) {
+                            pararHeartbeatBroadcaster(true);
+                        }
                     });
                 }
             } else {
@@ -851,13 +979,13 @@
                     syncBadge.classList.remove('hidden');
                     syncBadge.classList.add('flex');
                     if (isAdmin) {
-                        document.getElementById('sync-status-text').textContent = "Mando Admin (Control Remoto)";
+                        document.getElementById('sync-status-text').textContent = "Modo Administrador";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
-                    } else if (isMaster) {
-                        document.getElementById('sync-status-text').textContent = "Nodo Maestro (TV Sala)";
+                    } else if (currentRole === 'master') {
+                        document.getElementById('sync-status-text').textContent = "Visor Maestro (Emisor)";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                     } else {
-                        document.getElementById('sync-status-text').textContent = "Sincronizado con Emisor Activo";
+                        document.getElementById('sync-status-text').textContent = "Sincronizado con Sala";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                     }
                 } else {
@@ -869,7 +997,7 @@
             m.classList.remove('hidden');
             setTimeout(() => m.classList.remove('opacity-0'), 10);
 
-            if (isAdmin && sincronizarServidor) {
+            if ((isAdmin || currentRole === 'master') && sincronizarServidor) {
                 db.collection("estado_juego").doc(id).set({
                     modalAbierto: true,
                     isPaused: true
@@ -911,12 +1039,12 @@
             if (player) {
                 if (player.paused) {
                     player.play().catch(e => {});
-                    if (isAdmin && activeId) {
+                    if ((isAdmin || currentRole === 'master') && activeId) {
                         iniciarHeartbeatBroadcaster(player, clientId);
                     }
                 } else {
                     player.pause();
-                    if (isAdmin && activeId) {
+                    if ((isAdmin || currentRole === 'master') && activeId) {
                         db.collection("estado_juego").doc(activeId).set({ isPaused: true }, { merge: true });
                     }
                 }
@@ -946,7 +1074,7 @@
                 const targetTime = (val / 100) * player.duration;
                 player.currentTime = targetTime;
                 isSeekingByAdmin = false;
-                if (activeId && (isAdmin || isMaster)) {
+                if (activeId && (isAdmin || currentRole === 'master')) {
                     db.collection("estado_juego").doc(activeId).set({
                         tiempoActual: targetTime,
                         isPaused: player.paused,
@@ -960,7 +1088,7 @@
         function actualizarMonitorSync(desfase) {
             const textElement = document.getElementById('sync-status-text');
             const dotElement = document.getElementById('sync-dot');
-            if (!textElement || !dotElement || isAdmin || isMaster) return;
+            if (!textElement || !dotElement || isAdmin || currentRole === 'master') return;
 
             const desfaseStr = desfase > 0 ? `+${desfase.toFixed(2)}s` : `${desfase.toFixed(2)}s`;
             textElement.textContent = `Desfase: ${desfaseStr}`;
@@ -1003,7 +1131,7 @@
             }
         };
 
-        window.lanzarReproduccionConRol = function(id, quienEmite) {
+        window.lanzarReproduccionActiva = function(id) {
             if (!apiKeyValida) return;
             if (broadcasterHeartbeatInterval) { clearInterval(broadcasterHeartbeatInterval); broadcasterHeartbeatInterval = null; }
             const adminBar = document.getElementById('admin-sync-bar');
@@ -1015,22 +1143,17 @@
                 player.play().catch(e => {});
             }
 
-            // Si el admin decide que emita él o que emita el Master de la sala
-            const broadcasterIdToSet = (quienEmite === 'admin') ? clientId : 'master_device_sala'; 
-
             const now = firebase.firestore.FieldValue.serverTimestamp();
             db.collection("estado_juego").doc(id).set({
                 reproduciendoDesde: now,
                 modalAbierto: true,
                 tiempoActual: 0,
                 isPaused: false,
-                activeBroadcasterId: broadcasterIdToSet,
+                activeBroadcasterId: clientId,
                 heartbeatTimestamp: now
             }, { merge: true });
 
-            if (quienEmite === 'admin') {
-                iniciarHeartbeatBroadcaster(player, clientId);
-            }
+            iniciarHeartbeatBroadcaster(player, clientId);
         };
 
         window.closeModal = function() {
@@ -1063,7 +1186,7 @@
                     bufferStatusBar.classList.add('hidden');
                 }
 
-                if ((isAdmin || isMaster) && activeId) {
+                if ((isAdmin || currentRole === 'master') && activeId) {
                     db.collection("estado_juego").doc(activeId).set({
                         modalAbierto: false,
                         reproduciendoDesde: null,
@@ -1079,6 +1202,9 @@
                 setTimeout(iniciarPrecargaGlobalSilenciosa, 3000);
             }, 300);
         };
+
+        // Inicializar interfaz al cargar
+        actualizarInterfazRol();
     </script>
 </body>
 </html>

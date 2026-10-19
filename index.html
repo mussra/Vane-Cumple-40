@@ -41,7 +41,7 @@
         </div>
     </div>
 
-    <!-- PANEL DE ADMINISTRADOR REDISEÑADO -->
+    <!-- PANEL DE ADMINISTRADOR -->
     <div id="admin-panel" class="bg-gradient-to-br from-slate-900 via-[#111827] to-slate-950 border-b border-amber-500/40 p-6 shadow-2xl hidden">
         <div class="mx-auto max-w-6xl">
             <div class="flex items-center justify-between mb-5 flex-wrap gap-3 pb-4 border-b border-slate-800">
@@ -80,7 +80,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span id="badge-role-header" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v4.4-clean-master
+                    v4.5-stable-sync
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -198,6 +198,7 @@
           messagingSenderId: "757919275158",
           appId: "1:757919275158:web:40e74e06e96d8125948ab7"
         };
+
         const PASSWORD_ADMIN = "vane40"; 
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -225,16 +226,16 @@
             if (isAdmin) {
                 currentRole = 'admin';
                 if (badge) badge.textContent = 'Administrador';
-                if (badgeHeader) badgeHeader.textContent = 'v4.4 • Administrador';
+                if (badgeHeader) badgeHeader.textContent = 'v4.5 • Administrador';
                 if (adminPanel) adminPanel.classList.remove('hidden');
             } else if (currentRole === 'master') {
                 if (badge) badge.textContent = 'Visor Maestro (TV)';
-                if (badgeHeader) badgeHeader.textContent = 'v4.4 • Visor Maestro';
+                if (badgeHeader) badgeHeader.textContent = 'v4.5 • Visor Maestro';
                 if (adminPanel) adminPanel.classList.add('hidden');
             } else {
                 currentRole = 'guest';
                 if (badge) badge.textContent = 'Visor Básico';
-                if (badgeHeader) badgeHeader.textContent = 'v4.4 • Visor Básico';
+                if (badgeHeader) badgeHeader.textContent = 'v4.5 • Visor Básico';
                 if (adminPanel) adminPanel.classList.add('hidden');
             }
             localStorage.setItem('vane_role', currentRole);
@@ -588,20 +589,6 @@
                     } else if (data.modalAbierto === false && antesModalAbierto && activeId === id) {
                         closeModal();
                     }
-
-                    const soyEmisorActivo = isAdmin && (data.activeBroadcasterId === clientId);
-                    if (!soyEmisorActivo && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
-                        const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
-                        if (serverTime > 0) {
-                            const nowCorregido = Date.now() + clockOffsetMs;
-                            const diferenciaSegundos = (nowCorregido - serverTime) / 1000;
-                            const player = document.getElementById('player');
-                            if (player && player.paused && !data.isPaused && diferenciaSegundos >= 0 && diferenciaSegundos < 120) {
-                                player.currentTime = Math.max(0, diferenciaSegundos);
-                                player.play().catch(e => {});
-                            }
-                        }
-                    }
                 });
             }).catch(e => {});
         }
@@ -651,9 +638,8 @@
                                 }
                             }
 
-                            const soyEmisorActivo = isAdmin && (data.activeBroadcasterId === clientId);
-
-                            if (!soyEmisorActivo && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
+                            // ⚡ SINCRONIZACIÓN FLUIDA OPTIMIZADA CON MARGEN DE TOLERANCIA
+                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
                                 if (player) {
                                     if (data.isPaused && !player.paused) {
@@ -672,7 +658,8 @@
 
                                         actualizarMonitorSync(desfaseActual);
 
-                                        if (Math.abs(desfaseActual) > 0.5) {
+                                        // Tolerancia ampliada a 0.8s para evitar tirones y saltos bruscos
+                                        if (Math.abs(desfaseActual) > 0.8) {
                                             player.currentTime = tiempoEsperadoReal;
                                         }
                                     }
@@ -834,7 +821,6 @@
                         Tu navegador no soporta vídeos HTML5.
                     </video>
                 `;
-                // 🛑 ÚNICAMENTE EL ADMINISTRADOR VE EL BOTÓN DE LANZAMIENTO DE REPRODUCCIÓN
                 if (isAdmin) {
                     panelControlExtra = `
                         <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
@@ -938,7 +924,7 @@
                         const curSec = Math.floor(player.currentTime % 60);
                         const durMin = Math.floor(player.duration / 60);
                         const durSec = Math.floor(player.duration % 60);
-                        document.getElementById('time-display').textContent = `${String(curMin).padStart(2,'0')}:${String(curSec).padStart(2,'0')} / ${String(durMin).padStart(2,'0')}:${String(durSec).padStart(2,'0')}`;
+                        document.getElementById('time-display').textContent = `${String(curMin).padStart(2,'0')}:${String(curSec).padStart(2,'0')} / ${String(durMin).padStart(2,'0')}:${String(durSec).padStart(2,'0')}     `;
                         
                         const seekBar = document.getElementById('admin-seek-bar');
                         if (seekBar && !isSeekingByAdmin) {
@@ -1087,8 +1073,8 @@
             const desfaseStr = desfase > 0 ? `+${desfase.toFixed(2)}s` : `${desfase.toFixed(2)}s`;
             textElement.textContent = `Desfase: ${desfaseStr}`;
             const absDesfase = Math.abs(desfase);
-            if (absDesfase < 0.3) dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-            else if (absDesfase < 0.7) dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+            if (absDesfase < 0.4) dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+            else if (absDesfase < 0.9) dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
             else dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";
         }
 

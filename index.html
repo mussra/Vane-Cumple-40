@@ -80,7 +80,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span id="badge-role-header" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v4.3-role-selector
+                    v4.4-clean-master
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -161,7 +161,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONTRASEÑA ADMIN / QR -->
+    <!-- MODAL DE CONTRASEÑA ADMIN -->
     <div id="qrPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 hidden">
         <div class="relative w-full max-w-md rounded-2xl bg-[#111827] border border-amber-500/40 p-6 shadow-2xl text-center">
             <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-3 border border-amber-500/30">
@@ -174,7 +174,7 @@
             
             <div class="flex gap-2">
                 <button onclick="cancelarActivacionQR()" class="flex-1 rounded-lg bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-all">Cancelar</button>
-                <button onclick="verificarYDesbloquearAdmin()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar</button>
+                <button onclick="verificarYDesbloquearAdminPanel()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar</button>
             </div>
         </div>
     </div>
@@ -190,13 +190,14 @@
     <!-- SCRIPT DE LÓGICA Y FIREBASE -->
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-  authDomain: "vane-cumple-40.firebaseapp.com",
-  projectId: "vane-cumple-40",
-  storageBucket: "vane-cumple-40.firebasestorage.app",
-  messagingSenderId: "757919275158",
-  appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-};
+             const firebaseConfig = {
+          apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
+          authDomain: "vane-cumple-40.firebaseapp.com",
+          projectId: "vane-cumple-40",
+          storageBucket: "vane-cumple-40.firebasestorage.app",
+          messagingSenderId: "757919275158",
+          appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+        };
         const PASSWORD_ADMIN = "vane40"; 
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -204,7 +205,7 @@
         const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
         
         let isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
-        let currentRole = localStorage.getItem('vane_role') || 'guest'; // 'guest', 'master'
+        let currentRole = localStorage.getItem('vane_role') || 'guest';
         if (isAdmin) currentRole = 'admin';
 
         let clientId = localStorage.getItem('vane_client_id');
@@ -224,16 +225,16 @@
             if (isAdmin) {
                 currentRole = 'admin';
                 if (badge) badge.textContent = 'Administrador';
-                if (badgeHeader) badgeHeader.textContent = 'v4.3 • Administrador';
+                if (badgeHeader) badgeHeader.textContent = 'v4.4 • Administrador';
                 if (adminPanel) adminPanel.classList.remove('hidden');
             } else if (currentRole === 'master') {
                 if (badge) badge.textContent = 'Visor Maestro (TV)';
-                if (badgeHeader) badgeHeader.textContent = 'v4.3 • Visor Maestro';
+                if (badgeHeader) badgeHeader.textContent = 'v4.4 • Visor Maestro';
                 if (adminPanel) adminPanel.classList.add('hidden');
             } else {
                 currentRole = 'guest';
                 if (badge) badge.textContent = 'Visor Básico';
-                if (badgeHeader) badgeHeader.textContent = 'v4.3 • Visor Básico';
+                if (badgeHeader) badgeHeader.textContent = 'v4.4 • Visor Básico';
                 if (adminPanel) adminPanel.classList.add('hidden');
             }
             localStorage.setItem('vane_role', currentRole);
@@ -247,7 +248,6 @@
             if (nuevoRol === 'master') {
                 isAdmin = false;
                 currentRole = 'master';
-                // Registrar este clientId como el master global único en Firestore o localmente
                 registrarMasterGlobalEnFirebase();
                 mostrarToast("Modo Visor Maestro activado en este dispositivo.");
             } else {
@@ -267,7 +267,7 @@
             document.getElementById('qrPasswordModal').classList.remove('hidden');
         };
 
-        window.verificarYDesbloquearAdmin = function() {
+        window.verificarYDesbloquearAdminPanel = function() {
             const passInput = document.getElementById('qr-secret-input').value;
             if (passInput === PASSWORD_ADMIN) {
                 isAdmin = true;
@@ -275,8 +275,11 @@
                 document.getElementById('qrPasswordModal').classList.add('hidden');
                 document.getElementById('qr-secret-input').value = '';
                 actualizarInterfazRol();
-                mostrarToast("¡Modo Administrador activado con éxito!");
-                if (apiKeyValida && db) {
+                mostrarToast("Acceso de Administrador concedido.");
+                if (qrCasoNum) {
+                    desbloquearCasoQR(qrCasoNum);
+                }
+                if (db) {
                     db.collection("estado_juego").get().then(snapshot => {
                         snapshot.forEach(doc => {
                             casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
@@ -292,12 +295,10 @@
 
         window.cancelarActivacionQR = function() {
             document.getElementById('qrPasswordModal').classList.add('hidden');
-            document.getElementById('qr-secret-input').value = '';
         };
 
         function registrarMasterGlobalEnFirebase() {
             if (!db) return;
-            // Guardamos un documento global de control de master para asegurar exclusividad única
             db.collection("config_sistema").doc("master_global").set({
                 masterClientId: clientId,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -321,12 +322,10 @@
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
 
-            // Comprobar si otro dispositivo tomó el rol master global
             db.collection("config_sistema").doc("master_global").onSnapshot(doc => {
                 if (doc.exists) {
                     const masterId = doc.data().masterClientId;
                     if (masterId && masterId !== clientId && currentRole === 'master') {
-                        // Otro dispositivo se convirtió en master, este pasa a guest automáticamente para exclusividad
                         currentRole = 'guest';
                         actualizarInterfazRol();
                         mostrarToast("Otro dispositivo ha asumido el rol de Visor Maestro. Este pasa a Visor Básico.", "error");
@@ -590,7 +589,7 @@
                         closeModal();
                     }
 
-                    const soyEmisorActivo = (isAdmin || currentRole === 'master') && (data.activeBroadcasterId === clientId);
+                    const soyEmisorActivo = isAdmin && (data.activeBroadcasterId === clientId);
                     if (!soyEmisorActivo && data.reproduciendoDesde && casosConfig[id]?.tipo === 'video' && activeId === id) {
                         const serverTime = data.reproduciendoDesde.toMillis ? data.reproduciendoDesde.toMillis() : (data.reproduciendoDesde.seconds ? data.reproduciendoDesde.seconds * 1000 : 0);
                         if (serverTime > 0) {
@@ -652,7 +651,7 @@
                                 }
                             }
 
-                            const soyEmisorActivo = (isAdmin || currentRole === 'master') && (data.activeBroadcasterId === clientId);
+                            const soyEmisorActivo = isAdmin && (data.activeBroadcasterId === clientId);
 
                             if (!soyEmisorActivo && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
                                 const player = document.getElementById('player');
@@ -711,11 +710,6 @@
         } else {
             renderGrid();
         }
-
-        window.verificarYDesbloquearAdmin = function() {
-            // Reutilizado para la contraseña del QR o del botón
-            verificarYDesbloquearAdminPanel();
-        };
 
         window.verificarYDesbloquearAdminPanel = function() {
             const passInput = document.getElementById('qr-secret-input').value;
@@ -840,10 +834,11 @@
                         Tu navegador no soporta vídeos HTML5.
                     </video>
                 `;
-                if (isAdmin || currentRole === 'master') {
+                // 🛑 ÚNICAMENTE EL ADMINISTRADOR VE EL BOTÓN DE LANZAMIENTO DE REPRODUCCIÓN
+                if (isAdmin) {
                     panelControlExtra = `
                         <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control: Lanzar reproducción al unísono.</p>
+                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control Admin: Lanzar reproducción al unísono.</p>
                             <button onclick="lanzarReproduccionActiva('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
                                 <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción!
                             </button>
@@ -954,14 +949,14 @@
                     player.addEventListener('play', () => {
                         if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
                         document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
-                        if (isAdmin || currentRole === 'master') {
+                        if (isAdmin) {
                             iniciarHeartbeatBroadcaster(player, clientId);
                         }
                     });
 
                     player.addEventListener('pause', () => {
                         document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                        if (!isSeekingByAdmin && (isAdmin || currentRole === 'master')) {
+                        if (!isSeekingByAdmin && isAdmin) {
                             pararHeartbeatBroadcaster(true);
                         }
                     });
@@ -981,7 +976,7 @@
                         document.getElementById('sync-status-text').textContent = "Modo Administrador";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
                     } else if (currentRole === 'master') {
-                        document.getElementById('sync-status-text').textContent = "Visor Maestro (Emisor)";
+                        document.getElementById('sync-status-text').textContent = "Visor Maestro (Sala)";
                         document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                     } else {
                         document.getElementById('sync-status-text').textContent = "Sincronizado con Sala";
@@ -996,7 +991,7 @@
             m.classList.remove('hidden');
             setTimeout(() => m.classList.remove('opacity-0'), 10);
 
-            if ((isAdmin || currentRole === 'master') && sincronizarServidor) {
+            if (isAdmin && sincronizarServidor) {
                 db.collection("estado_juego").doc(id).set({
                     modalAbierto: true,
                     isPaused: true
@@ -1038,12 +1033,12 @@
             if (player) {
                 if (player.paused) {
                     player.play().catch(e => {});
-                    if ((isAdmin || currentRole === 'master') && activeId) {
+                    if (isAdmin && activeId) {
                         iniciarHeartbeatBroadcaster(player, clientId);
                     }
                 } else {
                     player.pause();
-                    if ((isAdmin || currentRole === 'master') && activeId) {
+                    if (isAdmin && activeId) {
                         db.collection("estado_juego").doc(activeId).set({ isPaused: true }, { merge: true });
                     }
                 }
@@ -1073,7 +1068,7 @@
                 const targetTime = (val / 100) * player.duration;
                 player.currentTime = targetTime;
                 isSeekingByAdmin = false;
-                if (activeId && (isAdmin || currentRole === 'master')) {
+                if (activeId && isAdmin) {
                     db.collection("estado_juego").doc(activeId).set({
                         tiempoActual: targetTime,
                         isPaused: player.paused,
@@ -1185,7 +1180,7 @@
                     bufferStatusBar.classList.add('hidden');
                 }
 
-                if ((isAdmin || currentRole === 'master') && activeId) {
+                if (isAdmin && activeId) {
                     db.collection("estado_juego").doc(activeId).set({
                         modalAbierto: false,
                         reproduciendoDesde: null,
@@ -1202,7 +1197,6 @@
             }, 300);
         };
 
-        // Inicializar interfaz al cargar
         actualizarInterfazRol();
     </script>
 </body>

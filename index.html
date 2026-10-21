@@ -17,6 +17,42 @@
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
 
+
+
+    <!-- MODAL DE BIENVENIDA / ONBOARDING -->
+<div id="welcomeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-stone-900 border border-amber-500/30 rounded-2xl max-w-md w-full p-6 text-stone-200 shadow-2xl relative">
+        <div class="text-center mb-6">
+            <span class="inline-block px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-semibold rounded-full uppercase tracking-widest mb-2 border border-amber-500/20">Edición Especial • v4.7</span>
+            <h2 class="text-2xl font-serif text-amber-100 font-bold">Museo de Memorias de Vane</h2>
+            <p class="text-xs text-stone-400 mt-1">40º Cumpleaños</p>
+        </div>
+
+        <div class="space-y-4 text-sm text-stone-300 leading-relaxed">
+            <p>
+                ¡Bienvenidos! Estamos resolviendo una serie de <strong>casos especiales</strong> relacionados con la vida, anécdotas y memoria de Vane.
+            </p>
+            <div class="bg-stone-800/60 p-3.5 rounded-xl border border-stone-700/50 space-y-2">
+                <p class="text-amber-300/95 font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 11.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                    Nota importante de audio:
+                </p>
+                <p class="text-xs text-stone-400">
+                    Por comodidad y acústica de la sala, <strong>el sonido únicamente sonará en el dispositivo central/maestro</strong>, y la reproducción de los vídeos se lanzará de forma sincronizada.
+                </p>
+            </div>
+            <p class="text-xs text-stone-400 text-center">
+                Pulsa el botón inferior para comenzar la experiencia y mantener activa la pantalla del dispositivo.
+            </p>
+        </div>
+
+        <button id="enterBtn" class="mt-6 w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-semibold rounded-xl shadow-lg shadow-amber-900/20 transition-all duration-200 transform active:scale-98">
+            Entrar a la Experiencia
+        </button>
+    </div>
+</div>
+
+    
     <!-- CONTENEDOR DE NOTIFICACIONES FLOTANTES (TOASTS) -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -217,6 +253,48 @@
 
         let clockOffsetMs = 0;
         const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
+
+
+
+        let wakeLock = null;
+
+async function solicitarWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock activo: La pantalla no se apagará.');
+
+            // Si el usuario minimiza o cambia de pestaña, el navegador libera el bloqueo de forma automática
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock liberado automáticamente.');
+                wakeLock = null;
+            });
+        }
+    } catch (err) {
+        console.error(`Error al activar Wake Lock: ${err.name}, ${err.message}`);
+    }
+}
+
+// Vinculamos la activación al hacer clic en el botón de entrada del modal
+document.getElementById('enterBtn').addEventListener('click', async () => {
+    // 1. Solicitamos el Wake Lock para mantener la pantalla despierta
+    await solicitarWakeLock();
+
+    // 2. Ocultamos el modal de bienvenida
+    const modal = document.getElementById('welcomeModal');
+    if (modal) {
+        modal.style.opacity = '0';
+        modal.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => modal.remove(), 300);
+    }
+});
+
+// Opcional: Re-solicitar el Wake Lock si el usuario vuelve a enfocar la pestaña durante la fiesta
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await solicitarWakeLock();
+    }
+});
 
         function actualizarInterfazRol() {
             const badge = document.getElementById('current-role-badge');

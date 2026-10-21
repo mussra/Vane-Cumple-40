@@ -304,16 +304,16 @@ document.addEventListener('visibilitychange', async () => {
             if (isAdmin) {
                 currentRole = 'admin';
                 if (badge) badge.textContent = 'Administrador';
-                if (badgeHeader) badgeHeader.textContent = 'v4.6 • Administrador';
+                if (badgeHeader) badgeHeader.textContent = 'v4.7 • Administrador';
                 if (adminPanel) adminPanel.classList.remove('hidden');
             } else if (currentRole === 'master') {
                 if (badge) badge.textContent = 'Visor Maestro (TV)';
-                if (badgeHeader) badgeHeader.textContent = 'v4.6 • Visor Maestro';
+                if (badgeHeader) badgeHeader.textContent = 'v4.7 • Visor Maestro';
                 if (adminPanel) adminPanel.classList.add('hidden');
             } else {
                 currentRole = 'guest';
                 if (badge) badge.textContent = 'Visor Básico';
-                if (badgeHeader) badgeHeader.textContent = 'v4.6 • Visor Básico';
+                if (badgeHeader) badgeHeader.textContent = 'v4.7 • Visor Básico';
                 if (adminPanel) adminPanel.classList.add('hidden');
             }
             localStorage.setItem('vane_role', currentRole);

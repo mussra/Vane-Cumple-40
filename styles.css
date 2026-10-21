@@ -15,6 +15,7 @@ h1, h2, h3, .font-serif {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* Scrollbar Personalizado */
 ::-webkit-scrollbar {
     width: 8px;
 }
@@ -24,4 +25,13 @@ h1, h2, h3, .font-serif {
 ::-webkit-scrollbar-thumb {
     background: #1f2937;
     border-radius: 4px;
+}
+
+/* Texto con Degradado Dorado */
+.gold-gradient-text {
+    background: linear-gradient(135deg, #FFF099 0%, #D4AF37 50%, #AA7C11 100%);
+    -webkit-background-clip: text;
+    background-clip: text; /* Añadido para compatibilidad estándar */
+    -webkit-text-fill-color: transparent;
+    display: inline-block; /* Evita fallos de renderizado del degradado */
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>40 Años de Vane: El Juego de su Memoria</title>
+    <title>40 Años de Vane</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -17,6 +17,75 @@
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
 
+
+
+    <!-- MODAL DE BIENVENIDA / ONBOARDING -->
+<div id="welcomeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-stone-900 border border-amber-500/30 rounded-2xl max-w-md w-full p-6 text-stone-200 shadow-2xl relative">
+        <div class="text-center mb-6">
+            <!-- Se añade &nbsp; antes del span para asegurar el espacio en el inline-block -->
+            <h2 class="text-2xl font-serif text-amber-100 font-bold">Museo de la&nbsp;<span class="gold-gradient-text">Memoria de Vane</span></h2>
+            <p class="text-xs text-stone-400 mt-1">40º Cumpleaños</p>
+        </div>
+
+        <div class="space-y-4 text-sm text-stone-300 leading-relaxed">
+
+
+            <!-- Narrative Intro -->
+            <p class="text-slate-300 text-sm md:text-base leading-relaxed mb-6 border-l-2 border-amber-500/50 pl-3 italic">
+                Estamos reunidos para resolver una serie de misteriosos y emocionantes "casos" basados en las vivencias, anécdotas y recuerdos más memorables de la vida de Vane.
+            </p>
+
+            <!-- Instructions Box -->
+            <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 space-y-3.5 mb-6">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-volume-xmark text-amber-400 text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Audio Centralizado</h4>
+                        <p class="text-xs text-slate-300 leading-normal mt-0.5">
+                            Por comodidad del grupo y para evitar ecos, el <strong>audio sonará únicamente en el dispositivo principal</strong> (Visor Maestro). Tu móvil permanecerá silenciado.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-tower-broadcast text-amber-400 text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Reproducción Sincronizada</h4>
+                        <p class="text-xs text-slate-300 leading-normal mt-0.5">
+                            La proyección de cada caso o vídeo se lanzará y sincronizará de forma remota para todos desde el dispositivo central.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-mobile-screen text-amber-400 text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Pantalla Siempre Activa</h4>
+                        <p class="text-xs text-slate-300 leading-normal mt-0.5">
+                            Al hacer clic abajo, tu pantalla permanecerá encendida automáticamente para disfrutar de la experiencia sin bloqueos ni interrupciones.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-stone-400 text-center">
+                Pulsa el botón inferior para comenzar la experiencia y mantener activa la pantalla del dispositivo.
+            </p>
+        </div>
+
+        <button id="enterBtn" class="mt-6 w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-semibold rounded-xl shadow-lg shadow-amber-900/20 transition-all duration-200 transform active:scale-98">
+            Entrar a la Experiencia
+        </button>
+    </div>
+</div>
+
+    
     <!-- CONTENEDOR DE NOTIFICACIONES FLOTANTES (TOASTS) -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -80,7 +149,7 @@
                     Museo Virtual • Edición Coleccionista
                 </span>
                 <span id="badge-role-header" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v4.6-buffer-fix
+                    v4.9-Screen Lock and welcome window
                 </span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
@@ -218,6 +287,48 @@
         let clockOffsetMs = 0;
         const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
 
+
+
+        let wakeLock = null;
+
+async function solicitarWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock activo: La pantalla no se apagará.');
+
+            // Si el usuario minimiza o cambia de pestaña, el navegador libera el bloqueo de forma automática
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock liberado automáticamente.');
+                wakeLock = null;
+            });
+        }
+    } catch (err) {
+        console.error(`Error al activar Wake Lock: ${err.name}, ${err.message}`);
+    }
+}
+
+// Vinculamos la activación al hacer clic en el botón de entrada del modal
+document.getElementById('enterBtn').addEventListener('click', async () => {
+    // 1. Solicitamos el Wake Lock para mantener la pantalla despierta
+    await solicitarWakeLock();
+
+    // 2. Ocultamos el modal de bienvenida
+    const modal = document.getElementById('welcomeModal');
+    if (modal) {
+        modal.style.opacity = '0';
+        modal.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => modal.remove(), 300);
+    }
+});
+
+// Opcional: Re-solicitar el Wake Lock si el usuario vuelve a enfocar la pestaña durante la fiesta
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await solicitarWakeLock();
+    }
+});
+
         function actualizarInterfazRol() {
             const badge = document.getElementById('current-role-badge');
             const badgeHeader = document.getElementById('badge-role-header');
@@ -226,16 +337,16 @@
             if (isAdmin) {
                 currentRole = 'admin';
                 if (badge) badge.textContent = 'Administrador';
-                if (badgeHeader) badgeHeader.textContent = 'v4.6 • Administrador';
+                if (badgeHeader) badgeHeader.textContent = 'v4.9 • Administrador';
                 if (adminPanel) adminPanel.classList.remove('hidden');
             } else if (currentRole === 'master') {
                 if (badge) badge.textContent = 'Visor Maestro (TV)';
-                if (badgeHeader) badgeHeader.textContent = 'v4.6 • Visor Maestro';
+                if (badgeHeader) badgeHeader.textContent = 'v4.9 • Visor Maestro';
                 if (adminPanel) adminPanel.classList.add('hidden');
             } else {
                 currentRole = 'guest';
                 if (badge) badge.textContent = 'Visor Básico';
-                if (badgeHeader) badgeHeader.textContent = 'v4.6 • Visor Básico';
+                if (badgeHeader) badgeHeader.textContent = 'v4.9 • Visor Básico';
                 if (adminPanel) adminPanel.classList.add('hidden');
             }
             localStorage.setItem('vane_role', currentRole);

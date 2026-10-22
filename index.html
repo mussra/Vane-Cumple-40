@@ -2,253 +2,329 @@
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0f19">
     <title>40 Años de Vane</title>
-    <!-- Tailwind CSS CDN -->
+
+    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Montserrat', 'sans-serif'], serif: ['Lora', 'serif'] } } }
+        };
+    </script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Firebase SDKs versión compatible global (CDN) -->
+    <!-- Estilos propios (antes NO estaba enlazado) -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Firebase SDKs (versión compat global) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between">
+<body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between pb-safe">
 
-
-
-    <!-- MODAL DE BIENVENIDA / ONBOARDING -->
-<div id="welcomeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-    <div class="bg-stone-900 border border-amber-500/30 rounded-2xl max-w-md w-full p-6 text-stone-200 shadow-2xl relative">
-        <div class="text-center mb-6">
-            <!-- Se añade &nbsp; antes del span para asegurar el espacio en el inline-block -->
-            <h2 class="text-2xl font-serif text-amber-100 font-bold">Museo de la&nbsp;<span class="gold-gradient-text">Memoria de Vane</span></h2>
-            <p class="text-xs text-stone-400 mt-1">40º Cumpleaños</p>
-        </div>
-
-        <div class="space-y-4 text-sm text-stone-300 leading-relaxed">
-
-
-            <!-- Narrative Intro -->
-            <p class="text-slate-300 text-sm md:text-base leading-relaxed mb-6 border-l-2 border-amber-500/50 pl-3 italic">
-                Estamos reunidos para resolver una serie de misteriosos y emocionantes "casos" basados en las vivencias, anécdotas y recuerdos más memorables de la vida de Vane.
-            </p>
-
-            <!-- Instructions Box -->
-            <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 space-y-3.5 mb-6">
-                <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <i class="fa-solid fa-volume-xmark text-amber-400 text-sm"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Audio Centralizado</h4>
-                        <p class="text-xs text-slate-300 leading-normal mt-0.5">
-                            Por comodidad del grupo y para evitar ecos, el <strong>audio sonará únicamente en el dispositivo principal</strong> (Visor Maestro). Tu móvil permanecerá silenciado.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <i class="fa-solid fa-tower-broadcast text-amber-400 text-sm"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Reproducción Sincronizada</h4>
-                        <p class="text-xs text-slate-300 leading-normal mt-0.5">
-                            La proyección de cada caso o vídeo se lanzará y sincronizará de forma remota para todos desde el dispositivo central.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <i class="fa-solid fa-mobile-screen text-amber-400 text-sm"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Pantalla Siempre Activa</h4>
-                        <p class="text-xs text-slate-300 leading-normal mt-0.5">
-                            Al hacer clic abajo, tu pantalla permanecerá encendida automáticamente para disfrutar de la experiencia sin bloqueos ni interrupciones.
-                        </p>
-                    </div>
-                </div>
+    <!-- ===================== MODAL DE BIENVENIDA ===================== -->
+    <div id="welcomeModal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+        <div class="bg-stone-900 border border-amber-500/30 rounded-2xl max-w-md w-full p-6 text-stone-200 shadow-2xl relative my-auto">
+            <div class="text-center mb-6">
+                <h2 id="welcomeTitle" class="text-2xl font-serif text-amber-100 font-bold">Museo de la&nbsp;<span class="gold-gradient-text">Memoria de Vane</span></h2>
+                <p class="text-xs text-stone-400 mt-1">40º cumpleaños</p>
             </div>
-            <p class="text-xs text-stone-400 text-center">
-                Pulsa el botón inferior para comenzar la experiencia y mantener activa la pantalla del dispositivo.
-            </p>
-        </div>
 
-        <button id="enterBtn" class="mt-6 w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-semibold rounded-xl shadow-lg shadow-amber-900/20 transition-all duration-200 transform active:scale-98">
-            Entrar a la Experiencia
-        </button>
+            <div class="space-y-4 text-sm text-stone-300 leading-relaxed">
+                <p class="text-slate-300 text-sm md:text-base leading-relaxed mb-6 border-l-2 border-amber-500/50 pl-3 italic">
+                    Estamos reunidos para resolver una serie de misteriosos y emocionantes "casos" basados en las vivencias, anécdotas y recuerdos más memorables de la vida de Vane.
+                </p>
+
+                <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 space-y-3.5 mb-6">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <i class="fa-solid fa-volume-xmark text-amber-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Audio centralizado</h4>
+                            <p class="text-xs text-slate-300 leading-normal mt-0.5">
+                                Para evitar ecos, el <strong>audio suena solo en el dispositivo principal</strong> (Visor Maestro). Tu móvil permanece silenciado.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <i class="fa-solid fa-tower-broadcast text-amber-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Reproducción sincronizada</h4>
+                            <p class="text-xs text-slate-300 leading-normal mt-0.5">
+                                Cada vídeo se descarga antes de empezar para que se vea sin cortes. Después, el dispositivo central lo lanza para todos a la vez.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <i class="fa-solid fa-mobile-screen text-amber-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Pantalla siempre activa</h4>
+                            <p class="text-xs text-slate-300 leading-normal mt-0.5">
+                                Al pulsar el botón, tu pantalla permanecerá encendida durante la experiencia.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs text-stone-400 text-center">
+                    Pulsa el botón para comenzar y mantener activa la pantalla del dispositivo.
+                </p>
+            </div>
+
+            <button id="enterBtn" class="mt-6 w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-semibold rounded-xl shadow-lg shadow-amber-900/20 transition-all duration-200 active:scale-95">
+                Entrar a la experiencia
+            </button>
+        </div>
     </div>
-</div>
 
-    
-    <!-- CONTENEDOR DE NOTIFICACIONES FLOTANTES (TOASTS) -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- ===================== NOTIFICACIONES (TOASTS) ===================== -->
+    <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-5 right-4 left-4 sm:left-auto z-[80] flex flex-col items-end gap-2 pointer-events-none" style="bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));"></div>
 
-    <!-- BARRA FLOTANTE DE SELECTOR DE ROL -->
-    <div class="bg-slate-950/90 border-b border-slate-800 px-4 py-2 text-xs sticky top-0 z-40 backdrop-blur-md shadow-lg">
-        <div class="mx-auto max-w-6xl flex items-center justify-between flex-wrap gap-2">
-            <div class="flex items-center gap-2">
-                <span class="text-slate-400 font-medium"><i class="fa-solid fa-user-shield text-amber-400 mr-1"></i> Rol actual:</span>
-                <span id="current-role-badge" class="px-2.5 py-1 rounded-full font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono text-[11px]">Visor Básico</span>
-            </div>
-            <div class="flex items-center gap-1.5 flex-wrap">
-                <button onclick="cambiarRol('guest')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium transition-all border border-slate-700">
-                    <i class="fa-solid fa-eye mr-1 text-slate-400"></i> Visor Básico
+    <!-- ===================== BARRA SUPERIOR (rol + estado + avisos) ===================== -->
+    <div class="sticky top-0 z-40">
+        <div class="bg-slate-950/95 border-b border-slate-800 px-4 py-2 text-xs backdrop-blur-md shadow-lg pt-safe">
+            <div class="mx-auto max-w-6xl flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span id="current-role-badge" class="px-2.5 py-1 rounded-full font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono text-[11px]">Visor básico</span>
+                    <span id="conn-chip" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[11px] text-slate-300">
+                        <span id="conn-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span id="conn-text">Conectando…</span>
+                    </span>
+                </div>
+                <button onclick="toggleRolOpciones()" aria-expanded="false" id="role-toggle-btn" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium transition-colors border border-slate-700">
+                    <i class="fa-solid fa-user-gear mr-1 text-slate-400"></i> Cambiar rol
                 </button>
-                <button onclick="cambiarRol('master')" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 font-medium transition-all border border-indigo-500/40">
+            </div>
+            <div id="role-options" class="mx-auto max-w-6xl mt-2 flex items-center gap-1.5 flex-wrap" style="display:none;">
+                <button onclick="cambiarRol('guest')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium transition-colors border border-slate-700">
+                    <i class="fa-solid fa-eye mr-1 text-slate-400"></i> Visor básico
+                </button>
+                <button onclick="cambiarRol('master')" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 font-medium transition-colors border border-indigo-500/40">
                     <i class="fa-solid fa-tv mr-1 text-indigo-400"></i> Visor Maestro (TV)
                 </button>
-                <button onclick="intentarActivarAdmin()" class="px-3 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900 text-amber-300 font-medium transition-all border border-amber-500/40">
+                <button onclick="intentarActivarAdmin()" class="px-3 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900 text-amber-300 font-medium transition-colors border border-amber-500/40">
                     <i class="fa-solid fa-crown mr-1 text-amber-400"></i> Administrador
                 </button>
             </div>
         </div>
+        <div id="banner-container" class="flex flex-col"></div>
     </div>
 
-    <!-- PANEL DE ADMINISTRADOR -->
-    <div id="admin-panel" class="bg-gradient-to-br from-slate-900 via-[#111827] to-slate-950 border-b border-amber-500/40 p-6 shadow-2xl hidden">
+    <!-- ===================== PANEL DE ADMINISTRADOR ===================== -->
+    <section id="admin-panel" style="display:none;" class="bg-gradient-to-br from-slate-900 via-[#111827] to-slate-950 border-b border-amber-500/40 p-4 sm:p-6 shadow-2xl">
         <div class="mx-auto max-w-6xl">
-            <div class="flex items-center justify-between mb-5 flex-wrap gap-3 pb-4 border-b border-slate-800">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-3 pb-4 border-b border-slate-800">
                 <div>
                     <h3 class="font-serif text-xl font-bold text-amber-400 flex items-center gap-2">
-                        <i class="fa-solid fa-sliders text-amber-500"></i> Panel de Control del Administrador
+                        <i class="fa-solid fa-sliders text-amber-500"></i> Panel de control
                     </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Gestión centralizada del archivo de recuerdos y emisión en directo.</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Casos, emisión en directo y salud del sistema.</p>
                 </div>
                 <div class="flex gap-2 flex-wrap items-center">
                     <div class="flex items-center gap-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 text-xs shadow-inner">
-                        <span class="text-slate-400">Casos totales:</span>
+                        <label for="input-total-casos" class="text-slate-400">Casos totales:</label>
                         <input type="number" id="input-total-casos" value="13" min="1" max="50" class="w-12 bg-slate-900 text-amber-400 font-bold text-center rounded border border-slate-700 p-1">
                     </div>
-                    <button onclick="inicializarCasosConConfirmacion()" class="rounded-xl bg-rose-950/70 px-3.5 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-900 transition-all border border-rose-500/40 shadow">
-                        <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Inicializar
-                    </button>
-                    <button onclick="guardarCambios()" class="rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-all shadow-lg flex items-center gap-1.5">
-                        <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Cambios
+                    <button onclick="guardarCambios()" class="rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-colors shadow-lg flex items-center gap-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Guardar cambios
                     </button>
                 </div>
             </div>
-            <div id="admin-status" class="text-xs font-medium mb-4 p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 flex items-center gap-2 shadow-inner">
-                <i class="fa-solid fa-circle-notch fa-spin text-amber-400"></i> Verificando conexión con Firebase...
-            </div>
-            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-h-[500px] overflow-y-auto p-2 pr-3"></div>
-        </div>
-    </div>
 
-    <!-- CABECERA -->
+            <!-- Salud del sistema -->
+            <details open class="mb-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-chevron-right chevron text-[10px] text-amber-500"></i>
+                    <i class="fa-solid fa-heart-pulse text-amber-400"></i> Salud del sistema
+                </summary>
+                <div class="px-4 pb-4">
+                    <div id="salud-grid" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-4"></div>
+
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <div class="flex justify-between text-slate-300 mb-1"><span>Lecturas de Firestore (estimadas, hoy)</span><span id="uso-lec-txt" class="font-mono"></span></div>
+                            <div class="barra-fondo h-2"><div id="uso-lec-bar" class="barra-relleno"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-slate-300 mb-1"><span>Escrituras de Firestore (estimadas, hoy)</span><span id="uso-esc-txt" class="font-mono"></span></div>
+                            <div class="barra-fondo h-2"><div id="uso-esc-bar" class="barra-relleno"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-slate-300 mb-1"><span>Vídeos descargados (estimado, todos los dispositivos)</span><span id="uso-desc-txt" class="font-mono"></span></div>
+                            <div class="barra-fondo h-2"><div id="uso-desc-bar" class="barra-relleno"></div></div>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-snug">
+                            Estimación hecha solo con lo que ve este dispositivo. El dato real está en Firebase Console → Uso. La cuota diaria se renueva a medianoche (hora del Pacífico).
+                        </p>
+                    </div>
+
+                    <div class="flex gap-2 flex-wrap items-center mt-4 text-xs">
+                        <div class="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-800">
+                            <label for="input-dispositivos" class="text-slate-400">Dispositivos esperados:</label>
+                            <input type="number" id="input-dispositivos" min="1" max="60" class="w-12 bg-slate-950 text-amber-400 font-bold text-center rounded border border-slate-700 p-1" onchange="cambiarDispositivos(this.value)">
+                        </div>
+                        <button onclick="verificarVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-film mr-1 text-amber-400"></i> Comprobar vídeos</button>
+                        <button onclick="recalibrarManual()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-clock mr-1 text-amber-400"></i> Recalibrar reloj</button>
+                        <button onclick="borrarCacheVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-broom mr-1 text-amber-400"></i> Vaciar caché de vídeos</button>
+                    </div>
+                    <div id="salud-videos" class="mt-3 text-xs space-y-1"></div>
+                </div>
+            </details>
+
+            <!-- Herramientas avanzadas -->
+            <details class="mb-5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-chevron-right chevron text-[10px] text-amber-500"></i>
+                    <i class="fa-solid fa-toolbox text-amber-400"></i> Herramientas avanzadas
+                </summary>
+                <div class="px-4 pb-4 flex gap-2 flex-wrap text-xs">
+                    <button onclick="crearCasosFaltantes()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-plus mr-1 text-amber-400"></i> Crear casos que faltan</button>
+                    <button onclick="reiniciarProgreso()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-rotate-left mr-1 text-amber-400"></i> Reiniciar progreso (bloquea todo)</button>
+                    <button onclick="exportarCopia()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-download mr-1 text-amber-400"></i> Exportar copia</button>
+                    <button onclick="document.getElementById('input-import').click()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-upload mr-1 text-amber-400"></i> Importar copia</button>
+                    <input type="file" id="input-import" accept="application/json,.json" style="display:none;">
+                    <button id="btn-emergencia" onclick="toggleModoEmergencia()" class="px-3 py-2 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/40 transition-colors"><i class="fa-solid fa-life-ring mr-1"></i> <span id="btn-emergencia-txt">Activar modo emergencia</span></button>
+                    <button onclick="inicializarTodo()" class="px-3 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-500/40 transition-colors"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Inicializar todo (borra contenido)</button>
+                    <p class="w-full text-[11px] text-slate-500 leading-snug">
+                        Modo emergencia: desbloquea todos los casos solo en este dispositivo y los reproduce sin sincronizar. Úsalo si se agota la cuota de Firebase.
+                    </p>
+                </div>
+            </details>
+
+            <div id="admin-cases-editor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-h-[520px] overflow-y-auto p-2 pr-3"></div>
+        </div>
+    </section>
+
+    <!-- ===================== CABECERA ===================== -->
     <header class="relative overflow-hidden border-b border-slate-800/80 bg-gradient-to-b from-[#111827] to-[#0b0f19] py-12 px-4 text-center sm:py-16">
         <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
         <div class="relative mx-auto max-w-3xl">
             <div class="flex items-center justify-center gap-2 mb-3 flex-wrap">
                 <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-semibold tracking-widest text-amber-400 uppercase shadow-lg">
-                    Museo Virtual • Edición Coleccionista
+                    Museo virtual • Edición coleccionista
                 </span>
-                <span id="badge-role-header" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">
-                    v4.9-Screen Lock and welcome window
-                </span>
+                <span id="badge-role-header" class="rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-mono text-slate-300">v5.0</span>
             </div>
             <h1 class="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
                 40 Años de Vane <span class="block text-amber-400 font-sans text-xl sm:text-2xl font-light mt-1">El Juego de su Memoria</span>
             </h1>
             <p class="text-sm sm:text-base text-slate-300 max-w-lg mx-auto font-light leading-relaxed">
-                Escanea las tarjetas Polaroid para desvelar los casos al unísono en la sala.
+                Los casos se desvelan en la sala a medida que se resuelven.
             </p>
         </div>
     </header>
 
-    <!-- GALERÍA DE LOS CASOS -->
+    <!-- ===================== GALERÍA DE CASOS ===================== -->
     <main class="mx-auto max-w-6xl px-4 py-10 flex-grow w-full">
         <div class="text-center mb-10">
-            <h2 class="font-serif text-2xl font-bold text-white mb-1">Casos del Archivo</h2>
+            <h2 class="font-serif text-2xl font-bold text-white mb-1">Casos del archivo</h2>
             <p class="text-slate-400 text-xs sm:text-sm">Las tarjetas bloqueadas se iluminarán automáticamente al resolverse en la cena.</p>
         </div>
         <div id="cases-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"></div>
     </main>
 
-    <!-- MODAL MULTIMEDIA -->
-    <div id="mediaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
-        <div class="relative w-full max-w-2xl rounded-2xl bg-[#111827] border border-slate-700 p-6 shadow-2xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 id="modalTitle" class="font-serif text-xl font-bold text-white">Reproductor Sincronizado</h3>
-                <button onclick="closeModal()" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+    <!-- ===================== MODAL MULTIMEDIA ===================== -->
+    <div id="mediaModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="display:none;" class="fixed inset-0 z-50 items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 opacity-0 transition-opacity duration-300">
+        <div class="relative w-full max-w-2xl max-h-[96vh] overflow-y-auto rounded-2xl bg-[#111827] border border-slate-700 p-4 sm:p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4 gap-3">
+                <h3 id="modalTitle" class="font-serif text-xl font-bold text-white">Reproductor sincronizado</h3>
+                <button onclick="closeModalUI()" aria-label="Cerrar" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            
-            <div id="modalContentContainer" class="aspect-video w-full overflow-hidden rounded-xl bg-slate-950 mb-3 shadow-inner relative flex items-center justify-center"></div>
-            
-            <!-- BARRA DE ESTADO Y PRECARGA DE BÚFER -->
-            <div id="buffer-status-bar" class="hidden flex-col gap-1.5 mb-3 bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-xs">
-                <div class="flex justify-between text-[11px] text-slate-300 font-mono">
-                    <span id="buffer-text"><i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Precargando búfer...</span>
-                    <span id="buffer-percentage">0%</span>
+
+            <!-- Pantalla: vídeo + capa de estado -->
+            <div id="modalContentContainer" class="relative aspect-video w-full overflow-hidden rounded-xl bg-black mb-3 shadow-inner">
+                <div id="video-wrapper" class="absolute inset-0 flex items-center justify-center"></div>
+
+                <div id="buffer-spinner" style="display:none;" class="absolute top-2 right-2 z-10 items-center gap-1.5 bg-black/70 text-amber-300 text-[11px] font-mono px-2.5 py-1 rounded-lg border border-amber-500/30">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Cargando…
                 </div>
-                <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
-                    <div id="buffer-progress-bar" class="bg-rose-500 h-full w-0 transition-all duration-300"></div>
+
+                <div id="ov" class="absolute inset-0 z-20">
+                    <div id="ov-count" class="ov-count" style="display:none;"></div>
+                    <i id="ov-icon" style="display:none;"></i>
+                    <p id="ov-title" class="font-serif text-base sm:text-lg font-semibold text-white"></p>
+                    <p id="ov-detail" class="text-xs sm:text-sm text-slate-300 max-w-sm"></p>
+                    <div id="ov-bar-wrap" class="barra-fondo h-2 w-56 max-w-full mt-2" style="display:none;"><div id="ov-bar" class="barra-relleno"></div></div>
+                    <button id="ov-btn" style="display:none;" class="mt-3 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold transition-colors"></button>
                 </div>
             </div>
 
-            <!-- CONTROLES AVANZADOS PARA ADMINISTRADOR Y MASTER -->
-            <div id="admin-controls-bar" class="hidden flex-col gap-2 mb-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+            <!-- Lanzamiento (solo administrador) -->
+            <div id="launch-bar" style="display:none;" class="flex-col gap-2 mb-3 bg-slate-900 p-3 rounded-xl border border-amber-500/30">
+                <div class="flex justify-between text-xs text-slate-300">
+                    <span><i class="fa-solid fa-mobile-screen mr-1 text-amber-400"></i> Dispositivos listos</span>
+                    <span id="listos-text" class="font-mono">0/16</span>
+                </div>
+                <div class="barra-fondo h-2"><div id="listos-bar" class="barra-relleno"></div></div>
+                <button id="launch-btn" onclick="lanzarReproduccionActiva()" class="mt-1 w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> <span id="launch-btn-txt">Lanzar con cuenta atrás</span>
+                </button>
+            </div>
+
+            <!-- Controles (administrador y Visor Maestro) -->
+            <div id="admin-controls-bar" style="display:none;" class="flex-col gap-2 mb-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <button onclick="adminTogglePlayPause()" id="admin-play-pause-btn" class="w-9 h-9 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center font-bold transition-all shadow">
+                        <button data-solo-admin onclick="adminTogglePlayPause()" id="admin-play-pause-btn" aria-label="Reproducir o pausar" class="w-9 h-9 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center font-bold transition-colors shadow">
                             <i class="fa-solid fa-play" id="admin-play-icon"></i>
                         </button>
                         <span id="time-display" class="font-mono text-xs text-slate-300">00:00 / 00:00</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-volume-high text-xs text-slate-400"></i>
-                        <input type="range" id="admin-volume-slider" min="0" max="1" step="0.05" value="1" oninput="adminChangeVolume(this.value)" class="w-20 accent-amber-500 cursor-pointer">
+                        <input type="range" id="admin-volume-slider" aria-label="Volumen" min="0" max="1" step="0.05" value="1" oninput="adminChangeVolume(this.value)" class="w-20 accent-amber-500 cursor-pointer">
                     </div>
                 </div>
-                <div class="w-full flex items-center gap-2">
-                    <input type="range" id="admin-seek-bar" min="0" max="100" value="0" step="0.1" oninput="adminSeeking(this.value)" onchange="adminSeekEnd(this.value)" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded">
+                <div data-solo-admin class="w-full flex items-center gap-2">
+                    <input type="range" id="admin-seek-bar" aria-label="Posición del vídeo" min="0" max="100" value="0" step="0.1" oninput="adminSeeking(this.value)" onchange="adminSeekEnd(this.value)" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded">
                 </div>
             </div>
 
-            <!-- BARRA DE CONTROLES EXTERNOS Y MONITOR -->
+            <!-- Pie: audio, estado de sincronización, pantalla completa -->
             <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800 gap-2 flex-wrap">
                 <div id="audio-status-label" class="flex items-center"></div>
-                
                 <div class="flex items-center gap-2">
-                    <div id="sync-monitor-badge" class="hidden items-center gap-1.5 bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 font-mono text-[11px]">
+                    <div id="sync-monitor-badge" style="display:none;" class="items-center gap-1.5 bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800 font-mono text-[11px]">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="sync-dot"></span>
-                        <span id="sync-status-text" class="text-slate-300">Desfase: 0.00s</span>
+                        <span id="sync-status-text" class="text-slate-300">Sincronizando…</span>
                     </div>
-
                     <button onclick="toggleFullScreen()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700">
-                        <i class="fa-solid fa-expand text-amber-400"></i> <span>Pantalla Completa</span>
+                        <i class="fa-solid fa-expand text-amber-400"></i> <span>Pantalla completa</span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE CONTRASEÑA ADMIN -->
-    <div id="qrPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 hidden">
+    <!-- ===================== MODAL DE CONTRASEÑA ===================== -->
+    <div id="qrPasswordModal" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle" style="display:none;" class="fixed inset-0 z-[60] items-center justify-center bg-black/90 backdrop-blur-md p-4">
         <div class="relative w-full max-w-md rounded-2xl bg-[#111827] border border-amber-500/40 p-6 shadow-2xl text-center">
             <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-3 border border-amber-500/30">
                 <i class="fa-solid fa-shield-halved text-xl"></i>
             </div>
-            <h3 id="qrModalTitle" class="font-serif text-lg font-bold text-white mb-2">Acceso de Administrador</h3>
-            <p class="text-xs text-slate-300 mb-4">Introduce la contraseña de control para desbloquear el panel de administrador.</p>
-            
-            <input type="password" id="qr-secret-input" placeholder="Contraseña de administrador" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-center text-amber-400 font-mono mb-4 text-sm focus:outline-none focus:border-amber-500">
-            
+            <h3 id="qrModalTitle" class="font-serif text-lg font-bold text-white mb-2">Acceso de administrador</h3>
+            <p class="text-xs text-slate-300 mb-4">Introduce la contraseña de control para continuar.</p>
+            <input type="password" id="qr-secret-input" autocomplete="off" placeholder="Contraseña de administrador" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-center text-amber-400 font-mono mb-4 text-sm focus:outline-none focus:border-amber-500">
             <div class="flex gap-2">
-                <button onclick="cancelarActivacionQR()" class="flex-1 rounded-lg bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-all">Cancelar</button>
-                <button onclick="verificarYDesbloquearAdminPanel()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-all shadow-md">Verificar</button>
+                <button onclick="cancelarActivacionQR()" class="flex-1 rounded-lg bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors">Cancelar</button>
+                <button onclick="verificarYDesbloquearAdminPanel()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-colors shadow-md">Verificar</button>
             </div>
         </div>
     </div>
 
-    <!-- FOOTER -->
+    <!-- ===================== PIE ===================== -->
     <footer class="border-t border-slate-800/80 bg-[#0b0f19] py-8 text-center text-xs text-slate-400">
         <p class="font-serif text-slate-300 text-sm sm:text-base italic mb-2 leading-relaxed max-w-md mx-auto px-4">
             "Los mejores recuerdos...<br><span class="text-amber-400/90 font-light not-italic text-xs sm:text-sm tracking-wide">...son aquellos que compartimos contigo."</span>
@@ -256,1051 +332,1757 @@
         <p class="font-light tracking-widest text-[11px] uppercase text-slate-400 mt-3">40 Años de Vane 🥂</p>
     </footer>
 
-    <!-- SCRIPT DE LÓGICA Y FIREBASE -->
+    <!-- ===================== LÓGICA ===================== -->
     <script>
-        const firebaseConfig = {
-            
-          apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-          authDomain: "vane-cumple-40.firebaseapp.com",
-          projectId: "vane-cumple-40",
-          storageBucket: "vane-cumple-40.firebasestorage.app",
-          messagingSenderId: "757919275158",
-          appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+    /* ============================================================
+       CONFIGURACIÓN  (todo lo ajustable está aquí arriba)
+       ============================================================ */
+    const APP_VERSION = 'v5.0';
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
+        authDomain: "vane-cumple-40.firebaseapp.com",
+        projectId: "vane-cumple-40",
+        storageBucket: "vane-cumple-40.firebasestorage.app",
+        messagingSenderId: "757919275158",
+        appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+    };
+
+    const PASSWORD_ADMIN = "vane40";
+
+    const DISPOSITIVOS_ESPERADOS_DEFECTO = 16;   // también editable en el panel
+    const CUENTA_ATRAS_MS = 3000;                // cuenta atrás al lanzar un vídeo
+
+    // Sincronización: el administrador "marca el tiempo" (latido) y todos los demás lo siguen.
+    // Latido rápido (1 s) justo tras lanzar / reanudar / saltar, que es cuando hay que converger,
+    // y latido estable después: ahorra cuota sin perder sincronía (los clientes extrapolan y corrigen cada 150 ms).
+    // Si prefieres 1 s fijo, pon HEARTBEAT_ESTABLE_MS = 1000.
+    const HEARTBEAT_RAPIDO_MS = 1000;
+    const HEARTBEAT_RAPIDO_DURACION_MS = 20000;
+    const HEARTBEAT_ESTABLE_MS = 3000;
+    const HEARTBEAT_AHORRO_MS = 5000;            // se activa solo si la cuota estimada pasa del 70 %
+    const SENAL_PERDIDA_MS = 15000;              // sin latidos durante este tiempo = aviso de "sin señal"
+
+    // Corrección de desfase (suave con velocidad; salto solo si el desfase es grande)
+    const SYNC_SALTO_DURO_S = 0.8;
+    const SYNC_ZONA_MUERTA_S = 0.03;
+    const SYNC_GANANCIA = 0.3;
+    const SYNC_RATE_MAX = 0.08;                  // ±8 % de velocidad como máximo
+
+    // Cuotas del plan gratuito de Firestore (por día)
+    const CUOTA_LECTURAS = 50000;
+    const CUOTA_ESCRITURAS = 20000;
+    // Límite diario de descarga del hosting de tus vídeos, en MB (0 = no controlar).
+    // Compruébalo en el servicio donde alojas los vídeos.
+    const LIMITE_DESCARGA_DIARIA_MB = 0;
+
+    const CACHE_VIDEOS = 'vane-videos-v1';
+
+    /* ============================================================
+       UTILIDADES
+       ============================================================ */
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* almacenamiento lleno o bloqueado */ } };
+    const show = (el, on, disp = 'block') => { if (el) el.style.display = on ? disp : 'none'; };
+    const ordenCaso = (a, b) => (parseInt(String(a).replace('caso-', ''), 10) || 0) - (parseInt(String(b).replace('caso-', ''), 10) || 0);
+    const nuevoId = () => Math.random().toString(36).slice(2, 10);
+    const ST = () => firebase.firestore.FieldValue.serverTimestamp();
+
+    function fmtMB(bytes) { return (bytes / 1048576).toFixed(bytes >= 1e8 ? 0 : 1).replace('.', ',') + ' MB'; }
+    function fmtGB(bytes) { return (bytes / 1073741824).toFixed(2).replace('.', ',') + ' GB'; }
+    function fmtTiempo(s) {
+        if (!isFinite(s) || s < 0) s = 0;
+        return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+    }
+    function tsMs(ts) {
+        if (!ts) return null;
+        if (typeof ts.toMillis === 'function') return ts.toMillis();
+        if (ts.seconds != null) return ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+        return null;
+    }
+
+    const PLACEHOLDER_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="100%" height="100%" fill="#0f172a"/><text x="50%" y="50%" fill="#475569" font-family="sans-serif" font-size="18" text-anchor="middle">Sin foto</text></svg>');
+
+    /* ============================================================
+       ESTADO GLOBAL
+       ============================================================ */
+    const urlParams = new URLSearchParams(window.location.search);
+    const rawCaso = urlParams.get('caso');
+    const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
+
+    let isAdmin = urlParams.get('admin') === PASSWORD_ADMIN || lsGet('vane_admin') === '1';
+    let currentRole = isAdmin ? 'admin' : (lsGet('vane_role') === 'master' ? 'master' : 'guest');
+
+    let clientId = lsGet('vane_client_id');
+    if (!clientId) { clientId = 'user_' + nuevoId(); lsSet('vane_client_id', clientId); }
+
+    const apiKeyValida = !!(firebaseConfig.apiKey && firebaseConfig.apiKey !== 'TU_API_KEY');
+    let db = null;
+    let casosConfig = {};
+    let initialLoadDone = false;
+    let unsubEstado = null;
+    let retryEstadoTimer = null;
+    let ultimoFromCache = null;
+    const estadoErrores = { cuota: false, permisos: false };
+    let modoEmergencia = lsGet('vane_emergencia') === '1';
+    let modoAhorro = false;
+
+    // Reloj
+    let clockOffsetMs = 0;
+    let rttMs = null;
+    let ultimaCalibracion = 0;
+    let calibrando = false;
+
+    // Pantalla activa
+    let wakeLock = null;
+    let quiereWakeLock = false;
+
+    // Bienvenida
+    let bienvenidaCerrada = false;
+    const colaBienvenida = [];
+
+    // Medios
+    let activeId = '';
+    let sesionActiva = null;
+    let blobUrlActivo = null;
+    let descargaAbort = null;
+    let cargaToken = 0;
+    let videoListo = false;
+    let modoDirecto = false;
+    let errorVideo = null;
+    let descarga = { rec: 0, total: 0, reintento: null, directo: false, directoPct: null };
+    let syncState = null;            // { paused, videoTime, serverMs, fuente }
+    let syncLoopId = null;
+    let tickPreciso = null;
+    let hbTimer = null;
+    let faseRapidaHasta = 0;
+    let lanzado = false;
+    let inicioAdminMs = null;
+    let listosUnsub = null;
+    let listosCount = 0;
+    let bufferingActivo = false;
+    let seekEditando = false;
+    let playEnCurso = false;
+    let ultimoSeekDuroMs = 0;
+    let ultimoMonitorMs = 0;
+    let ovSig = '';
+
+    const esAdminOMaster = () => isAdmin || currentRole === 'master';
+    const modoLocal = () => modoEmergencia || estadoErrores.cuota || estadoErrores.permisos;
+    const ahoraServidor = () => Date.now() + clockOffsetMs;
+    const dispositivosEsperados = () => {
+        const n = parseInt(lsGet('vane_dispositivos', ''), 10);
+        return n > 0 ? n : DISPOSITIVOS_ESPERADOS_DEFECTO;
+    };
+
+    /* ============================================================
+       CONTADORES DE USO (cuota gratuita)
+       ============================================================ */
+    function diaPacifico() {
+        try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date()); }
+        catch (e) { return new Date().toISOString().slice(0, 10); }
+    }
+    function usoVacio() { return { dia: diaPacifico(), lecturas: 0, escAdmin: 0, escComunes: 0, lecExtra: 0, bytes: 0 }; }
+    let uso = (() => {
+        try { const u = JSON.parse(lsGet('vane_uso', 'null')); if (u && u.dia === diaPacifico()) return Object.assign(usoVacio(), u); } catch (e) { /* ignorar */ }
+        return usoVacio();
+    })();
+    let usoGuardarTimer = null;
+    function tocarUso() {
+        if (uso.dia !== diaPacifico()) uso = usoVacio();
+        if (!usoGuardarTimer) usoGuardarTimer = setTimeout(() => { usoGuardarTimer = null; lsSet('vane_uso', JSON.stringify(uso)); }, 2000);
+    }
+    // Lecturas que hace CADA dispositivo (se multiplican por el nº de dispositivos al estimar)
+    function contarLectura(n = 1) { tocarUso(); uso.lecturas += n; }
+    // Escrituras que hacen todos los dispositivos por igual (calibración, "listo")
+    function contarEscrituraComun(n = 1) { tocarUso(); uso.escComunes += n; }
+    // Escrituras solo del administrador: cada una la recibe además cada dispositivo como lectura
+    function contarEscrituraAdmin(n = 1) { tocarUso(); uso.escAdmin += n; uso.lecturas += n; }
+    function contarLecturaExtra(n = 1) { tocarUso(); uso.lecExtra += n; }
+    function contarDescarga(bytes) { tocarUso(); uso.bytes += bytes; }
+    function estimarUso() {
+        const N = dispositivosEsperados();
+        return {
+            lecturas: uso.lecturas * N + uso.lecExtra,
+            escrituras: uso.escAdmin + uso.escComunes * N,
+            descargaBytes: uso.bytes * N
         };
+    }
 
-        const PASSWORD_ADMIN = "vane40"; 
+    /* ============================================================
+       NOTIFICACIONES Y AVISOS
+       ============================================================ */
+    function mostrarToast(mensaje, tipo = 'success') {
+        const container = $('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200' : 'bg-slate-900/90 border-amber-500/50 text-amber-300';
+        const icon = tipo === 'error' ? 'fa-triangle-exclamation text-rose-400' : 'fa-circle-check text-amber-400';
+        toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border ${bgClass} shadow-2xl backdrop-blur-md text-xs font-medium transform translate-y-4 opacity-0 transition-all duration-300 max-w-sm`;
+        const i = document.createElement('i');
+        i.className = `fa-solid ${icon} text-sm`;
+        const s = document.createElement('span');
+        s.textContent = mensaje;
+        toast.append(i, s);
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('translate-y-4', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 4500);
+    }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const rawCaso = urlParams.get('caso');
-        const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
-        
-        let isAdmin = urlParams.get('admin') === PASSWORD_ADMIN;
-        let currentRole = localStorage.getItem('vane_role') || 'guest';
-        if (isAdmin) currentRole = 'admin';
-
-        let clientId = localStorage.getItem('vane_client_id');
-        if (!clientId) {
-            clientId = 'user_' + Math.random().toString(36).substring(2, 9);
-            localStorage.setItem('vane_client_id', clientId);
+    function mostrarBanner(id, nivel, texto) {
+        const cont = $('banner-container');
+        if (!cont) return;
+        let el = $('banner-' + id);
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'banner-' + id;
+            cont.appendChild(el);
         }
+        const estilos = {
+            error: 'bg-rose-950/95 border-rose-500/50 text-rose-100',
+            aviso: 'bg-amber-950/95 border-amber-500/50 text-amber-100',
+            info: 'bg-slate-900/95 border-slate-600 text-slate-200'
+        };
+        const iconos = { error: 'fa-circle-exclamation text-rose-400', aviso: 'fa-triangle-exclamation text-amber-400', info: 'fa-circle-info text-sky-400' };
+        el.className = `border-b px-4 py-2 text-xs leading-snug backdrop-blur-md ${estilos[nivel] || estilos.info}`;
+        el.innerHTML = '';
+        const fila = document.createElement('div');
+        fila.className = 'mx-auto max-w-6xl flex items-start gap-2';
+        const i = document.createElement('i');
+        i.className = `fa-solid ${iconos[nivel] || iconos.info} mt-0.5`;
+        const t = document.createElement('span');
+        t.className = 'flex-1';
+        t.textContent = texto;
+        const b = document.createElement('button');
+        b.setAttribute('aria-label', 'Ocultar aviso');
+        b.className = 'text-slate-400 hover:text-white px-1';
+        b.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        b.onclick = () => quitarBanner(id);
+        fila.append(i, t, b);
+        el.appendChild(fila);
+    }
+    function quitarBanner(id) { const el = $('banner-' + id); if (el) el.remove(); }
 
-        let clockOffsetMs = 0;
-        const apiKeyValida = firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY";
+    /* ============================================================
+       ESTADO DE CONEXIÓN / ERRORES DE FIRESTORE
+       ============================================================ */
+    function calcularEstadoServidor() {
+        if (estadoErrores.cuota) return 'cuota';
+        if (estadoErrores.permisos) return 'permisos';
+        if (!navigator.onLine) return 'sin-conexion';
+        if (ultimoFromCache === true) return 'sin-conexion';
+        if (!initialLoadDone) return 'conectando';
+        return 'conectado';
+    }
+    function actualizarChipConexion() {
+        const est = calcularEstadoServidor();
+        const mapa = {
+            conectado: ['bg-emerald-500', 'Conectado'],
+            conectando: ['bg-amber-400 animate-pulse', 'Conectando…'],
+            'sin-conexion': ['bg-amber-400 animate-pulse', 'Sin conexión'],
+            cuota: ['bg-rose-500', 'Cuota agotada'],
+            permisos: ['bg-rose-500', 'Acceso denegado']
+        };
+        const dot = $('conn-dot'), txt = $('conn-text');
+        if (dot) dot.className = 'w-2 h-2 rounded-full ' + mapa[est][0];
+        if (txt) txt.textContent = mapa[est][1];
+        return est;
+    }
 
+    function manejarErrorFirestore(err, ctx) {
+        const code = (err && err.code) || '';
+        console.warn('[Firestore]', ctx, code, err && err.message);
+        if (code === 'resource-exhausted') {
+            estadoErrores.cuota = true;
+            mostrarBanner('cuota', 'error',
+                'Se ha agotado la cuota gratuita de Firebase (lecturas o escrituras del día). Se renueva a medianoche, hora del Pacífico (sobre las 08:00–09:00 en España). Hasta entonces la sala no se sincroniza.' +
+                (isAdmin ? ' Plan B: en Herramientas avanzadas activa el «Modo emergencia» para ver los casos en la TV sin sincronizar.' : ' Puedes abrir los casos ya resueltos y verlos en este dispositivo.'));
+        } else if (code === 'permission-denied') {
+            estadoErrores.permisos = true;
+            mostrarBanner('permisos', 'error',
+                'Firebase rechaza las operaciones (permiso denegado). Si las reglas de Firestore están en «modo de prueba», habrán caducado a los 30 días: renuévalas en Firebase Console → Firestore → Reglas.');
+        }
+        actualizarChipConexion();
+    }
+    function limpiarErroresFirestore() {
+        if (estadoErrores.cuota || estadoErrores.permisos) {
+            estadoErrores.cuota = false;
+            estadoErrores.permisos = false;
+            quitarBanner('cuota');
+            quitarBanner('permisos');
+            mostrarToast('Conexión con Firebase recuperada.');
+        }
+        actualizarChipConexion();
+    }
 
+    // Escritura al documento de un caso. Devuelve una promesa que resuelve true/false (nunca lanza).
+    function escribirEstado(id, datos) {
+        if (!db || modoLocal()) return Promise.resolve(false);
+        contarEscrituraAdmin(1);
+        return db.collection('estado_juego').doc(id).set(datos, { merge: true })
+            .then(() => { if (estadoErrores.cuota || estadoErrores.permisos) limpiarErroresFirestore(); return true; })
+            .catch((e) => { manejarErrorFirestore(e, 'escritura'); return false; });
+    }
 
-        let wakeLock = null;
-
-async function solicitarWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
+    /* ============================================================
+       PANTALLA SIEMPRE ACTIVA (Wake Lock)
+       ============================================================ */
+    async function adquirirWakeLock() {
+        if (!('wakeLock' in navigator)) return;
+        try {
             wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Wake Lock activo: La pantalla no se apagará.');
-
-            // Si el usuario minimiza o cambia de pestaña, el navegador libera el bloqueo de forma automática
-            wakeLock.addEventListener('release', () => {
-                console.log('Wake Lock liberado automáticamente.');
-                wakeLock = null;
-            });
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } catch (err) {
+            console.warn('Wake Lock:', err && err.name);
         }
-    } catch (err) {
-        console.error(`Error al activar Wake Lock: ${err.name}, ${err.message}`);
     }
-}
 
-// Vinculamos la activación al hacer clic en el botón de entrada del modal
-document.getElementById('enterBtn').addEventListener('click', async () => {
-    // 1. Solicitamos el Wake Lock para mantener la pantalla despierta
-    await solicitarWakeLock();
-
-    // 2. Ocultamos el modal de bienvenida
-    const modal = document.getElementById('welcomeModal');
-    if (modal) {
-        modal.style.opacity = '0';
-        modal.style.transition = 'opacity 0.3s ease';
-        setTimeout(() => modal.remove(), 300);
-    }
-});
-
-// Opcional: Re-solicitar el Wake Lock si el usuario vuelve a enfocar la pestaña durante la fiesta
-document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        await solicitarWakeLock();
-    }
-});
-
-        function actualizarInterfazRol() {
-            const badge = document.getElementById('current-role-badge');
-            const badgeHeader = document.getElementById('badge-role-header');
-            const adminPanel = document.getElementById('admin-panel');
-
-            if (isAdmin) {
-                currentRole = 'admin';
-                if (badge) badge.textContent = 'Administrador';
-                if (badgeHeader) badgeHeader.textContent = 'v4.9 • Administrador';
-                if (adminPanel) adminPanel.classList.remove('hidden');
-            } else if (currentRole === 'master') {
-                if (badge) badge.textContent = 'Visor Maestro (TV)';
-                if (badgeHeader) badgeHeader.textContent = 'v4.9 • Visor Maestro';
-                if (adminPanel) adminPanel.classList.add('hidden');
-            } else {
-                currentRole = 'guest';
-                if (badge) badge.textContent = 'Visor Básico';
-                if (badgeHeader) badgeHeader.textContent = 'v4.9 • Visor Básico';
-                if (adminPanel) adminPanel.classList.add('hidden');
-            }
-            localStorage.setItem('vane_role', currentRole);
+    /* ============================================================
+       BIENVENIDA
+       ============================================================ */
+    function esperarBienvenida(fn) { if (bienvenidaCerrada) fn(); else colaBienvenida.push(fn); }
+    $('enterBtn').addEventListener('click', async () => {
+        quiereWakeLock = true;
+        await adquirirWakeLock();
+        bienvenidaCerrada = true;
+        const modal = $('welcomeModal');
+        if (modal) {
+            modal.style.transition = 'opacity 0.3s ease';
+            modal.style.opacity = '0';
+            setTimeout(() => modal.remove(), 300);
         }
+        while (colaBienvenida.length) { try { colaBienvenida.shift()(); } catch (e) { console.error(e); } }
+    });
 
-        window.cambiarRol = function(nuevoRol) {
-            if (nuevoRol === 'admin') {
-                intentarActivarAdmin();
-                return;
-            }
-            if (nuevoRol === 'master') {
-                isAdmin = false;
-                currentRole = 'master';
-                registrarMasterGlobalEnFirebase();
-                mostrarToast("Modo Visor Maestro activado en este dispositivo.");
-            } else {
-                isAdmin = false;
-                currentRole = 'guest';
-                liberarMasterGlobalEnFirebase();
-                mostrarToast("Modo Visor Básico activado.");
-            }
+    /* ============================================================
+       ROLES
+       ============================================================ */
+    function actualizarInterfazRol() {
+        const rol = isAdmin ? 'admin' : (currentRole === 'master' ? 'master' : 'guest');
+        currentRole = rol;
+        const nombres = { admin: 'Administrador', master: 'Visor Maestro (TV)', guest: 'Visor básico' };
+        $('current-role-badge').textContent = nombres[rol];
+        $('badge-role-header').textContent = APP_VERSION + ' • ' + nombres[rol];
+        show($('admin-panel'), rol === 'admin', 'block');
+        lsSet('vane_role', rol === 'master' ? 'master' : 'guest');
+        lsSet('vane_admin', rol === 'admin' ? '1' : '0');
+        if (rol === 'admin') { renderAdminSiHaceFalta(); iniciarMonitorSalud(); }
+    }
+
+    window.toggleRolOpciones = function () {
+        const op = $('role-options');
+        const abierto = op.style.display !== 'none';
+        show(op, !abierto, 'flex');
+        $('role-toggle-btn').setAttribute('aria-expanded', String(!abierto));
+    };
+
+    window.cambiarRol = function (nuevo) {
+        if (nuevo === 'admin') { intentarActivarAdmin(); return; }
+        if (nuevo === 'master') {
+            if (currentRole === 'master' && !isAdmin) { mostrarToast('Este dispositivo ya es el Visor Maestro.'); return; }
+            if (!confirm('Este dispositivo será el Visor Maestro y reproducirá el audio de la sala. ¿Continuar?')) return;
+            isAdmin = false;
+            currentRole = 'master';
+            registrarMasterGlobal();
+            mostrarToast('Modo Visor Maestro activado en este dispositivo.');
+        } else {
+            const eraMaster = currentRole === 'master' && !isAdmin;
+            isAdmin = false;
+            currentRole = 'guest';
+            if (eraMaster) liberarMasterGlobal();
+            mostrarToast('Modo Visor básico activado.');
+        }
+        if (activeId) closeModal(false);   // el rol cambia el audio: se vuelve a abrir el caso
+        actualizarInterfazRol();
+        show($('role-options'), false);
+    };
+
+    window.intentarActivarAdmin = function () {
+        if (isAdmin) { mostrarToast('Ya estás en modo Administrador.'); return; }
+        $('qrModalTitle').textContent = 'Acceso de administrador';
+        abrirModalPassword();
+    };
+    function abrirModalPassword() {
+        show($('qrPasswordModal'), true, 'flex');
+        setTimeout(() => { const i = $('qr-secret-input'); if (i) i.focus(); }, 50);
+    }
+    window.cancelarActivacionQR = function () { show($('qrPasswordModal'), false); };
+    window.verificarYDesbloquearAdminPanel = function () {
+        const pass = $('qr-secret-input').value;
+        if (pass === PASSWORD_ADMIN) {
+            const eraMaster = currentRole === 'master' && !isAdmin;
+            isAdmin = true;
+            currentRole = 'admin';
+            if (eraMaster) liberarMasterGlobal();
+            show($('qrPasswordModal'), false);
+            $('qr-secret-input').value = '';
             actualizarInterfazRol();
-        };
+            show($('role-options'), false);
+            mostrarToast('Acceso de administrador concedido.');
+            if (qrCasoNum) { desbloquearCasoQR(qrCasoNum); limpiarURL(); }
+        } else {
+            mostrarToast('Contraseña incorrecta.', 'error');
+            $('qr-secret-input').value = '';
+        }
+    };
+    $('qr-secret-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') verificarYDesbloquearAdminPanel(); });
 
-        window.intentarActivarAdmin = function() {
-            if (isAdmin) {
-                mostrarToast("Ya estás en modo Administrador.");
-                return;
+    function limpiarURL() { try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) { /* ignorar */ } }
+
+    /* ---- Visor Maestro único ---- */
+    function registrarMasterGlobal() {
+        if (!db || modoLocal()) return;
+        contarEscrituraComun(1);
+        db.collection('config_sistema').doc('master_global').set({ masterClientId: clientId, updatedAt: ST() }, { merge: true })
+            .catch((e) => manejarErrorFirestore(e, 'master'));
+    }
+    function liberarMasterGlobal() {
+        if (!db || modoLocal()) return;
+        contarLectura(1);
+        db.collection('config_sistema').doc('master_global').get().then((doc) => {
+            if (doc.exists && doc.data().masterClientId === clientId) {
+                contarEscrituraComun(1);
+                return db.collection('config_sistema').doc('master_global').set({ masterClientId: null, updatedAt: ST() }, { merge: true });
             }
-            document.getElementById('qrPasswordModal').classList.remove('hidden');
-        };
-
-        window.verificarYDesbloquearAdminPanel = function() {
-            const passInput = document.getElementById('qr-secret-input').value;
-            if (passInput === PASSWORD_ADMIN) {
-                isAdmin = true;
-                currentRole = 'admin';
-                document.getElementById('qrPasswordModal').classList.add('hidden');
-                document.getElementById('qr-secret-input').value = '';
+        }).catch((e) => manejarErrorFirestore(e, 'master'));
+    }
+    function suscribirMaster() {
+        db.collection('config_sistema').doc('master_global').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            if (currentRole !== 'master' || isAdmin) return;
+            const m = doc.exists ? doc.data().masterClientId : null;
+            if (m && m !== clientId) {
+                currentRole = 'guest';
                 actualizarInterfazRol();
-                mostrarToast("Acceso de Administrador concedido.");
-                if (qrCasoNum) {
-                    desbloquearCasoQR(qrCasoNum);
-                }
-                if (db) {
-                    db.collection("estado_juego").get().then(snapshot => {
-                        snapshot.forEach(doc => {
-                            casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
-                        });
-                        renderAdmin();
-                    });
-                }
-            } else {
-                mostrarToast("Contraseña incorrecta.", "error");
-                document.getElementById('qr-secret-input').value = '';
+                if (activeId) closeModal(false);
+                mostrarToast('Otro dispositivo ha asumido el rol de Visor Maestro. Este pasa a Visor básico.', 'error');
+            } else if (!m) {
+                registrarMasterGlobal();     // tras recargar, este dispositivo se vuelve a registrar como maestro
             }
-        };
+        }, (e) => manejarErrorFirestore(e, 'master'));
+    }
 
-        window.cancelarActivacionQR = function() {
-            document.getElementById('qrPasswordModal').classList.add('hidden');
-        };
-
-        function registrarMasterGlobalEnFirebase() {
-            if (!db) return;
-            db.collection("config_sistema").doc("master_global").set({
-                masterClientId: clientId,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true }).catch(e => {});
-        }
-
-        function liberarMasterGlobalEnFirebase() {
-            if (!db) return;
-            db.collection("config_sistema").doc("master_global").get().then(doc => {
-                if (doc.exists && doc.data().masterClientId === clientId) {
-                    db.collection("config_sistema").doc("master_global").set({
-                        masterClientId: null,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
+    /* ============================================================
+       CALIBRACIÓN DE RELOJ
+       Varias muestras; nos quedamos con la de menor latencia (la más fiable).
+       ============================================================ */
+    async function calibrarReloj(muestras = 5) {
+        if (!db || calibrando || modoLocal()) return;
+        calibrando = true;
+        const ref = db.collection('calibracion_reloj').doc(clientId);
+        let mejor = null;
+        try {
+            for (let i = 0; i < muestras; i++) {
+                const t0 = Date.now();
+                contarEscrituraComun(1);
+                await ref.set({ ping: ST(), t0 });
+                const t1 = Date.now();
+                contarLectura(1);
+                const snap = await ref.get({ source: 'server' });
+                const sMs = snap.exists ? tsMs(snap.data().ping) : null;
+                if (sMs) {
+                    const rtt = t1 - t0;
+                    const offset = sMs - (t0 + rtt / 2);
+                    if (!mejor || rtt < mejor.rtt) mejor = { rtt, offset };
                 }
-            }).catch(e => {});
+                await sleep(120);
+            }
+        } catch (e) {
+            manejarErrorFirestore(e, 'calibracion');
         }
+        if (mejor) { clockOffsetMs = mejor.offset; rttMs = mejor.rtt; ultimaCalibracion = Date.now(); }
+        calibrando = false;
+    }
+    function recalibrarSiHaceFalta() { if (db && Date.now() - ultimaCalibracion > 180000) calibrarReloj(3); }
+    window.recalibrarManual = async function () {
+        mostrarToast('Calibrando el reloj…');
+        await calibrarReloj(5);
+        mostrarToast(rttMs != null ? `Reloj calibrado (latencia ${rttMs} ms).` : 'No se pudo calibrar el reloj.', rttMs != null ? 'success' : 'error');
+    };
 
-        let db = null;
-        if (apiKeyValida) {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
+    /* ============================================================
+       CACHÉ LOCAL DE CASOS (arranque instantáneo y plan B sin conexión)
+       ============================================================ */
+    function guardarCacheCasos() {
+        const m = {};
+        Object.keys(casosConfig).forEach((id) => {
+            const c = casosConfig[id];
+            m[id] = { titulo: c.titulo, descripcion: c.descripcion, tipo: c.tipo, recursoId: c.recursoId, imagenUrl: c.imagenUrl, resuelto: !!c.resuelto };
+        });
+        lsSet('vane_cache_casos', JSON.stringify(m));
+    }
+    function cargarCacheCasos() {
+        try { const m = JSON.parse(lsGet('vane_cache_casos', 'null')); return (m && typeof m === 'object') ? m : null; }
+        catch (e) { return null; }
+    }
 
-            db.collection("config_sistema").doc("master_global").onSnapshot(doc => {
-                if (doc.exists) {
-                    const masterId = doc.data().masterClientId;
-                    if (masterId && masterId !== clientId && currentRole === 'master') {
-                        currentRole = 'guest';
-                        actualizarInterfazRol();
-                        mostrarToast("Otro dispositivo ha asumido el rol de Visor Maestro. Este pasa a Visor Básico.", "error");
-                    }
-                }
-            });
+    /* ============================================================
+       GALERÍA
+       ============================================================ */
+    const esResuelto = (c) => !!(c && (c.resuelto || modoEmergencia));
 
-            const calibrarRelojCliente = () => {
-                const tLocalAntes = Date.now();
-                db.collection("calibracion_reloj").doc(clientId).set({
-                    ping: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: tLocalAntes
-                }, { merge: true }).then(() => {
-                    db.collection("calibracion_reloj").doc(clientId).get().then((doc) => {
-                        if (doc.exists && doc.data().ping) {
-                            const servidorTime = doc.data().ping.toMillis ? doc.data().ping.toMillis() : (doc.data().ping.seconds ? doc.data().ping.seconds * 1000 : 0);
-                            if (servidorTime > 0) {
-                                const tLocalDespues = Date.now();
-                                const rtt = tLocalDespues - tLocalAntes;
-                                const estimatedServerNow = servidorTime + (rtt / 2);
-                                clockOffsetMs = estimatedServerNow - tLocalDespues;
-                            }
-                        }
-                    });
-                }).catch(e => {});
-            };
-            calibrarRelojCliente();
-        }
+    function htmlTarjeta(id) {
+        const c = casosConfig[id];
+        const e = esc(id);
+        return `
+        <article id="card-${e}" data-id="${e}" class="polaroid-card bg-[#1f2937] rounded-xl p-4 pb-5 border border-slate-700/60 flex flex-col justify-between">
+            <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
+                <img id="img-${e}" src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
+                <div id="lock-${e}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
+                    <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
+                    <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
+                </div>
+                <span class="absolute top-3 left-3 rounded bg-slate-900/90 border border-slate-700 px-2 py-1 text-xs text-amber-400 shadow">${esc(id.replace('caso-', 'Caso #'))}</span>
+            </div>
+            <div>
+                <h3 id="title-${e}" class="font-serif text-lg font-semibold text-white mb-1">${esc(c.titulo || id)}</h3>
+                <p id="desc-${e}" class="text-xs text-slate-300 mb-4">${esc(c.descripcion || '')}</p>
+            </div>
+            <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
+                <span id="status-${e}" class="text-xs text-slate-400">Pendiente</span>
+                <button id="btn-${e}" data-abrir="${e}" disabled class="rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed">Ver</button>
+            </div>
+        </article>`;
+    }
 
-        let casosConfig = {};
-        let initialLoadDone = false;
-        let broadcasterHeartbeatInterval = null;
-        let isSeekingByAdmin = false;
-        let isBackgroundPreloadingPaused = false;
-        let activeBufferInterval = null;
-
-        function mostrarToast(mensaje, tipo = 'success') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-
-            const toast = document.createElement('div');
-            const bgClass = tipo === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200' : 'bg-slate-900/90 border-amber-500/50 text-amber-300';
-            const icon = tipo === 'error' ? 'fa-triangle-exclamation text-rose-400' : 'fa-circle-check text-amber-400';
-
-            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border ${bgClass} shadow-2xl backdrop-blur-md text-xs font-medium transform translate-y-4 opacity-0 transition-all duration-300`;
-            toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i><span>${mensaje}</span>`;
-
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
-
-            setTimeout(() => {
-                toast.classList.add('translate-y-4', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
-        }
-
-        function iniciarPrecargaGlobalSilenciosa() {
-            if (isBackgroundPreloadingPaused || activeId) return;
-
-            Object.keys(casosConfig).forEach((id) => {
-                if (isBackgroundPreloadingPaused || activeId) return;
-                const c = casosConfig[id];
-                if (c && c.tipo === 'video' && c.recursoId && c.recursoId.trim() !== '') {
-                    fetch(c.recursoId, { mode: 'cors', credentials: 'omit' }).catch(err => {});
-                }
-            });
-        }
-
-        function renderGrid() {
-            const grid = document.getElementById('cases-grid');
-            if (!grid) return;
-            
-            const keys = Object.keys(casosConfig).sort((a, b) => {
-                return parseInt(a.replace('caso-', '')) - parseInt(b.replace('caso-', ''));
-            });
-
-            if (keys.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-700 p-8">
+    function renderGrid() {
+        const grid = $('cases-grid');
+        if (!grid) return;
+        const keys = Object.keys(casosConfig).sort(ordenCaso);
+        if (keys.length === 0) {
+            grid.innerHTML = initialLoadDone || !apiKeyValida
+                ? `<div class="col-span-full text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-700 p-8">
                         <i class="fa-solid fa-folder-open text-amber-400/50 text-4xl mb-3"></i>
                         <h3 class="font-serif text-lg font-bold text-white mb-1">No hay casos configurados todavía</h3>
-                        <p class="text-slate-400 text-xs max-w-sm mx-auto mb-4">El archivo está vacío en este momento. Accede al panel de administración para inicializar los casos.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = '';
-            keys.forEach((id) => {
-                const c = casosConfig[id];
-                grid.innerHTML += `
-                    <article id="card-${id}" class="bg-[#1f2937] rounded-xl p-4 pb-5 shadow-2xl border border-slate-700/60 flex flex-col justify-between transition-all duration-300">
-                        <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
-                            <img id="img-${id}" src="${c.imagenUrl || ''}" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
-                            <div id="lock-${id}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
-                                <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                                <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
-                            </div>
-                            <span class="absolute top-3 left-3 rounded bg-slate-900/90 border border-slate-700 px-2 py-1 text-xs text-amber-400 shadow">${c.titulo || id}</span>
-                        </div>
-                        <div>
-                            <h3 id="title-${id}" class="font-serif text-lg font-semibold text-white mb-1">${c.titulo}</h3>
-                            <p id="desc-${id}" class="text-xs text-slate-300 mb-4">${c.descripcion}</p>
-                        </div>
-                        <div class="flex items-center justify-between pt-3 border-t border-slate-700/60">
-                            <span id="status-${id}" class="text-xs text-slate-400">Pendiente</span>
-                            <button id="btn-${id}" disabled onclick="openModal('${id}')" class="rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed">Ver</button>
-                        </div>
-                    </article>
-                `;
-                actualizarUI(id, c.resuelto);
-            });
-
-            iniciarPrecargaGlobalSilenciosa();
+                        <p class="text-slate-400 text-xs max-w-sm mx-auto">El archivo está vacío. Entra como administrador y usa «Crear casos que faltan».</p>
+                   </div>`
+                : `<div class="col-span-full text-center py-16 text-slate-400 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-2"></i> Cargando los casos…</div>`;
+            return;
         }
+        grid.innerHTML = keys.map(htmlTarjeta).join('');
+        keys.forEach(actualizarUI);
+    }
 
-        function renderAdmin() {
-            const editor = document.getElementById('admin-cases-editor');
-            if (!editor) return;
-            editor.innerHTML = '';
+    function renderGridSiHaceFalta() {
+        const keys = Object.keys(casosConfig).sort(ordenCaso);
+        const enGrid = Array.from(document.querySelectorAll('#cases-grid [data-id]')).map((n) => n.dataset.id);
+        const igual = enGrid.length === keys.length && enGrid.every((v, i) => v === keys[i]);
+        if (!igual || (keys.length === 0)) renderGrid();
+    }
 
-            const keys = Object.keys(casosConfig).sort((a, b) => {
-                return parseInt(a.replace('caso-', '')) - parseInt(b.replace('caso-', ''));
-            });
+    function actualizarUI(id) {
+        const c = casosConfig[id];
+        if (!c) return;
+        const card = $('card-' + id);
+        if (!card) return;
+        const img = $('img-' + id), lock = $('lock-' + id), btn = $('btn-' + id), status = $('status-' + id);
+        const title = $('title-' + id), desc = $('desc-' + id);
+        if (title) title.textContent = c.titulo || id;
+        if (desc) desc.textContent = c.descripcion || '';
+        if (img && c.imagenUrl && img.getAttribute('src') !== c.imagenUrl && img.dataset.fallo !== '1') img.src = c.imagenUrl;
 
-            keys.forEach((id) => {
-                const c = casosConfig[id];
-                const tipoActual = c.tipo || 'video';
-                editor.innerHTML += `
-                    <div class="bg-slate-950/90 p-4 rounded-xl border border-slate-800 text-xs space-y-3 shadow-md hover:border-amber-500/40 transition-all">
-                        <div class="flex justify-between font-bold text-amber-400 border-b border-slate-800 pb-2">
-                            <span class="font-mono text-sm">${id.toUpperCase()}</span>
-                            <label class="flex items-center gap-1.5 cursor-pointer bg-slate-900 px-2 py-1 rounded border border-slate-800"><input type="checkbox" id="adm-res-${id}" ${c.resuelto?'checked':''}> Resuelto</label>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Título:</label>
-                            <input type="text" id="adm-title-${id}" value="${c.titulo || ''}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-medium" placeholder="Título">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Descripción:</label>
-                            <input type="text" id="adm-desc-${id}" value="${c.descripcion || ''}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-300" placeholder="Descripción">
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="text-slate-400 text-[10px]">Tipo Contenido:</label>
-                                <select id="adm-tipo-${id}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-400 font-mono text-[11px]">
-                                    <option value="video" ${tipoActual==='video'?'selected':''}>Vídeo (.mp4)</option>
-                                    <option value="texto" ${tipoActual==='texto'?'selected':''}>Texto en vivo</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-slate-400 text-[10px]">Foto Polaroid (URL):</label>
-                                <input type="text" id="adm-img-${id}" value="${c.imagenUrl || ''}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 font-mono text-[11px]" placeholder="assets/foto.jpg">
-                            </div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <label class="text-slate-400 text-[10px]">Recurso (URL Vídeo o Texto):</label>
-                            <textarea id="adm-rec-${id}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono text-[11px]" placeholder="https://...">${c.recursoId || ''}</textarea>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function actualizarUI(id, resuelto) {
-            const c = casosConfig[id];
-            if (!c) return;
-            const img = document.getElementById(`img-${id}`);
-            const lock = document.getElementById(`lock-${id}`);
-            const btn = document.getElementById(`btn-${id}`);
-            const status = document.getElementById(`status-${id}`);
-            const title = document.getElementById(`title-${id}`);
-            const desc = document.getElementById(`desc-${id}`);
-
-            if (title) title.textContent = c.titulo;
-            if (desc) desc.textContent = c.descripcion;
-            if (img && c.imagenUrl) img.src = c.imagenUrl;
-
-            if (resuelto) {
-                if (lock) lock.style.display = 'none';
-                if (btn) {
-                    btn.disabled = false;
-                    btn.className = "rounded bg-amber-500 px-3 py-1.5 text-xs text-slate-950 font-medium hover:bg-amber-400 shadow-md";
-                }
-                if (status) status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
-                if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
-            } else {
-                if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
-                if (lock) lock.style.display = 'flex';
-                if (btn) {
-                    btn.disabled = true;
-                    btn.className = "rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed";
-                }
-                if (status) status.innerHTML = 'Pendiente';
-            }
-        }
-
-        function hacerScrollA(id, reintentos = 5) {
-            const ejecutarScroll = () => {
-                const card = document.getElementById(`card-${id}`);
-                if (card) {
-                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else if (reintentos > 0) {
-                    setTimeout(() => hacerScrollA(id, reintentos - 1), 250);
-                }
-            };
-            setTimeout(ejecutarScroll, 150);
-        }
-
-        function hacerParpadearTarjeta(id) {
-            const card = document.getElementById(`card-${id}`);
-            if (!card) return;
-
-            card.classList.add('ring-4', 'ring-amber-400', 'scale-[1.02]', 'transition-all', 'duration-500');
-            
-            let contador = 0;
-            const intervalId = setInterval(() => {
-                card.classList.toggle('opacity-75');
-                contador++;
-                if (contador >= 6) {
-                    clearInterval(intervalId);
-                    card.classList.remove('opacity-75');
-                    setTimeout(() => {
-                        card.classList.remove('ring-4', 'ring-amber-400', 'scale-[1.02]');
-                    }, 1500);
-                }
-            }, 300);
-        }
-
-        function verificarEstadoRemoto() {
-            if (!db || !initialLoadDone) return;
-            db.collection("estado_juego").get().then((snapshot) => {
-                snapshot.forEach((doc) => {
-                    const id = doc.id;
-                    const data = doc.data();
-                    const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
-                    const antesModalAbierto = casosConfig[id] ? casosConfig[id].modalAbierto : false;
-
-                    casosConfig[id] = { ...casosConfig[id], ...data };
-
-                    if (!document.getElementById(`card-${id}`)) {
-                        renderGrid();
-                        if (isAdmin) renderAdmin();
-                    } else {
-                        actualizarUI(id, data.resuelto);
-                    }
-
-                    if (data.resuelto && !antesResuelto) {
-                        hacerScrollA(id);
-                        hacerParpadearTarjeta(id);
-                    }
-
-                    if (data.modalAbierto && !antesModalAbierto) {
-                        hacerScrollA(id);
-                        if (activeId !== id) {
-                            openModal(id, false);
-                        }
-                    } else if (data.modalAbierto === false && antesModalAbierto && activeId === id) {
-                        closeModal();
-                    }
-                });
-            }).catch(e => {});
-        }
-
-        if (apiKeyValida) {
-            db = firebase.firestore();
-
-            if (isAdmin) {
-                document.getElementById('admin-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Conectado como Administrador.';
-                document.getElementById('admin-status').className = 'text-xs font-medium mb-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 flex items-center gap-2 shadow-inner';
-            }
-
-            db.collection("estado_juego").onSnapshot((snapshot) => {
-                if (!snapshot.empty) {
-                    snapshot.docChanges().forEach((change) => {
-                        const id = change.doc.id;
-                        const data = change.doc.data();
-                        
-                        if (change.type === "added" || change.type === "modified") {
-                            const antesResuelto = casosConfig[id] ? casosConfig[id].resuelto : false;
-                            const antesModalAbierto = casosConfig[id] ? casosConfig[id].modalAbierto : false;
-                            
-                            casosConfig[id] = { ...casosConfig[id], ...data };
-                            
-                            if (!document.getElementById(`card-${id}`)) {
-                                renderGrid();
-                                if (isAdmin) renderAdmin();
-                            } else {
-                                actualizarUI(id, data.resuelto);
-                            }
-
-                            if (initialLoadDone) {
-                                const seAcabaDeResolver = data.resuelto && !antesResuelto;
-                                if (seAcabaDeResolver) {
-                                    hacerScrollA(id);
-                                    hacerParpadearTarjeta(id);
-                                }
-
-                                const esModalReciente = data.modalAbierto && !antesModalAbierto;
-                                if (esModalReciente) {
-                                    hacerScrollA(id);
-                                    if (activeId !== id) {
-                                        openModal(id, false);
-                                    }
-                                } else if (data.modalAbierto === false && antesModalAbierto && activeId === id) {
-                                    closeModal();
-                                }
-                            }
-
-                            // ⚡ SINCRONIZACIÓN FLUIDA OPTIMIZADA
-                            if (!isAdmin && data.tiempoActual !== undefined && data.tiempoActual !== null && data.heartbeatTimestamp && activeId === id && casosConfig[id]?.tipo === 'video') {
-                                const player = document.getElementById('player');
-                                if (player) {
-                                    if (data.isPaused && !player.paused) {
-                                        player.pause();
-                                    } else if (!data.isPaused && player.paused && data.reproduciendoDesde) {
-                                        player.play().catch(e => {});
-                                    }
-
-                                    if (!player.paused && !data.isPaused) {
-                                        const serverTimeMs = data.heartbeatTimestamp.toMillis ? data.heartbeatTimestamp.toMillis() : (data.heartbeatTimestamp.seconds ? data.heartbeatTimestamp.seconds * 1000 : Date.now());
-                                        const nowCorregido = Date.now() + clockOffsetMs;
-                                        const latenciaRedSegundos = Math.max(0, (nowCorregido - serverTimeMs) / 1000);
-                                        
-                                        const tiempoEsperadoReal = data.tiempoActual + latenciaRedSegundos;
-                                        const desfaseActual = player.currentTime - tiempoEsperadoReal;
-
-                                        actualizarMonitorSync(desfaseActual);
-
-                                        if (Math.abs(desfaseActual) > 0.8) {
-                                            player.currentTime = tiempoEsperadoReal;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-                
-                if (!initialLoadDone) {
-                    initialLoadDone = true;
-                    if (qrCasoNum) {
-                        const casoAEjecutar = qrCasoNum;
-                        
-                        const limpiarURLConRetraso = () => {
-                            window.history.replaceState({}, document.title, window.location.pathname + (isAdmin ? `?admin=${PASSWORD_ADMIN}` : ''));
-                        };
-
-                        if (isAdmin) {
-                            desbloquearCasoQR(casoAEjecutar);
-                            setTimeout(limpiarURLConRetraso, 800);
-                        } else {
-                            document.getElementById('qrModalTitle').textContent = `Desbloquear Caso #${casoAEjecutar}`;
-                            document.getElementById('qrPasswordModal').classList.remove('hidden');
-                        }
-
-                        hacerScrollA(`caso-${casoAEjecutar}`);
-                    }
-                }
-            }, (error) => {});
-
-            setInterval(verificarEstadoRemoto, 6000);
-            document.addEventListener("visibilitychange", () => { if (!document.hidden) verificarEstadoRemoto(); });
-            window.addEventListener("online", verificarEstadoRemoto);
+        if (esResuelto(c)) {
+            card.classList.add('resuelta');
+            if (lock) lock.style.display = 'none';
+            if (btn) { btn.disabled = false; btn.className = 'rounded bg-amber-500 px-3 py-1.5 text-xs text-slate-950 font-medium hover:bg-amber-400 shadow-md'; }
+            if (status) status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
+            if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
         } else {
-            renderGrid();
+            card.classList.remove('resuelta');
+            if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
+            if (lock) lock.style.display = 'flex';
+            if (btn) { btn.disabled = true; btn.className = 'rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed'; }
+            if (status) status.textContent = 'Pendiente';
         }
+    }
 
-        window.verificarYDesbloquearAdminPanel = function() {
-            const passInput = document.getElementById('qr-secret-input').value;
-            if (passInput === PASSWORD_ADMIN) {
-                isAdmin = true;
-                currentRole = 'admin';
-                document.getElementById('qrPasswordModal').classList.add('hidden');
-                document.getElementById('qr-secret-input').value = '';
-                actualizarInterfazRol();
-                mostrarToast("Acceso de Administrador concedido.");
-                if (qrCasoNum) {
-                    desbloquearCasoQR(qrCasoNum);
-                }
-                if (db) {
-                    db.collection("estado_juego").get().then(snapshot => {
-                        snapshot.forEach(doc => {
-                            casosConfig[doc.id] = { ...casosConfig[doc.id], ...doc.data() };
-                        });
-                        renderAdmin();
-                    });
-                }
-            } else {
-                mostrarToast("Contraseña incorrecta.", "error");
-                document.getElementById('qr-secret-input').value = '';
-            }
-        };
+    $('cases-grid').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-abrir]');
+        if (b && !b.disabled) openModal(b.dataset.abrir);
+    });
 
-        window.desbloquearCasoQR = function(numCaso) {
-            const targetId = `caso-${numCaso}`;
-            hacerScrollA(targetId);
-            db.collection("estado_juego").doc(targetId).set({
-                resuelto: true,
-                modalAbierto: true
-            }, { merge: true }).then(() => {
-                mostrarToast(`Caso #${numCaso} desbloqueado con éxito.`);
-            }).catch(err => mostrarToast("Error al actualizar: " + err.message, "error"));
-        };
+    function hacerScrollA(id, reintentos = 5) {
+        setTimeout(() => {
+            const card = $('card-' + id);
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            else if (reintentos > 0) hacerScrollA(id, reintentos - 1);
+        }, 150);
+    }
+    function destellarTarjeta(id) {
+        const card = $('card-' + id);
+        if (!card) return;
+        card.classList.remove('tarjeta-destello');
+        void card.offsetWidth;
+        card.classList.add('tarjeta-destello');
+        card.addEventListener('animationend', () => card.classList.remove('tarjeta-destello'), { once: true });
+    }
 
-        window.cancelarActivacionQR = function() {
-            document.getElementById('qrPasswordModal').classList.add('hidden');
-        };
+    /* ============================================================
+       PANEL DE ADMINISTRACIÓN: editor de casos
+       ============================================================ */
+    const CAMPOS_EDITOR = { titulo: 'adm-title', descripcion: 'adm-desc', tipo: 'adm-tipo', recursoId: 'adm-rec', imagenUrl: 'adm-img' };
 
-        window.inicializarCasosConConfirmacion = function() {
-            if (confirm("⚠️ ¿Estás seguro de inicializar los casos?")) inicializarCasos();
-        };
-
-        window.inicializarCasos = function() {
-            if (!apiKeyValida) return;
-            const total = parseInt(document.getElementById('input-total-casos').value) || 13;
-            const batch = db.batch();
-            
-            for (let i = 1; i <= total; i++) {
-                const id = `caso-${i}`;
-                const ref = db.collection("estado_juego").doc(id);
-                batch.set(ref, {
-                    titulo: `Caso #${i}: Recuerdo Especial`,
-                    descripcion: `Momento inolvidable de la vida de Vane.`,
-                    tipo: 'video',
-                    recursoId: ``,
-                    imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
-                    resuelto: false,
-                    modalAbierto: false,
-                    tiempoActual: 0,
-                    isPaused: true,
-                    heartbeatTimestamp: null,
-                    activeBroadcasterId: null
-                }, { merge: true });
-            }
-            batch.commit().then(() => mostrarToast(`¡${total} casos inicializados!`)).catch(err => mostrarToast("Error: " + err.message, "error"));
-        };
-
-        window.guardarCambios = function() {
-            if (!apiKeyValida) return;
-            const batch = db.batch();
-            Object.keys(casosConfig).forEach((id) => {
-                const resueltoVal = document.getElementById(`adm-res-${id}`).checked;
-                const antesResueltoLocal = casosConfig[id].resuelto;
-
-                casosConfig[id] = {
-                    titulo: document.getElementById(`adm-title-${id}`).value,
-                    descripcion: document.getElementById(`adm-desc-${id}`).value,
-                    tipo: document.getElementById(`adm-tipo-${id}`).value,
-                    recursoId: document.getElementById(`adm-rec-${id}`).value,
-                    imagenUrl: document.getElementById(`adm-img-${id}`).value,
-                    resuelto: resueltoVal,
-                    modalAbierto: resueltoVal ? (casosConfig[id].modalAbierto || false) : false
-                };
-                const ref = db.collection("estado_juego").doc(id);
-                batch.set(ref, casosConfig[id], { merge: true });
-
-                if (resueltoVal && !antesResueltoLocal) {
-                    hacerScrollA(id);
-                    hacerParpadearTarjeta(id);
-                }
-            });
-            batch.commit().then(() => {
-                mostrarToast("¡Guardado y sincronizado con éxito!");
-                iniciarPrecargaGlobalSilenciosa();
-            }).catch(err => mostrarToast("Error al guardar: " + err.message, "error"));
-        };
-
-        let activeId = '';
-        window.openModal = function(id, sincronizarServidor = true) {
-            activeId = id;
-            isBackgroundPreloadingPaused = true;
-            
+    function renderAdmin() {
+        const editor = $('admin-cases-editor');
+        if (!editor) return;
+        const keys = Object.keys(casosConfig).sort(ordenCaso);
+        editor.innerHTML = keys.map((id) => {
             const c = casosConfig[id];
-            if (!c) return;
-            
-            hacerScrollA(id);
-            document.getElementById('modalTitle').textContent = c.titulo || `Caso #${id}`;
-            const tipo = c.tipo || 'video';
-
-            let htmlContenido = '';
-            let panelControlExtra = '';
-
-            if (tipo === 'video') {
-                const mutedAttr = (isAdmin || currentRole === 'master') ? '' : 'muted';
-                htmlContenido = `
-                    <video id="player" preload="auto" autobuffer playsinline ${mutedAttr} class="h-full w-full object-contain">
-                        <source src="${c.recursoId}" type="video/mp4">
-                        Tu navegador no soporta vídeos HTML5.
-                    </video>
-                `;
-                if (isAdmin) {
-                    panelControlExtra = `
-                        <div id="admin-sync-bar" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
-                            <p class="text-amber-300 text-xs mb-3 font-mono text-center">Panel de Control Admin: Lanzar reproducción al unísono.</p>
-                            <button onclick="lanzarReproduccionActiva('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm transition-all transform hover:scale-105">
-                                <i class="fa-solid fa-play text-lg"></i> ¡Lanzar Reproducción!
-                            </button>
-                        </div>
-                    `;
-                }
-            } else if (tipo === 'texto') {
-                htmlContenido = `
-                    <div class="flex flex-col items-center justify-center p-4 text-center h-full bg-slate-900 overflow-y-auto gap-3">
-                        <div class="relative w-36 sm:w-44 aspect-[3/4] overflow-hidden rounded-lg bg-slate-950 shadow-xl border border-slate-700">
-                            <img src="${c.imagenUrl || ''}" class="h-full w-full object-contain" alt="Imagen del caso">
-                        </div>
-                        <div>
-                            <h4 class="font-serif text-base font-bold text-white mb-1"><i class="fa-solid fa-microphone-lines text-amber-400 mr-1.5"></i> Explicación en Vivo</h4>
-                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md">${c.recursoId || c.descripcion}</p>
-                        </div>
-                    </div>
-                `;
-            }
-
-            document.getElementById('modalContentContainer').innerHTML = `
-                <div id="video-wrapper" class="relative w-full h-full flex items-center justify-center bg-black">
-                    ${panelControlExtra}
-                    ${htmlContenido}
+            const e = esc(id);
+            const tipoActual = c.tipo || 'video';
+            return `
+            <div data-adm-id="${e}" class="bg-slate-950/90 p-4 rounded-xl border border-slate-800 text-xs space-y-3 shadow-md hover:border-amber-500/40 transition-colors">
+                <div class="flex justify-between font-bold text-amber-400 border-b border-slate-800 pb-2">
+                    <span class="font-mono text-sm">${esc(id.toUpperCase())}</span>
+                    <label class="flex items-center gap-1.5 cursor-pointer bg-slate-900 px-2 py-1 rounded border border-slate-800"><input type="checkbox" id="adm-res-${e}" ${c.resuelto ? 'checked' : ''}> Resuelto</label>
                 </div>
-            `;
+                <div class="space-y-1">
+                    <label for="adm-title-${e}" class="text-slate-400 text-[10px]">Título:</label>
+                    <input type="text" id="adm-title-${e}" value="${esc(c.titulo || '')}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-medium" placeholder="Título">
+                </div>
+                <div class="space-y-1">
+                    <label for="adm-desc-${e}" class="text-slate-400 text-[10px]">Descripción:</label>
+                    <input type="text" id="adm-desc-${e}" value="${esc(c.descripcion || '')}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-300" placeholder="Descripción">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="adm-tipo-${e}" class="text-slate-400 text-[10px]">Tipo de contenido:</label>
+                        <select id="adm-tipo-${e}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-400 font-mono text-[11px]">
+                            <option value="video" ${tipoActual === 'video' ? 'selected' : ''}>Vídeo (.mp4)</option>
+                            <option value="texto" ${tipoActual === 'texto' ? 'selected' : ''}>Texto en vivo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="adm-img-${e}" class="text-slate-400 text-[10px]">Foto Polaroid (URL):</label>
+                        <input type="text" id="adm-img-${e}" value="${esc(c.imagenUrl || '')}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 font-mono text-[11px]" placeholder="assets/foto.jpg">
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label for="adm-rec-${e}" class="text-slate-400 text-[10px]">Recurso (URL del vídeo o texto):</label>
+                    <textarea id="adm-rec-${e}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono text-[11px]" placeholder="https://...">${esc(c.recursoId || '')}</textarea>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    function renderAdminSiHaceFalta() {
+        const keys = Object.keys(casosConfig).sort(ordenCaso);
+        const enEditor = Array.from(document.querySelectorAll('#admin-cases-editor [data-adm-id]')).map((n) => n.dataset.admId);
+        const igual = enEditor.length === keys.length && enEditor.every((v, i) => v === keys[i]);
+        if (!igual) renderAdmin();
+    }
+    // Marca los campos que el administrador está editando para no pisarlos con datos remotos
+    ['input', 'change'].forEach((ev) => $('admin-cases-editor').addEventListener(ev, (e) => {
+        if (e.target && e.target.id && e.target.id.startsWith('adm-')) e.target.dataset.sucio = '1';
+    }));
 
-            const adminControlsBar = document.getElementById('admin-controls-bar');
-            const bufferStatusBar = document.getElementById('buffer-status-bar');
+    // Refleja en el editor los cambios remotos (p. ej. un caso resuelto por QR) sin pisar lo que se está editando
+    function sincronizarAdminDesdeServidor(id) {
+        const c = casosConfig[id];
+        if (!c) return;
+        const poner = (pref, val, prop) => {
+            const el = $(`${pref}-${id}`);
+            if (!el || el.dataset.sucio === '1') return;
+            if (prop === 'value' && el === document.activeElement) return;
+            el[prop] = val;
+        };
+        poner('adm-title', c.titulo || '', 'value');
+        poner('adm-desc', c.descripcion || '', 'value');
+        poner('adm-tipo', c.tipo || 'video', 'value');
+        poner('adm-rec', c.recursoId || '', 'value');
+        poner('adm-img', c.imagenUrl || '', 'value');
+        poner('adm-res', !!c.resuelto, 'checked');
+    }
 
-            if (tipo === 'video') {
-                bufferStatusBar.classList.remove('hidden');
-                bufferStatusBar.classList.add('flex');
+    window.guardarCambios = function () {
+        if (!db) return;
+        const batch = db.batch();
+        let docs = 0;
+        Object.keys(casosConfig).forEach((id) => {
+            const actual = casosConfig[id];
+            const cambios = {};
+            Object.keys(CAMPOS_EDITOR).forEach((campo) => {
+                const el = $(`${CAMPOS_EDITOR[campo]}-${id}`);
+                if (!el) return;
+                let v = el.value;
+                if (campo === 'recursoId' || campo === 'imagenUrl') v = v.trim();
+                const previo = actual[campo] != null ? actual[campo] : (campo === 'tipo' ? 'video' : '');
+                if (v !== previo) cambios[campo] = v;
+            });
+            const chk = $(`adm-res-${id}`);
+            if (chk && chk.dataset.sucio === '1' && chk.checked !== !!actual.resuelto) {
+                cambios.resuelto = chk.checked;
+                if (!chk.checked) cambios.modalAbierto = false;
+            }
+            if (Object.keys(cambios).length) { batch.set(db.collection('estado_juego').doc(id), cambios, { merge: true }); docs++; }
+        });
+        if (!docs) { mostrarToast('No hay cambios que guardar.'); return; }
+        contarEscrituraAdmin(docs);
+        batch.commit().then(() => {
+            document.querySelectorAll('#admin-cases-editor [data-sucio]').forEach((el) => delete el.dataset.sucio);
+            mostrarToast(`Guardado: ${docs} caso${docs === 1 ? '' : 's'} actualizado${docs === 1 ? '' : 's'}.`);
+        }).catch((err) => { manejarErrorFirestore(err, 'guardar'); mostrarToast('Error al guardar: ' + (err.message || err.code), 'error'); });
+    };
 
-                if (isAdmin || currentRole === 'master') {
-                    adminControlsBar.classList.remove('hidden');
-                    adminControlsBar.classList.add('flex');
-                } else {
-                    adminControlsBar.classList.add('hidden');
-                }
+    function casoPorDefecto(i) {
+        return {
+            titulo: `Caso #${i}: Recuerdo especial`,
+            descripcion: 'Momento inolvidable de la vida de Vane.',
+            tipo: 'video',
+            recursoId: '',
+            imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
+            resuelto: false,
+            modalAbierto: false,
+            tiempoActual: 0,
+            isPaused: true,
+            refMs: null,
+            heartbeatTimestamp: null,
+            activeBroadcasterId: null,
+            sesionId: null
+        };
+    }
+    function totalCasosPanel() { return Math.max(1, Math.min(50, parseInt($('input-total-casos').value, 10) || 13)); }
 
-                const player = document.getElementById('player');
-                if (player) {
-                    player.load();
+    window.crearCasosFaltantes = function () {
+        if (!db) return;
+        const total = totalCasosPanel();
+        const batch = db.batch();
+        let n = 0;
+        for (let i = 1; i <= total; i++) {
+            const id = `caso-${i}`;
+            if (!casosConfig[id]) { batch.set(db.collection('estado_juego').doc(id), casoPorDefecto(i)); n++; }
+        }
+        if (!n) { mostrarToast('Ya existen todos los casos.'); return; }
+        contarEscrituraAdmin(n);
+        batch.commit().then(() => mostrarToast(`Creados ${n} casos nuevos.`)).catch((e) => { manejarErrorFirestore(e, 'crear'); mostrarToast('Error: ' + (e.message || e.code), 'error'); });
+    };
 
-                    // 🛑 Bucle de extensión de búfer CORREGIDO (se apaga limpiamente al llegar al 100%)
-                    if (activeBufferInterval) clearInterval(activeBufferInterval);
-                    activeBufferInterval = setInterval(() => {
-                        if (!player || player.paused === false || player.ended) {
-                            clearInterval(activeBufferInterval);
-                            activeBufferInterval = null;
-                            return;
-                        }
-                        if (player.duration > 0 && player.buffered.length > 0) {
-                            const bufferedEnd = player.buffered.end(player.buffered.length - 1);
-                            const percent = (bufferedEnd / player.duration) * 100;
-                            if (percent >= 99) {
-                                clearInterval(activeBufferInterval);
-                                activeBufferInterval = null;
-                                return;
-                            }
-                            if (player.currentTime < bufferedEnd - 0.5) {
-                                const t = player.currentTime;
-                                player.currentTime = t + 0.01;
-                                player.currentTime = t;
-                            }
-                        }
-                    }, 2000);
+    window.reiniciarProgreso = function () {
+        if (!db || !confirm('Se bloquearán todos los casos y se cerrará cualquier vídeo en curso. El contenido (títulos, URLs…) se conserva. ¿Continuar?')) return;
+        const ids = Object.keys(casosConfig);
+        const batch = db.batch();
+        ids.forEach((id) => batch.set(db.collection('estado_juego').doc(id), {
+            resuelto: false, modalAbierto: false, tiempoActual: 0, isPaused: true, refMs: null,
+            reproduciendoDesde: null, heartbeatTimestamp: null, activeBroadcasterId: null, sesionId: null
+        }, { merge: true }));
+        contarEscrituraAdmin(ids.length);
+        batch.commit().then(() => mostrarToast('Progreso reiniciado.')).catch((e) => { manejarErrorFirestore(e, 'reiniciar'); mostrarToast('Error: ' + (e.message || e.code), 'error'); });
+    };
 
-                    player.addEventListener('progress', () => {
-                        if (player.buffered && player.buffered.length > 0 && player.duration > 0) {
-                            const bufferedEnd = player.buffered.end(player.buffered.length - 1);
-                            const percent = Math.min(100, Math.round((bufferedEnd / player.duration) * 100));
-                            
-                            const progressBar = document.getElementById('buffer-progress-bar');
-                            const percentageText = document.getElementById('buffer-percentage');
-                            const bufferText = document.getElementById('buffer-text');
+    window.inicializarTodo = function () {
+        if (!db) return;
+        if (!confirm('⚠️ Esto BORRA títulos, descripciones y URLs de todos los casos y los deja por defecto. ¿Seguro?')) return;
+        if ((prompt('Escribe BORRAR para confirmar. Te recomiendo «Exportar copia» antes.') || '').trim() !== 'BORRAR') { mostrarToast('Cancelado.'); return; }
+        const total = totalCasosPanel();
+        const batch = db.batch();
+        let n = 0;
+        for (let i = 1; i <= total; i++) { batch.set(db.collection('estado_juego').doc(`caso-${i}`), casoPorDefecto(i)); n++; }
+        Object.keys(casosConfig).forEach((id) => {
+            if ((parseInt(id.replace('caso-', ''), 10) || 0) > total) { batch.delete(db.collection('estado_juego').doc(id)); n++; }
+        });
+        contarEscrituraAdmin(n);
+        batch.commit().then(() => mostrarToast(`¡${total} casos inicializados!`)).catch((e) => { manejarErrorFirestore(e, 'inicializar'); mostrarToast('Error: ' + (e.message || e.code), 'error'); });
+    };
 
-                            if (progressBar && percentageText && bufferText) {
-                                progressBar.style.width = percent + '%';
-                                percentageText.textContent = percent + '%';
+    window.exportarCopia = function () {
+        const casos = {};
+        Object.keys(casosConfig).sort(ordenCaso).forEach((id) => {
+            const c = casosConfig[id];
+            casos[id] = { titulo: c.titulo || '', descripcion: c.descripcion || '', tipo: c.tipo || 'video', recursoId: c.recursoId || '', imagenUrl: c.imagenUrl || '', resuelto: !!c.resuelto };
+        });
+        const blob = new Blob([JSON.stringify({ version: 1, exportado: new Date().toISOString(), casos }, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        const d = new Date();
+        a.href = URL.createObjectURL(blob);
+        a.download = `copia-casos-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        mostrarToast('Copia exportada.');
+    };
+    $('input-import').addEventListener('change', async (ev) => {
+        const f = ev.target.files && ev.target.files[0];
+        ev.target.value = '';
+        if (!f || !db) return;
+        try {
+            const data = JSON.parse(await f.text());
+            const casos = data && data.casos;
+            if (!casos || typeof casos !== 'object') throw new Error('Formato no válido');
+            const ids = Object.keys(casos);
+            if (!ids.length || !confirm(`Se importarán ${ids.length} casos y se sobrescribirán sus datos. ¿Continuar?`)) return;
+            const batch = db.batch();
+            ids.forEach((id) => {
+                const c = casos[id] || {};
+                batch.set(db.collection('estado_juego').doc(id), {
+                    titulo: String(c.titulo || ''), descripcion: String(c.descripcion || ''), tipo: c.tipo === 'texto' ? 'texto' : 'video',
+                    recursoId: String(c.recursoId || ''), imagenUrl: String(c.imagenUrl || ''), resuelto: !!c.resuelto
+                }, { merge: true });
+            });
+            contarEscrituraAdmin(ids.length);
+            await batch.commit();
+            mostrarToast('Copia importada.');
+        } catch (e) {
+            mostrarToast('No se pudo importar: ' + (e.message || e), 'error');
+        }
+    });
 
-                                if (percent < 50) {
-                                    progressBar.className = "bg-rose-500 h-full transition-all duration-300";
-                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-rose-400 mr-1.5"></i> Precargando búfer (${percent}%)...`;
-                                } else if (percent < 100) {
-                                    progressBar.className = "bg-amber-500 h-full transition-all duration-300";
-                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Descargando al 100% (${percent}%)...`;
-                                } else {
-                                    progressBar.className = "bg-emerald-500 h-full transition-all duration-300";
-                                    bufferText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i> Búfer listo al 100%`;
-                                    if (activeBufferInterval) {
-                                        clearInterval(activeBufferInterval);
-                                        activeBufferInterval = null;
-                                    }
-                                }
-                            }
-                        }
-                    });
+    window.toggleModoEmergencia = function () {
+        modoEmergencia = !modoEmergencia;
+        lsSet('vane_emergencia', modoEmergencia ? '1' : '0');
+        Object.keys(casosConfig).forEach(actualizarUI);
+        actualizarBotonEmergencia();
+        mostrarToast(modoEmergencia ? 'Modo emergencia activado: todo desbloqueado, sin sincronizar.' : 'Modo emergencia desactivado.');
+    };
+    function actualizarBotonEmergencia() {
+        const t = $('btn-emergencia-txt');
+        if (t) t.textContent = modoEmergencia ? 'Desactivar modo emergencia' : 'Activar modo emergencia';
+        if (modoEmergencia) mostrarBanner('emergencia', 'aviso', 'Modo emergencia activo en este dispositivo: los casos están desbloqueados y se reproducen sin sincronizar.');
+        else quitarBanner('emergencia');
+    }
 
-                    player.addEventListener('timeupdate', () => {
-                        if (!player.duration) return;
-                        const curMin = Math.floor(player.currentTime / 60);
-                        const curSec = Math.floor(player.currentTime % 60);
-                        const durMin = Math.floor(player.duration / 60);
-                        const durSec = Math.floor(player.duration % 60);
-                        document.getElementById('time-display').textContent = `${String(curMin).padStart(2,'0')}:${String(curSec).padStart(2,'0')} / ${String(durMin).padStart(2,'0')}:${String(durSec).padStart(2,'0')}`;
-                        
-                        const seekBar = document.getElementById('admin-seek-bar');
-                        if (seekBar && !isSeekingByAdmin) {
-                            seekBar.value = (player.currentTime / player.duration) * 100;
-                        }
-                    });
+    /* ============================================================
+       SALUD DEL SISTEMA (solo administrador)
+       ============================================================ */
+    let saludTimer = null;
+    function iniciarMonitorSalud() {
+        const inp = $('input-dispositivos');
+        if (inp && document.activeElement !== inp) inp.value = dispositivosEsperados();
+        actualizarBotonEmergencia();
+        if (saludTimer) return;
+        actualizarSalud();
+        saludTimer = setInterval(() => { if (isAdmin) actualizarSalud(); }, 2000);
+    }
+    window.cambiarDispositivos = function (v) {
+        const n = parseInt(v, 10);
+        if (n > 0) { lsSet('vane_dispositivos', String(n)); actualizarSalud(); actualizarBarraListos(); }
+    };
+    function pintarBarra(idTxt, idBar, valor, max, texto) {
+        const pct = max > 0 ? Math.min(100, valor / max * 100) : 0;
+        const t = $(idTxt), b = $(idBar);
+        if (t) t.textContent = texto + (max > 0 ? ` (${Math.round(pct)} %)` : '');
+        if (b) {
+            b.style.width = pct + '%';
+            b.style.background = pct < 60 ? '#10b981' : (pct < 85 ? '#f59e0b' : '#f43f5e');
+        }
+    }
+    function actualizarSalud() {
+        const est = actualizarChipConexion();
+        const tiles = [
+            ['Conexión', { conectado: 'Conectado', conectando: 'Conectando…', 'sin-conexion': 'Sin conexión', cuota: 'Cuota agotada', permisos: 'Acceso denegado' }[est]],
+            ['Reloj', rttMs != null ? `Calibrado (latencia ${rttMs} ms)` : 'Sin calibrar'],
+            ['Pantalla activa', wakeLock ? 'Activa' : ('wakeLock' in navigator ? 'Inactiva' : 'No soportada')],
+            ['Latido de sincronía', modoAhorro ? `${HEARTBEAT_AHORRO_MS / 1000} s (ahorro)` : `${HEARTBEAT_RAPIDO_MS / 1000} s → ${HEARTBEAT_ESTABLE_MS / 1000} s`],
+            ['Caché de vídeos', 'caches' in window ? 'Disponible' : 'No disponible'],
+            ['Dispositivos esperados', String(dispositivosEsperados())],
+            ['Modo emergencia', modoEmergencia ? 'Activo' : 'No'],
+            ['Casos cargados', String(Object.keys(casosConfig).length)]
+        ];
+        $('salud-grid').innerHTML = tiles.map(([k, v]) => `<div class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2"><div class="text-[10px] text-slate-500">${esc(k)}</div><div class="font-medium text-slate-200">${esc(v)}</div></div>`).join('');
 
-                    player.addEventListener('play', () => {
-                        if (activeBufferInterval) { clearInterval(activeBufferInterval); activeBufferInterval = null; }
-                        document.getElementById('admin-play-icon').className = "fa-solid fa-pause";
-                        if (isAdmin) {
-                            iniciarHeartbeatBroadcaster(player, clientId);
-                        }
-                    });
+        const e = estimarUso();
+        pintarBarra('uso-lec-txt', 'uso-lec-bar', e.lecturas, CUOTA_LECTURAS, `${Math.round(e.lecturas).toLocaleString('es-ES')} / ${CUOTA_LECTURAS.toLocaleString('es-ES')}`);
+        pintarBarra('uso-esc-txt', 'uso-esc-bar', e.escrituras, CUOTA_ESCRITURAS, `${Math.round(e.escrituras).toLocaleString('es-ES')} / ${CUOTA_ESCRITURAS.toLocaleString('es-ES')}`);
+        pintarBarra('uso-desc-txt', 'uso-desc-bar', e.descargaBytes, LIMITE_DESCARGA_DIARIA_MB * 1048576, LIMITE_DESCARGA_DIARIA_MB > 0 ? `${fmtGB(e.descargaBytes)} / ${fmtGB(LIMITE_DESCARGA_DIARIA_MB * 1048576)}` : fmtGB(e.descargaBytes));
 
-                    player.addEventListener('pause', () => {
-                        document.getElementById('admin-play-icon').className = "fa-solid fa-play";
-                        if (!isSeekingByAdmin && isAdmin) {
-                            pararHeartbeatBroadcaster(true);
-                        }
-                    });
-                }
+        const p = Math.max(e.lecturas / CUOTA_LECTURAS, e.escrituras / CUOTA_ESCRITURAS);
+        if (p >= 0.7 && !modoAhorro) { modoAhorro = true; mostrarToast('Cuota estimada al 70 %: reduzco la frecuencia de sincronía para ahorrar.', 'error'); }
+        if (p >= 0.85) mostrarBanner('cuota-alta', 'aviso', `Cuota gratuita de Firebase casi agotada (estimación ${Math.round(p * 100)} %). Evita recargar dispositivos y abre solo los casos necesarios.`);
+        else quitarBanner('cuota-alta');
+        if (LIMITE_DESCARGA_DIARIA_MB > 0 && e.descargaBytes >= LIMITE_DESCARGA_DIARIA_MB * 1048576 * 0.85) mostrarBanner('descarga-alta', 'aviso', 'La descarga de vídeos se acerca al límite diario de tu hosting.');
+        else quitarBanner('descarga-alta');
+    }
+
+    // Sondeo de un vídeo: ¿existe?, ¿cuánto pesa?, ¿permite CORS (precarga)?
+    async function sondearVideo(url) {
+        const ctrl = new AbortController();
+        let porTiempo = false;
+        const t = setTimeout(() => { porTiempo = true; ctrl.abort(); }, 12000);
+        try {
+            const res = await fetch(url, { mode: 'cors', credentials: 'omit', signal: ctrl.signal });
+            const bytes = parseInt(res.headers.get('content-length') || '0', 10) || 0;
+            const tipo = res.headers.get('content-type') || '';
+            const status = res.status;
+            ctrl.abort();    // solo queremos las cabeceras
+            clearTimeout(t);
+            return { ok: res.ok, status, bytes, tipo, cors: true };
+        } catch (e) {
+            clearTimeout(t);
+            if (porTiempo) return { ok: false, status: 0, tiempo: true };
+            try {
+                const c2 = new AbortController();
+                const t2 = setTimeout(() => c2.abort(), 8000);
+                await fetch(url, { mode: 'no-cors', credentials: 'omit', signal: c2.signal });
+                clearTimeout(t2);
+                c2.abort();
+                return { ok: true, status: 0, bytes: 0, cors: false };
+            } catch (e2) {
+                return { ok: false, status: 0 };
+            }
+        }
+    }
+    window.verificarVideos = async function () {
+        const cont = $('salud-videos');
+        cont.innerHTML = '<p class="text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Comprobando los vídeos…</p>';
+        const ids = Object.keys(casosConfig).filter((id) => (casosConfig[id].tipo || 'video') === 'video').sort(ordenCaso);
+        const filas = [];
+        let totalBytes = 0, sinTamano = 0;
+        for (const id of ids) {
+            const url = (casosConfig[id].recursoId || '').trim();
+            if (!url) { filas.push(['aviso', id, 'Sin URL de vídeo']); continue; }
+            const r = await sondearVideo(url);
+            if (r.ok && r.cors) {
+                totalBytes += r.bytes;
+                if (!r.bytes) sinTamano++;
+                const tipoRaro = r.tipo && !/video|octet-stream/i.test(r.tipo) ? ` · tipo «${r.tipo}» (¿seguro que es un vídeo?)` : '';
+                filas.push([tipoRaro ? 'aviso' : 'ok', id, `${r.bytes ? fmtMB(r.bytes) : 'tamaño desconocido'}${tipoRaro}`]);
+            } else if (r.ok) {
+                filas.push(['aviso', id, 'Accesible, pero sin permiso CORS: se reproducirá en modo directo (sin precarga completa).']);
+            } else if (r.tiempo) {
+                filas.push(['error', id, 'El servidor no responde (tiempo agotado).']);
+            } else if (r.status) {
+                const msg = r.status === 404 ? 'No encontrado (404): revisa la URL.' : ([403, 429, 509].includes(r.status) ? `Rechazado (HTTP ${r.status}): posible límite de ancho de banda del hosting.` : `Error HTTP ${r.status}.`);
+                filas.push(['error', id, msg]);
             } else {
-                bufferStatusBar.classList.add('hidden');
-                adminControlsBar.classList.add('hidden');
-            }
-
-            actualizarBarraControlesAudio();
-            const syncBadge = document.getElementById('sync-monitor-badge');
-            if (syncBadge) {
-                if (tipo === 'video') {
-                    syncBadge.classList.remove('hidden');
-                    syncBadge.classList.add('flex');
-                    if (isAdmin) {
-                        document.getElementById('sync-status-text').textContent = "Modo Administrador";
-                        document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
-                    } else if (currentRole === 'master') {
-                        document.getElementById('sync-status-text').textContent = "Visor Maestro (Sala)";
-                        document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-                    } else {
-                        document.getElementById('sync-status-text').textContent = "Sincronizado con Sala";
-                        document.getElementById('sync-dot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-                    }
-                } else {
-                    syncBadge.classList.add('hidden');
-                }
-            }
-
-            const m = document.getElementById('mediaModal');
-            m.classList.remove('hidden');
-            setTimeout(() => m.classList.remove('opacity-0'), 10);
-
-            if (isAdmin && sincronizarServidor) {
-                db.collection("estado_juego").doc(id).set({
-                    modalAbierto: true,
-                    isPaused: true
-                }, { merge: true });
-            }
-        };
-
-        function iniciarHeartbeatBroadcaster(player, broadcasterId) {
-            if (broadcasterHeartbeatInterval) clearInterval(broadcasterHeartbeatInterval);
-            broadcasterHeartbeatInterval = setInterval(() => {
-                if (!player.paused && activeId) {
-                    db.collection("estado_juego").doc(activeId).set({
-                        tiempoActual: player.currentTime,
-                        isPaused: false,
-                        activeBroadcasterId: broadcasterId,
-                        heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                }
-            }, 1000);
-        }
-
-        function pararHeartbeatBroadcaster(marcarPausa = false) {
-            if (broadcasterHeartbeatInterval) {
-                clearInterval(broadcasterHeartbeatInterval);
-                broadcasterHeartbeatInterval = null;
-            }
-            if (activeId) {
-                const player = document.getElementById('player');
-                db.collection("estado_juego").doc(activeId).set({
-                    tiempoActual: player ? player.currentTime : 0,
-                    isPaused: marcarPausa,
-                    heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
+                filas.push(['error', id, 'No accesible (red, URL o bloqueo del servidor).']);
             }
         }
+        const col = { ok: 'text-emerald-400 fa-circle-check', aviso: 'text-amber-400 fa-triangle-exclamation', error: 'text-rose-400 fa-circle-xmark' };
+        let html = filas.map(([n, id, txt]) => `<div class="flex items-start gap-2"><i class="fa-solid ${col[n]} mt-0.5"></i><span class="text-slate-300"><b class="font-mono text-slate-200">${esc(id)}</b> · ${esc(txt)}</span></div>`).join('');
+        if (!filas.length) html = '<p class="text-slate-400">No hay casos de vídeo configurados.</p>';
+        if (totalBytes) {
+            const N = dispositivosEsperados();
+            html += `<p class="text-slate-300 mt-2 pt-2 border-t border-slate-800">Total de vídeos: <b>${fmtMB(totalBytes)}</b>. Si los ven los ${N} dispositivos, la descarga será de unos <b>${fmtGB(totalBytes * N)}</b>${sinTamano ? ' (más los de tamaño desconocido)' : ''}.` +
+                (LIMITE_DESCARGA_DIARIA_MB > 0 && totalBytes * N > LIMITE_DESCARGA_DIARIA_MB * 1048576 ? ' <span class="text-rose-300">Supera el límite diario que has configurado: comprime los vídeos o cambia de hosting.</span>' : '') + '</p>';
+        }
+        cont.innerHTML = html;
+    };
 
-        window.adminTogglePlayPause = function() {
-            const player = document.getElementById('player');
-            if (player) {
-                if (player.paused) {
-                    player.play().catch(e => {});
-                    if (isAdmin && activeId) {
-                        iniciarHeartbeatBroadcaster(player, clientId);
-                    }
-                } else {
-                    player.pause();
-                    if (isAdmin && activeId) {
-                        db.collection("estado_juego").doc(activeId).set({ isPaused: true }, { merge: true });
-                    }
-                }
-            }
-        };
+    window.borrarCacheVideos = async function () {
+        try {
+            if ('caches' in window) await caches.delete(CACHE_VIDEOS);
+            mostrarToast('Caché de vídeos vaciada en este dispositivo.');
+        } catch (e) {
+            mostrarToast('No se pudo vaciar la caché.', 'error');
+        }
+    };
 
-        window.adminChangeVolume = function(val) {
-            const player = document.getElementById('player');
-            if (player) {
-                player.volume = parseFloat(val);
-                if (val > 0 && player.muted) {
-                    player.muted = false;
-                    actualizarBarraControlesAudio();
-                }
-            }
-        };
+    /* ============================================================
+       FIRESTORE: ESTADO DEL JUEGO
+       ============================================================ */
+    function suscribirEstadoJuego() {
+        if (unsubEstado) { try { unsubEstado(); } catch (e) { /* ignorar */ } unsubEstado = null; }
+        unsubEstado = db.collection('estado_juego').onSnapshot({ includeMetadataChanges: true }, (snap) => {
+            ultimoFromCache = snap.metadata.fromCache;
+            if (snap.metadata.fromCache && !initialLoadDone) { actualizarChipConexion(); return; }   // esperamos datos del servidor
+            if (!snap.metadata.fromCache && (estadoErrores.cuota || estadoErrores.permisos)) limpiarErroresFirestore();
+            procesarSnapshot(snap);
+            actualizarChipConexion();
+        }, (err) => {
+            manejarErrorFirestore(err, 'listener');
+            unsubEstado = null;
+            clearTimeout(retryEstadoTimer);
+            retryEstadoTimer = setTimeout(suscribirEstadoJuego, err && err.code === 'resource-exhausted' ? 60000 : 10000);
+        });
+    }
 
-        window.adminSeeking = function(val) {
-            isSeekingByAdmin = true;
-            const player = document.getElementById('player');
-            if (player && player.duration) player.currentTime = (val / 100) * player.duration;
-        };
-
-        window.adminSeekEnd = function(val) {
-            const player = document.getElementById('player');
-            if (player && player.duration) {
-                const targetTime = (val / 100) * player.duration;
-                player.currentTime = targetTime;
-                isSeekingByAdmin = false;
-                if (activeId && isAdmin) {
-                    db.collection("estado_juego").doc(activeId).set({
-                        tiempoActual: targetTime,
-                        isPaused: player.paused,
-                        activeBroadcasterId: clientId,
-                        heartbeatTimestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                }
-            }
-        };
-
-        function actualizarMonitorSync(desfase) {
-            const textElement = document.getElementById('sync-status-text');
-            const dotElement = document.getElementById('sync-dot');
-            if (!textElement || !dotElement || isAdmin || currentRole === 'master') return;
-
-            const desfaseStr = desfase > 0 ? `+${desfase.toFixed(2)}s` : `${desfase.toFixed(2)}s`;
-            textElement.textContent = `Desfase: ${desfaseStr}`;
-            const absDesfase = Math.abs(desfase);
-            if (absDesfase < 0.4) dotElement.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-            else if (absDesfase < 0.9) dotElement.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-            else dotElement.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";
+    function procesarSnapshot(snap) {
+        const primera = !initialLoadDone;
+        if (primera) {
+            // Primer dato real del servidor: descartamos lo que solo estaba en la caché local
+            const idsServidor = new Set(snap.docs.map((d) => d.id));
+            Object.keys(casosConfig).forEach((k) => { if (!idsServidor.has(k)) delete casosConfig[k]; });
         }
 
-        window.toggleAudio = function() {
-            const p = document.getElementById('player');
-            if (p) {
-                p.muted = !p.muted;
-                actualizarBarraControlesAudio();
-            }
-        };
+        const tocados = [];
+        snap.docChanges().forEach((ch) => {
+            const id = ch.doc.id;
+            if (!ch.doc.metadata.hasPendingWrites) contarLectura(1);
+            if (ch.type === 'removed') { delete casosConfig[id]; return; }
+            const data = ch.doc.data({ serverTimestamps: 'estimate' });
+            const antes = casosConfig[id] || {};
+            casosConfig[id] = Object.assign({}, antes, data);
+            tocados.push({ id, antes, data });
+        });
+        if (primera) initialLoadDone = true;
 
-        function actualizarBarraControlesAudio() {
-            const p = document.getElementById('player');
-            const audioLabel = document.getElementById('audio-status-label');
-            if (!p || !audioLabel) {
-                if (audioLabel) audioLabel.innerHTML = '';
+        // Se renderiza UNA sola vez por snapshot (antes se re-renderizaba la galería por cada documento)
+        renderGridSiHaceFalta();
+        if (isAdmin) renderAdminSiHaceFalta();
+        tocados.forEach(({ id }) => { actualizarUI(id); if (isAdmin) sincronizarAdminDesdeServidor(id); });
+        guardarCacheCasos();
+
+        if (!primera) {
+            tocados.forEach(({ id, antes, data }) => {
+                if (data.resuelto && !antes.resuelto) { hacerScrollA(id); destellarTarjeta(id); }
+                if (data.modalAbierto && !antes.modalAbierto) {
+                    hacerScrollA(id);
+                    if (activeId !== id) openModal(id, false);
+                } else if (data.modalAbierto === false && antes.modalAbierto && activeId === id) {
+                    closeModal(false);
+                }
+                if (activeId === id && !isAdmin) aplicarEstadoSync(casosConfig[id]);
+            });
+        } else {
+            // Primera carga: si ya hay un caso abierto en la sala (dispositivo que entra tarde o recarga), nos unimos
+            const abierto = Object.keys(casosConfig).sort(ordenCaso).find((id) => casosConfig[id].modalAbierto);
+            if (abierto && !activeId) openModal(abierto, false);
+            manejarParametroCaso();
+            calibrarReloj(5);
+            if (currentRole === 'master' && !isAdmin) { /* el listener de master decide si registrarse */ }
+        }
+    }
+
+    function manejarParametroCaso() {
+        if (!qrCasoNum) return;
+        esperarBienvenida(() => {
+            hacerScrollA(`caso-${qrCasoNum}`);
+            if (isAdmin) { desbloquearCasoQR(qrCasoNum); limpiarURL(); }
+            else { $('qrModalTitle').textContent = `Desbloquear caso #${qrCasoNum}`; abrirModalPassword(); }
+        });
+    }
+
+    window.desbloquearCasoQR = function (numCaso) {
+        const id = `caso-${numCaso}`;
+        if (!casosConfig[id]) { mostrarToast(`El caso #${numCaso} no existe.`, 'error'); return; }
+        if (activeId && activeId !== id) {
+            escribirEstado(activeId, { modalAbierto: false, isPaused: true, tiempoActual: 0, refMs: null, heartbeatTimestamp: null, activeBroadcasterId: null, sesionId: null });
+        }
+        hacerScrollA(id);
+        escribirEstado(id, {
+            resuelto: true, modalAbierto: true, isPaused: true, tiempoActual: 0, refMs: null, reproduciendoDesde: null,
+            heartbeatTimestamp: null, activeBroadcasterId: null, sesionId: nuevoId()
+        }).then((ok) => { if (ok) mostrarToast(`Caso #${numCaso} desbloqueado.`); else mostrarToast('No se pudo desbloquear el caso (sin conexión o cuota).', 'error'); });
+    };
+
+    /* ============================================================
+       REPRODUCTOR: CAPA DE ESTADO
+       ============================================================ */
+    function cuentaAtras(ms) { return { key: 'cuenta', title: 'El caso empieza en', count: Math.max(1, Math.ceil(ms / 1000)) }; }
+
+    function calcularOverlay() {
+        const p = $('player');
+        if (errorVideo) {
+            return {
+                key: 'error', icon: 'fa-triangle-exclamation', iconColor: 'text-rose-400', title: errorVideo.titulo, detail: errorVideo.detalle,
+                btn: errorVideo.sinReintento ? null : { texto: 'Reintentar', fn: reintentarVideo }
+            };
+        }
+        if (!videoListo) {
+            if (descarga.reintento) return { key: 'reintento', icon: 'fa-rotate fa-spin', title: 'Problema de red. Reintentando…', detail: descarga.reintento };
+            const pct = descarga.total > 0 ? Math.min(100, descarga.rec / descarga.total * 100) : descarga.directoPct;
+            const det = descarga.directo ? 'Cargando en modo directo…' : (descarga.total > 0 ? `${fmtMB(descarga.rec)} de ${fmtMB(descarga.total)}` : (descarga.rec > 0 ? fmtMB(descarga.rec) : 'Conectando…'));
+            return { key: 'descarga', icon: 'fa-circle-notch fa-spin', title: 'Preparando el vídeo para que se vea fluido', detail: det, pct };
+        }
+        if (modoLocal()) {
+            if (p && !p.paused) return null;
+            return { key: 'local', icon: 'fa-play', title: 'Reproducción local', detail: 'Sin sincronización con la sala: este dispositivo reproduce por su cuenta.', btn: { texto: 'Reproducir aquí', fn: reproducirLocal } };
+        }
+        if (p && p.ended) return { key: 'fin', icon: 'fa-flag-checkered', title: 'Fin del recuerdo', detail: isAdmin ? 'Cierra esta ventana para volver a la galería.' : '', soft: true };
+        if (isAdmin) {
+            if (inicioAdminMs) { const ms = inicioAdminMs - ahoraServidor(); if (ms > 0) return cuentaAtras(ms); }
+            return null;
+        }
+        const st = syncState;
+        if (!st) return { key: 'espera', icon: 'fa-hourglass-half', title: 'Listo', detail: 'Esperando a que el administrador abra el caso…' };
+        if (st.paused) {
+            if ((st.videoTime || 0) <= 0.3) return { key: 'listo', icon: 'fa-circle-check', iconColor: 'text-emerald-400', title: 'Listo para empezar', detail: 'Esperando a que el administrador lo lance…' };
+            return { key: 'pausa', icon: 'fa-pause', title: 'En pausa', soft: true };
+        }
+        const esperado = st.videoTime + (ahoraServidor() - st.serverMs) / 1000;
+        if (esperado < -0.02) return cuentaAtras(-esperado * 1000);
+        return null;
+    }
+
+    function setOverlay(o) {
+        const ov = $('ov');
+        if (!ov) return;
+        if (!o) { ovSig = ''; ov.classList.remove('ov-visible', 'ov-soft'); return; }
+        const sig = [o.key, o.icon, o.iconColor, o.title, o.detail, o.count, o.soft ? 1 : 0, o.btn ? o.btn.texto : ''].join('|');
+        ov.classList.add('ov-visible');
+        if (sig !== ovSig) {
+            ovSig = sig;
+            ov.classList.toggle('ov-soft', !!o.soft);
+            const icon = $('ov-icon');
+            icon.className = o.icon ? `fa-solid ${o.icon} text-3xl mb-2 ${o.iconColor || 'text-amber-400'}` : '';
+            show(icon, !!o.icon, 'block');
+            $('ov-title').textContent = o.title || '';
+            $('ov-detail').textContent = o.detail || '';
+            const cnt = $('ov-count');
+            if (o.count != null) { cnt.textContent = o.count; show(cnt, true, 'block'); } else show(cnt, false);
+            const btn = $('ov-btn');
+            if (o.btn) { btn.textContent = o.btn.texto; btn.onclick = o.btn.fn; show(btn, true, 'block'); } else { btn.onclick = null; show(btn, false); }
+        }
+        const wrap = $('ov-bar-wrap');
+        if (o.pct != null) { show(wrap, true, 'block'); $('ov-bar').style.width = o.pct + '%'; } else show(wrap, false);
+    }
+    function renderOverlay() {
+        if (!activeId) return;
+        const c = casosConfig[activeId];
+        if (c && (c.tipo || 'video') !== 'video') { setOverlay(null); return; }
+        setOverlay(calcularOverlay());
+    }
+
+    /* ============================================================
+       REPRODUCTOR: ABRIR / CERRAR
+       ============================================================ */
+    function resetEstadoMedia() {
+        videoListo = false; modoDirecto = false; errorVideo = null;
+        descarga = { rec: 0, total: 0, reintento: null, directo: false, directoPct: null };
+        syncState = null; lanzado = false; inicioAdminMs = null; listosCount = 0;
+        bufferingActivo = false; seekEditando = false; ultimoSeekDuroMs = 0; ovSig = '';
+    }
+    function liberarBlobUrl() { if (blobUrlActivo) { try { URL.revokeObjectURL(blobUrlActivo); } catch (e) { /* ignorar */ } blobUrlActivo = null; } }
+    function limpiarSesionMedia() {
+        clearInterval(syncLoopId); syncLoopId = null;
+        clearTimeout(hbTimer); hbTimer = null;
+        clearTimeout(tickPreciso); tickPreciso = null;
+        cargaToken++;
+        if (descargaAbort) { try { descargaAbort.abort(); } catch (e) { /* ignorar */ } descargaAbort = null; }
+        if (listosUnsub) { try { listosUnsub(); } catch (e) { /* ignorar */ } listosUnsub = null; }
+        if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) { /* ignorar */ } }
+        const p = $('player');
+        if (p) { try { p.pause(); p.removeAttribute('src'); p.load(); } catch (e) { /* ignorar */ } }
+        liberarBlobUrl();
+        const w = $('video-wrapper');
+        if (w) w.innerHTML = '';
+        show($('buffer-spinner'), false);
+        setOverlay(null);
+    }
+
+    window.openModal = function (id, sincronizarServidor = true) {
+        const c = casosConfig[id];
+        if (!c || activeId === id) return;
+        if (activeId) limpiarSesionMedia();
+        activeId = id;
+        resetEstadoMedia();
+        const tipo = c.tipo || 'video';
+        const local = modoLocal();
+
+        hacerScrollA(id);
+        $('modalTitle').textContent = c.titulo || id;
+        const m = $('mediaModal');
+        show(m, true, 'flex');
+        requestAnimationFrame(() => requestAnimationFrame(() => m.classList.remove('opacity-0')));
+        document.body.style.overflow = 'hidden';
+
+        if (isAdmin && sincronizarServidor && !local) {
+            sesionActiva = nuevoId();
+            escribirEstado(id, { modalAbierto: true, isPaused: true, tiempoActual: 0, refMs: null, reproduciendoDesde: null, heartbeatTimestamp: null, activeBroadcasterId: null, sesionId: sesionActiva });
+        } else {
+            sesionActiva = c.sesionId || null;
+        }
+
+        prepararUIModal(c, tipo, local);
+
+        if (tipo === 'video') {
+            if (!local && !isAdmin) aplicarEstadoSync(casosConfig[id]);
+            if (!local && isAdmin) suscribirListos(id, sesionActiva);
+            if (!local) recalibrarSiHaceFalta();
+            iniciarCargaVideo(c, local);
+            syncLoopId = setInterval(bucleSync, 150);
+        }
+        $('modalTitle').focus && $('modalTitle').setAttribute('tabindex', '-1');
+    };
+
+    function prepararUIModal(c, tipo, local) {
+        const wrapper = $('video-wrapper');
+        const controlesPropios = tipo === 'video' && !local && esAdminOMaster();
+        show($('launch-bar'), tipo === 'video' && isAdmin && !local, 'flex');
+        show($('admin-controls-bar'), controlesPropios, 'flex');
+        document.querySelectorAll('[data-solo-admin]').forEach((el) => show(el, isAdmin, el.id === 'admin-play-pause-btn' ? 'flex' : 'flex'));
+        const badge = $('sync-monitor-badge');
+        show(badge, tipo === 'video' && !local, 'flex');
+
+        if (tipo === 'texto') {
+            wrapper.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-4 text-center h-full w-full bg-slate-900 overflow-y-auto gap-3">
+                    <div class="relative w-28 sm:w-36 aspect-[3/4] shrink-0 overflow-hidden rounded-lg bg-slate-950 shadow-xl border border-slate-700">
+                        <img src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" onerror="this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain" alt="Imagen del caso">
+                    </div>
+                    <div>
+                        <h4 class="font-serif text-base font-bold text-white mb-1"><i class="fa-solid fa-microphone-lines text-amber-400 mr-1.5"></i> Explicación en vivo</h4>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md whitespace-pre-line">${esc(c.recursoId || c.descripcion || '')}</p>
+                    </div>
+                </div>`;
+            setOverlay(null);
+            actualizarBarraAudio();
+            return;
+        }
+
+        // Etiqueta del monitor de sincronía
+        const t = $('sync-status-text'), d = $('sync-dot');
+        if (isAdmin) { t.textContent = 'Modo administrador'; d.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse'; }
+        else if (currentRole === 'master') { t.textContent = 'Visor Maestro (sala)'; d.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse'; }
+        else { t.textContent = 'Sincronizando…'; d.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse'; }
+        $('admin-volume-slider').value = 1;
+        $('time-display').textContent = '00:00 / 00:00';
+        $('admin-seek-bar').value = 0;
+        $('admin-play-icon').className = 'fa-solid fa-play';
+        actualizarBarraListos();
+    }
+
+    window.closeModalUI = function () {
+        // El administrador cierra el caso para TODOS: si se está reproduciendo, pedimos confirmación
+        const p = $('player');
+        if (isAdmin && lanzado && p && !p.paused && !p.ended && !modoLocal()) {
+            if (!confirm('El vídeo se está reproduciendo para todos. ¿Cerrarlo igualmente?')) return;
+        }
+        closeModal(true);
+    };
+
+    window.closeModal = function (notificar = true) {
+        const id = activeId;
+        const m = $('mediaModal');
+        m.classList.add('opacity-0');
+        setTimeout(() => { if (!activeId) { show(m, false); document.body.style.overflow = ''; } }, 300);
+        if (!id) return;
+        const avisarSala = isAdmin && notificar && !modoLocal();
+        limpiarSesionMedia();
+        activeId = '';
+        sesionActiva = null;
+        resetEstadoMedia();
+        if (avisarSala) {
+            escribirEstado(id, {
+                modalAbierto: false, reproduciendoDesde: null, refMs: null, tiempoActual: 0, isPaused: true,
+                activeBroadcasterId: null, heartbeatTimestamp: null, sesionId: null
+            });
+        }
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && activeId && !document.fullscreenElement) closeModalUI();
+    });
+
+    /* ============================================================
+       REPRODUCTOR: DESCARGA / PRECARGA REAL DEL VÍDEO
+       Se descarga completo (y se guarda en caché) ANTES de reproducir:
+       así no hay cortes ni búfer a mitad de caso, y sabemos con certeza cuándo está "listo".
+       ============================================================ */
+    function iniciarCargaVideo(c, local) {
+        const wrapper = $('video-wrapper');
+        const silenciado = !(esAdminOMaster() || local);
+        wrapper.innerHTML = `<video id="player" class="h-full w-full object-contain bg-black" playsinline webkit-playsinline preload="auto" disablepictureinpicture ${silenciado ? 'muted' : ''} ${local ? 'controls' : ''} ${c.imagenUrl ? `poster="${esc(c.imagenUrl)}"` : ''}></video>`;
+        const p = $('player');
+        p.muted = silenciado;
+        enlazarEventosPlayer(p);
+        actualizarBarraAudio();
+
+        const url = (c.recursoId || '').trim();
+        if (!url) {
+            errorVideo = { titulo: 'Este caso aún no tiene vídeo', detalle: 'Añade la URL en el panel de administración.', sinReintento: true };
+            renderOverlay();
+            return;
+        }
+        cargarVideoActivo(url);
+    }
+
+    async function obtenerVideoBlob(url, onProgress, signal) {
+        let cache = null;
+        try { if ('caches' in window) cache = await caches.open(CACHE_VIDEOS); } catch (e) { cache = null; }
+        if (cache) {
+            try {
+                const hit = await cache.match(url);
+                if (hit) { const b = await hit.blob(); onProgress(b.size, b.size); return { blob: b, desdeCache: true }; }
+            } catch (e) { /* ignorar y descargar */ }
+        }
+        let res;
+        try {
+            res = await fetch(url, { mode: 'cors', credentials: 'omit', signal });
+        } catch (e) {
+            if (signal.aborted) throw e;
+            const err = new Error('red');
+            err.tipo = navigator.onLine ? 'cors' : 'offline';
+            throw err;
+        }
+        if (!res.ok) { const err = new Error('HTTP ' + res.status); err.tipo = 'http'; err.status = res.status; throw err; }
+        const total = parseInt(res.headers.get('content-length') || '0', 10) || 0;
+        let tipoMime = res.headers.get('content-type') || '';
+        if (!/^video\//i.test(tipoMime)) tipoMime = 'video/mp4';
+        let blob;
+        if (res.body && res.body.getReader) {
+            const reader = res.body.getReader();
+            const partes = [];
+            let rec = 0;
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                partes.push(value);
+                rec += value.length;
+                onProgress(rec, total);
+            }
+            blob = new Blob(partes, { type: tipoMime });
+        } else {
+            const b = await res.blob();
+            blob = new Blob([b], { type: tipoMime });
+            onProgress(blob.size, blob.size);
+        }
+        contarDescarga(blob.size);
+        if (cache) { try { await cache.put(url, new Response(blob, { headers: { 'Content-Type': tipoMime } })); } catch (e) { /* caché llena: no pasa nada */ } }
+        return { blob, desdeCache: false };
+    }
+
+    async function cargarVideoActivo(url) {
+        const mi = ++cargaToken;
+        if (descargaAbort) { try { descargaAbort.abort(); } catch (e) { /* ignorar */ } }
+        descargaAbort = new AbortController();
+        const signal = descargaAbort.signal;
+        errorVideo = null;
+        descarga = { rec: 0, total: 0, reintento: null, directo: false, directoPct: null };
+        renderOverlay();
+        const intentosMax = 3;
+        for (let intento = 1; intento <= intentosMax; intento++) {
+            try {
+                const { blob } = await obtenerVideoBlob(url, (rec, total) => {
+                    if (mi !== cargaToken) return;
+                    descarga.rec = rec; descarga.total = total; descarga.reintento = null;
+                    renderOverlay();
+                }, signal);
+                if (mi !== cargaToken) return;
+                const p = $('player');
+                if (!p) return;
+                liberarBlobUrl();
+                blobUrlActivo = URL.createObjectURL(blob);
+                p.src = blobUrlActivo;
+                p.load();      // 'canplay' marcará el vídeo como listo
                 return;
-            }
-
-            if (p.muted) {
-                audioLabel.innerHTML = `<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700"><i class="fa-solid fa-volume-xmark text-amber-400"></i> <span>Activar Audio</span></button>`;
-            } else {
-                audioLabel.innerHTML = `<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-lg text-xs transition-colors border border-emerald-500/40"><i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Silenciar</span></button>`;
+            } catch (err) {
+                if (signal.aborted || mi !== cargaToken) return;
+                if (err.tipo === 'cors') { cargarModoDirecto(url); return; }
+                const reintentable = err.tipo !== 'http' || err.status >= 500 || err.status === 429;
+                if (!reintentable || intento === intentosMax) { mostrarErrorVideo(err, url); return; }
+                descarga.reintento = `Intento ${intento + 1} de ${intentosMax}`;
+                renderOverlay();
+                await sleep(1500 * intento);
             }
         }
+    }
 
-        window.toggleFullScreen = function() {
-            const wrapper = document.getElementById('video-wrapper');
-            if (!wrapper) return;
-            if (!document.fullscreenElement) {
-                if (wrapper.requestFullscreen) wrapper.requestFullscreen();
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
+    // Plan B si el servidor de vídeo no permite CORS: se reproduce directamente desde la URL
+    function cargarModoDirecto(url) {
+        const p = $('player');
+        if (!p) return;
+        modoDirecto = true;
+        descarga = { rec: 0, total: 0, reintento: null, directo: true, directoPct: 0 };
+        renderOverlay();
+        p.src = url;
+        p.load();
+    }
+
+    window.reintentarVideo = function () {
+        const c = casosConfig[activeId];
+        const url = c && (c.recursoId || '').trim();
+        if (!url) return;
+        videoListo = false; modoDirecto = false; errorVideo = null;
+        const p = $('player');
+        if (p) { p.removeAttribute('src'); }
+        liberarBlobUrl();
+        cargarVideoActivo(url);
+    };
+
+    function mostrarErrorVideo(err, url) {
+        let titulo = 'No se pudo cargar el vídeo', detalle = 'Comprueba la conexión e inténtalo de nuevo.';
+        if (err && err.tipo === 'http') {
+            if (err.status === 404) { titulo = 'No se encuentra el vídeo (404)'; detalle = 'La URL no existe. Revísala en el panel de administración.'; }
+            else if ([403, 429, 509].includes(err.status)) { titulo = `El servidor rechaza la descarga (HTTP ${err.status})`; detalle = 'Posible límite de ancho de banda o de peticiones del hosting gratuito. Espera un poco o reintenta.'; }
+            else { titulo = `Error del servidor (HTTP ${err.status})`; detalle = 'Inténtalo de nuevo en unos segundos.'; }
+        } else if (err && err.tipo === 'offline') {
+            titulo = 'Sin conexión a internet'; detalle = 'Comprueba el wifi. La descarga se reintentará al pulsar el botón.';
+        }
+        errorVideo = { titulo, detalle };
+        renderOverlay();
+    }
+
+    // Diagnóstico cuando el propio <video> da error (formato no compatible, URL caída, límite del hosting...)
+    async function diagnosticarFalloVideo(p) {
+        if (!vivo(p)) return;
+        const url = ((casosConfig[activeId] || {}).recursoId || '').trim();
+        let info = null;
+        try { info = await sondearVideo(url); } catch (e) { /* ignorar */ }
+        if (!vivo(p)) return;
+        if (info && info.status && !info.ok) mostrarErrorVideo({ tipo: 'http', status: info.status }, url);
+        else errorVideo = { titulo: 'El vídeo no se puede reproducir', detalle: 'Puede que el formato no sea compatible (usa MP4 H.264 + AAC) o que el archivo esté dañado.' };
+        renderOverlay();
+    }
+    const vivo = (p) => !!p && p === $('player') && !!activeId;
+
+    function enlazarEventosPlayer(p) {
+        p.addEventListener('canplay', () => { if (vivo(p) && !modoDirecto) marcarListo(); });
+        p.addEventListener('canplaythrough', () => { if (vivo(p) && modoDirecto) marcarListo(); });
+        p.addEventListener('loadedmetadata', () => { if (vivo(p)) actualizarTiempo(p); });
+        p.addEventListener('progress', () => {
+            if (!vivo(p) || !modoDirecto || videoListo) return;
+            if (p.buffered && p.buffered.length > 0 && p.duration > 0) {
+                descarga.directoPct = Math.min(100, p.buffered.end(p.buffered.length - 1) / p.duration * 100);
+                renderOverlay();
             }
+        });
+        p.addEventListener('timeupdate', () => { if (vivo(p)) actualizarTiempo(p); });
+        p.addEventListener('play', () => {
+            if (!vivo(p)) return;
+            $('admin-play-icon').className = 'fa-solid fa-pause';
+            if (isAdmin && !modoLocal()) iniciarHeartbeat();
+        });
+        p.addEventListener('pause', () => {
+            if (!vivo(p)) return;
+            $('admin-play-icon').className = 'fa-solid fa-play';
+            if (isAdmin && !modoLocal() && lanzado && !seekEditando) pararHeartbeat(true);
+            renderOverlay();
+        });
+        p.addEventListener('ended', () => { if (vivo(p)) renderOverlay(); });
+        p.addEventListener('waiting', () => { if (vivo(p)) { bufferingActivo = true; show($('buffer-spinner'), true, 'flex'); } });
+        p.addEventListener('playing', () => { if (vivo(p)) { bufferingActivo = false; show($('buffer-spinner'), false); } });
+        p.addEventListener('volumechange', () => { if (vivo(p)) actualizarBarraAudio(); });
+        p.addEventListener('error', () => { if (vivo(p) && !errorVideo) diagnosticarFalloVideo(p); });
+    }
+
+    function actualizarTiempo(p) {
+        if (!isFinite(p.duration) || !p.duration) return;
+        $('time-display').textContent = `${fmtTiempo(p.currentTime)} / ${fmtTiempo(p.duration)}`;
+        const sb = $('admin-seek-bar');
+        if (sb && !seekEditando) sb.value = (p.currentTime / p.duration) * 100;
+    }
+
+    function marcarListo() {
+        if (videoListo) return;
+        videoListo = true;
+        descarga.reintento = null;
+        renderOverlay();
+        if (!modoLocal() && db && activeId) {
+            contarEscrituraComun(1);
+            db.collection('listos').doc(`${activeId}__${clientId}`).set({
+                caso: activeId, sesionId: sesionActiva || 'x', clientId, rol: isAdmin ? 'admin' : currentRole, ts: ST()
+            }).catch((e) => manejarErrorFirestore(e, 'listo'));
+        }
+        actualizarBarraListos();
+    }
+
+    /* ---- Dispositivos listos (solo administrador) ---- */
+    function suscribirListos(id, sesion) {
+        if (listosUnsub) { try { listosUnsub(); } catch (e) { /* ignorar */ } listosUnsub = null; }
+        listosCount = 0;
+        actualizarBarraListos();
+        listosUnsub = db.collection('listos').where('caso', '==', id).onSnapshot((snap) => {
+            const nuevos = snap.docChanges().filter((ch) => !ch.doc.metadata.hasPendingWrites).length;
+            if (nuevos) contarLecturaExtra(nuevos);
+            listosCount = snap.docs.filter((d) => d.data().sesionId === sesion).length;
+            actualizarBarraListos();
+        }, (e) => manejarErrorFirestore(e, 'listos'));
+    }
+    function actualizarBarraListos() {
+        const N = dispositivosEsperados();
+        const txt = $('listos-text'), bar = $('listos-bar'), btn = $('launch-btn'), btxt = $('launch-btn-txt');
+        if (!txt) return;
+        txt.textContent = `${Math.min(listosCount, 99)}/${N}`;
+        const pct = Math.min(100, listosCount / N * 100);
+        bar.style.width = pct + '%';
+        bar.style.background = listosCount >= N ? '#10b981' : '#f59e0b';
+        const faltan = Math.max(0, N - listosCount);
+        if (!videoListo) {
+            btxt.textContent = 'Preparando tu vídeo…';
+            btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed';
+        } else {
+            btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
+            btxt.textContent = faltan === 0 ? '¡Todos listos! Lanzar con cuenta atrás' : `Lanzar (faltan ${faltan})`;
+        }
+    }
+
+    /* ============================================================
+       SINCRONIZACIÓN
+       ============================================================ */
+    // Convierte el documento de Firestore en una "referencia de tiempo" para los seguidores
+    function aplicarEstadoSync(d) {
+        if (!d || isAdmin) return;
+        if (d.modalAbierto === false) { syncState = null; return; }
+        if (d.isPaused !== false) {
+            syncState = { paused: true, videoTime: Number.isFinite(d.tiempoActual) ? d.tiempoActual : 0 };
+            return;
+        }
+        const lanzamiento = typeof d.refMs === 'number';
+        const serverMs = lanzamiento ? d.refMs : tsMs(d.heartbeatTimestamp);
+        if (serverMs == null) return;      // marca de tiempo aún pendiente
+        syncState = { paused: false, videoTime: lanzamiento ? 0 : (Number.isFinite(d.tiempoActual) ? d.tiempoActual : 0), serverMs, fuente: lanzamiento ? 'lanzamiento' : 'latido' };
+    }
+
+    async function intentarPlay(p) {
+        if (playEnCurso) return;
+        playEnCurso = true;
+        try {
+            await p.play();
+        } catch (e) {
+            if (e && e.name === 'NotAllowedError') {
+                // El navegador bloquea el sonido sin gesto: se reproduce en silencio y se avisa
+                if (!p.muted) { p.muted = true; actualizarBarraAudio(); mostrarToast('El navegador ha bloqueado el sonido. Pulsa «Activar audio».', 'error'); }
+                try { await p.play(); } catch (e2) { /* ignorar */ }
+            }
+        } finally { playEnCurso = false; }
+    }
+
+    window.reproducirLocal = function () {
+        const p = $('player');
+        if (!p) return;
+        p.muted = false;
+        p.controls = true;
+        intentarPlay(p);
+    };
+
+    function programarTickPreciso(ms, fn) {
+        if (tickPreciso) return;
+        tickPreciso = setTimeout(() => { tickPreciso = null; fn(); }, Math.max(0, ms));
+    }
+
+    function bucleSync() {
+        if (!activeId) return;
+        const c = casosConfig[activeId];
+        if (!c || (c.tipo || 'video') !== 'video') return;
+        renderOverlay();
+        const p = $('player');
+        if (!p || !videoListo || modoLocal() || errorVideo) return;
+        if (isAdmin) arranqueAdmin(p); else seguirAlAdmin(p);
+    }
+
+    // El administrador arranca su vídeo exactamente al acabar la cuenta atrás
+    function arranqueAdmin(p) {
+        if (!inicioAdminMs) return;
+        const ms = inicioAdminMs - ahoraServidor();
+        const empezar = () => {
+            if (!inicioAdminMs || !vivo(p)) return;
+            inicioAdminMs = null;
+            try { p.currentTime = 0; } catch (e) { /* ignorar */ }
+            intentarPlay(p);
         };
+        if (ms <= 20) empezar();
+        else if (ms < 400) programarTickPreciso(ms - 3, empezar);
+    }
 
-        window.lanzarReproduccionActiva = function(id) {
-            if (!apiKeyValida) return;
-            if (broadcasterHeartbeatInterval) { clearInterval(broadcasterHeartbeatInterval); broadcasterHeartbeatInterval = null; }
-            const adminBar = document.getElementById('admin-sync-bar');
-            if (adminBar) adminBar.remove();
+    // Todos los demás siguen el tiempo del administrador
+    function seguirAlAdmin(p) {
+        const st = syncState;
+        if (!st) return;
+        if (st.paused) {
+            if (!p.paused) p.pause();
+            if (p.playbackRate !== 1) p.playbackRate = 1;
+            if (!p.seeking && Math.abs(p.currentTime - st.videoTime) > 0.25) { try { p.currentTime = st.videoTime; } catch (e) { /* ignorar */ } }
+            actualizarMonitorSync(null, 'pausa');
+            return;
+        }
+        const ahora = ahoraServidor();
+        const esperado = st.videoTime + (ahora - st.serverMs) / 1000;
 
-            const player = document.getElementById('player');
-            if (player) {
-                player.currentTime = 0;
-                player.play().catch(e => {});
+        if (esperado < -0.02) {                       // cuenta atrás
+            if (!p.paused) p.pause();
+            if (!p.seeking && p.currentTime > 0.05) { try { p.currentTime = 0; } catch (e) { /* ignorar */ } }
+            const ms = -esperado * 1000;
+            if (ms < 400) programarTickPreciso(ms - 3, bucleSync);
+            actualizarMonitorSync(null, 'cuenta');
+            return;
+        }
+        if (p.ended || (isFinite(p.duration) && esperado >= p.duration)) { actualizarMonitorSync(null, 'fin'); return; }
+
+        if (p.paused) {                               // arrancar (o unirse tarde) en el punto exacto
+            try { p.currentTime = Math.max(0, esperado); } catch (e) { /* ignorar */ }
+            intentarPlay(p);
+            return;
+        }
+        if (p.seeking || p.readyState < 2) return;
+
+        const sinSenal = st.fuente === 'latido' && (ahora - st.serverMs) > SENAL_PERDIDA_MS;
+        const desfase = p.currentTime - esperado;    // positivo = vamos adelantados
+        actualizarMonitorSync(desfase, sinSenal ? 'sin-senal' : 'ok');
+        const abs = Math.abs(desfase);
+        if (abs > SYNC_SALTO_DURO_S) {
+            if (Date.now() - ultimoSeekDuroMs > 1500) {
+                ultimoSeekDuroMs = Date.now();
+                try { p.currentTime = esperado + 0.05; } catch (e) { /* ignorar */ }
+                p.playbackRate = 1;
             }
+        } else if (abs > SYNC_ZONA_MUERTA_S) {
+            // Corrección suave: acelerar o frenar unos puntos porcentuales (imperceptible, sin saltos)
+            const ajuste = Math.max(-SYNC_RATE_MAX, Math.min(SYNC_RATE_MAX, desfase * SYNC_GANANCIA));
+            p.playbackRate = 1 - ajuste;
+        } else if (p.playbackRate !== 1) {
+            p.playbackRate = 1;
+        }
+    }
 
-            const now = firebase.firestore.FieldValue.serverTimestamp();
-            db.collection("estado_juego").doc(id).set({
-                reproduciendoDesde: now,
-                modalAbierto: true,
-                tiempoActual: 0,
-                isPaused: false,
-                activeBroadcasterId: clientId,
-                heartbeatTimestamp: now
-            }, { merge: true });
+    function actualizarMonitorSync(desfase, estado) {
+        if (isAdmin || currentRole === 'master') return;
+        const ahora = performance.now();
+        if (ahora - ultimoMonitorMs < 400) return;
+        ultimoMonitorMs = ahora;
+        const t = $('sync-status-text'), d = $('sync-dot');
+        if (!t || !d) return;
+        if (estado === 'pausa') { t.textContent = 'En pausa'; d.className = 'w-2 h-2 rounded-full bg-slate-400'; return; }
+        if (estado === 'cuenta') { t.textContent = 'Cuenta atrás'; d.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse'; return; }
+        if (estado === 'fin') { t.textContent = 'Fin'; d.className = 'w-2 h-2 rounded-full bg-slate-400'; return; }
+        if (estado === 'sin-senal') { t.textContent = 'Sin señal del admin (sigo en local)'; d.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping'; return; }
+        const abs = Math.abs(desfase);
+        t.textContent = `Desfase: ${desfase > 0 ? '+' : ''}${desfase.toFixed(2)} s`;
+        d.className = 'w-2 h-2 rounded-full animate-pulse ' + (abs < 0.15 ? 'bg-emerald-500' : (abs < 0.5 ? 'bg-amber-400' : 'bg-rose-500'));
+    }
 
-            iniciarHeartbeatBroadcaster(player, clientId);
+    /* ---- Latido del administrador ---- */
+    function iniciarHeartbeat() {
+        clearTimeout(hbTimer);
+        faseRapidaHasta = Math.max(faseRapidaHasta, Date.now() + HEARTBEAT_RAPIDO_DURACION_MS);
+        const tick = () => {
+            const p = $('player');
+            if (!p || p.paused || !activeId || !isAdmin) { hbTimer = null; return; }
+            escribirEstado(activeId, { tiempoActual: p.currentTime, isPaused: false, refMs: null, activeBroadcasterId: clientId, heartbeatTimestamp: ST() });
+            const rapido = Date.now() < faseRapidaHasta;
+            hbTimer = setTimeout(tick, rapido ? HEARTBEAT_RAPIDO_MS : (modoAhorro ? HEARTBEAT_AHORRO_MS : HEARTBEAT_ESTABLE_MS));
         };
+        tick();
+    }
+    function pararHeartbeat(marcarPausa) {
+        clearTimeout(hbTimer); hbTimer = null;
+        if (!activeId || !isAdmin) return;
+        const p = $('player');
+        escribirEstado(activeId, { tiempoActual: p ? p.currentTime : 0, isPaused: !!marcarPausa, refMs: null, heartbeatTimestamp: ST() });
+    }
 
-        window.closeModal = function() {
-            if (broadcasterHeartbeatInterval) {
-                clearInterval(broadcasterHeartbeatInterval);
-                broadcasterHeartbeatInterval = null;
+    /* ---- Controles del administrador / Visor Maestro ---- */
+    window.lanzarReproduccionActiva = function () {
+        if (!isAdmin || !activeId || modoLocal()) return;
+        const p = $('player');
+        if (!p) return;
+        if (!videoListo) { mostrarToast('Tu vídeo aún se está preparando. Espera a que esté listo.', 'error'); return; }
+        if (lanzado) return;
+        const N = dispositivosEsperados();
+        const faltan = N - listosCount;
+        if (faltan > 0 && !confirm(`Faltan ${faltan} de ${N} dispositivos por estar listos. ¿Lanzar igualmente?`)) return;
+        lanzado = true;
+        const inicioMs = ahoraServidor() + CUENTA_ATRAS_MS;
+        inicioAdminMs = inicioMs;
+        faseRapidaHasta = inicioMs + HEARTBEAT_RAPIDO_DURACION_MS;
+        try { p.currentTime = 0; } catch (e) { /* ignorar */ }
+        show($('launch-bar'), false);
+        escribirEstado(activeId, { modalAbierto: true, isPaused: false, tiempoActual: 0, refMs: inicioMs, heartbeatTimestamp: ST(), activeBroadcasterId: clientId });
+        renderOverlay();
+    };
+
+    window.adminTogglePlayPause = function () {
+        if (!isAdmin) return;
+        const p = $('player');
+        if (!p || !videoListo) return;
+        if (!lanzado && !modoLocal()) { lanzarReproduccionActiva(); return; }
+        if (p.paused) {
+            faseRapidaHasta = Date.now() + HEARTBEAT_RAPIDO_DURACION_MS;
+            intentarPlay(p);              // el evento 'play' envía el primer latido
+        } else {
+            p.pause();                    // el evento 'pause' avisa a la sala
+        }
+    };
+
+    window.adminChangeVolume = function (val) {
+        const p = $('player');
+        if (!p) return;
+        p.volume = parseFloat(val);
+        if (val > 0 && p.muted) { p.muted = false; actualizarBarraAudio(); }
+    };
+
+    window.adminSeeking = function (val) {
+        seekEditando = true;
+        const p = $('player');
+        if (p && p.duration) $('time-display').textContent = `${fmtTiempo((val / 100) * p.duration)} / ${fmtTiempo(p.duration)}`;
+    };
+
+    window.adminSeekEnd = function (val) {
+        const p = $('player');
+        if (!isAdmin || !p || !p.duration || !lanzado) { seekEditando = false; return; }
+        const objetivo = (val / 100) * p.duration;
+        try { p.currentTime = objetivo; } catch (e) { /* ignorar */ }
+        seekEditando = false;
+        faseRapidaHasta = Date.now() + HEARTBEAT_RAPIDO_DURACION_MS;
+        escribirEstado(activeId, { tiempoActual: objetivo, isPaused: p.paused, refMs: null, activeBroadcasterId: clientId, heartbeatTimestamp: ST() });
+        if (!p.paused) iniciarHeartbeat();
+    };
+
+    window.toggleAudio = function () {
+        const p = $('player');
+        if (!p || !esAdminOMaster()) return;
+        p.muted = !p.muted;
+        actualizarBarraAudio();
+    };
+
+    function actualizarBarraAudio() {
+        const p = $('player');
+        const lab = $('audio-status-label');
+        if (!lab) return;
+        if (!p) { lab.innerHTML = ''; return; }
+        if (!esAdminOMaster() && !modoLocal()) {
+            lab.innerHTML = '<span class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-volume-xmark text-amber-400"></i> El sonido sale por la TV</span>';
+            return;
+        }
+        if (p.muted) {
+            lab.innerHTML = '<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700"><i class="fa-solid fa-volume-xmark text-amber-400"></i> <span>Activar audio</span></button>';
+        } else {
+            lab.innerHTML = '<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-lg text-xs transition-colors border border-emerald-500/40"><i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Silenciar</span></button>';
+        }
+    }
+
+    window.toggleFullScreen = function () {
+        const cont = $('modalContentContainer');
+        if (!cont) return;
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+        if (!fsEl) {
+            if (cont.requestFullscreen) cont.requestFullscreen().catch(() => {});
+            else if (cont.webkitRequestFullscreen) cont.webkitRequestFullscreen();
+            else {
+                // iPhone: solo permite pantalla completa nativa del <video>
+                const p = $('player');
+                if (p && p.webkitEnterFullscreen) p.webkitEnterFullscreen();
             }
-            if (activeBufferInterval) {
-                clearInterval(activeBufferInterval);
-                activeBufferInterval = null;
-            }
+        } else if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    };
 
-            const m = document.getElementById('mediaModal');
-            m.classList.add('opacity-0');
-            setTimeout(() => {
-                m.classList.add('hidden');
-                document.getElementById('modalContentContainer').innerHTML = '';
-                const syncBadge = document.getElementById('sync-monitor-badge');
-                if (syncBadge) syncBadge.classList.add('hidden');
-                
-                const adminControlsBar = document.getElementById('admin-controls-bar');
-                if (adminControlsBar) {
-                    adminControlsBar.classList.remove('flex');
-                    adminControlsBar.classList.add('hidden');
-                }
+    /* ============================================================
+       EVENTOS GLOBALES
+       ============================================================ */
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        if (quiereWakeLock && !wakeLock) adquirirWakeLock();            // (antes no se re-solicitaba nunca)
+        recalibrarSiHaceFalta();
+        const p = $('player');
+        if (isAdmin && activeId && p && !p.paused && lanzado) iniciarHeartbeat();   // el navegador frena los temporizadores en segundo plano
+    });
+    window.addEventListener('online', () => {
+        actualizarChipConexion();
+        if (db && !unsubEstado) { clearTimeout(retryEstadoTimer); suscribirEstadoJuego(); }
+    });
+    window.addEventListener('offline', actualizarChipConexion);
 
-                const bufferStatusBar = document.getElementById('buffer-status-bar');
-                if (bufferStatusBar) {
-                    bufferStatusBar.classList.remove('flex');
-                    bufferStatusBar.classList.add('hidden');
-                }
+    /* ============================================================
+       ARRANQUE
+       ============================================================ */
+    function iniciarFirebase() {
+        try {
+            if (typeof firebase === 'undefined') throw new Error('No se cargó el SDK de Firebase');
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            // En wifis con proxies o filtros, detecta solo si hay que usar long-polling
+            try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) { /* ignorar */ }
+            suscribirMaster();
+            suscribirEstadoJuego();
+        } catch (e) {
+            console.error(e);
+            mostrarBanner('firebase', 'error', 'No se pudo iniciar Firebase: ' + (e.message || e) + '. Se muestran los últimos datos guardados en este dispositivo.');
+            ultimoFromCache = true;
+        }
+    }
 
-                if (isAdmin && activeId) {
-                    db.collection("estado_juego").doc(activeId).set({
-                        modalAbierto: false,
-                        reproduciendoDesde: null,
-                        tiempoActual: 0,
-                        isPaused: true,
-                        activeBroadcasterId: null,
-                        heartbeatTimestamp: null
-                    }, { merge: true });
-                }
-                
-                activeId = '';
-                isBackgroundPreloadingPaused = false;
-                setTimeout(iniciarPrecargaGlobalSilenciosa, 3000);
-            }, 300);
-        };
-
-        actualizarInterfazRol();
+    actualizarInterfazRol();
+    const cacheInicial = cargarCacheCasos();
+    if (cacheInicial) casosConfig = cacheInicial;           // pintado instantáneo con los últimos datos conocidos
+    renderGrid();
+    actualizarChipConexion();
+    if (apiKeyValida) iniciarFirebase();
+    else mostrarBanner('firebase', 'error', 'Falta la configuración de Firebase (apiKey).');
     </script>
 </body>
 </html>

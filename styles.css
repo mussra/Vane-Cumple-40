@@ -1,23 +1,37 @@
+/* ============================================================
+   40 Años de Vane · El Juego de su Memoria  (v5.0)
+   Este fichero se enlaza desde index.html con:
+   <link rel="stylesheet" href="styles.css">
+   ============================================================ */
+
+/* ---------- Tipografía ----------
+   Las familias también se declaran en tailwind.config (index.html),
+   así que .font-sans / .font-serif de Tailwind usan Montserrat y Lora. */
 body {
     font-family: 'Montserrat', sans-serif;
 }
 
-h1, h2, h3, .font-serif {
+h1, h2, h3 {
     font-family: 'Lora', serif;
 }
 
-.polaroid-card {
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-    transition: transform 0.3s ease, border-color 0.3s ease;
-}
-
+/* ---------- Móvil ---------- */
 * {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Scrollbar Personalizado */
+/* Respeta la zona segura (notch / barra inferior) */
+.pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ---------- Scrollbar personalizado ---------- */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 ::-webkit-scrollbar-track {
     background: #0b0f19;
@@ -27,11 +41,143 @@ h1, h2, h3, .font-serif {
     border-radius: 4px;
 }
 
-/* Texto con Degradado Dorado */
+/* ---------- Texto con degradado dorado ---------- */
 .gold-gradient-text {
     background: linear-gradient(135deg, #FFF099 0%, #D4AF37 50%, #AA7C11 100%);
     -webkit-background-clip: text;
-    background-clip: text; /* Añadido para compatibilidad estándar */
+    background-clip: text;
     -webkit-text-fill-color: transparent;
-    display: inline-block; /* Evita fallos de renderizado del degradado */
+    color: transparent;
+    display: inline-block; /* evita fallos de renderizado del degradado */
+}
+
+/* ---------- Foco visible (teclado / TV con mando) ---------- */
+:focus-visible {
+    outline: 2px solid #fbbf24;
+    outline-offset: 2px;
+}
+
+/* ---------- Tarjetas Polaroid ---------- */
+.polaroid-card {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.polaroid-card.resuelta {
+    border-color: rgba(212, 175, 55, 0.45);
+}
+.polaroid-card.resuelta:hover {
+    transform: translateY(-3px);
+}
+
+/* Destello cuando un caso se acaba de resolver */
+@keyframes destello {
+    0% {
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.95), 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        transform: scale(1.03);
+    }
+    70% {
+        box-shadow: 0 0 0 14px rgba(251, 191, 36, 0), 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        transform: scale(1.01);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0), 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        transform: scale(1);
+    }
+}
+.tarjeta-destello {
+    animation: destello 1.4s ease-out 2;
+}
+
+/* ---------- Capa de estado sobre el vídeo ----------
+   Descarga, "listo", cuenta atrás, pausa, errores... (se controla desde JS) */
+#ov {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 1rem;
+    text-align: center;
+    background: rgba(2, 6, 23, 0.84);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+#ov.ov-visible {
+    display: flex;
+}
+/* Capa "suave": deja ver el vídeo (pausa, fin) */
+#ov.ov-soft {
+    background: rgba(2, 6, 23, 0.45);
+    pointer-events: none;
+}
+#ov.ov-soft #ov-btn {
+    pointer-events: auto;
+}
+.ov-count {
+    font-family: 'Lora', serif;
+    font-size: clamp(4rem, 18vw, 7rem);
+    font-weight: 700;
+    line-height: 1;
+    color: #fbbf24;
+}
+.barra-fondo {
+    background: #020617;
+    border: 1px solid #1e293b;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+.barra-relleno {
+    height: 100%;
+    width: 0;
+    background: #f59e0b;
+    transition: width 0.25s ease;
+}
+
+/* ---------- Pantalla completa del reproductor ---------- */
+#modalContentContainer:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: #000;
+}
+#modalContentContainer:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: #000;
+}
+
+/* ---------- Panel de administración ---------- */
+/* Campo con cambios sin guardar */
+[data-sucio="1"] {
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.45);
+}
+details > summary {
+    cursor: pointer;
+    list-style: none;
+}
+details > summary::-webkit-details-marker {
+    display: none;
+}
+details[open] > summary .chevron {
+    transform: rotate(90deg);
+}
+.chevron {
+    transition: transform 0.2s ease;
+}
+
+/* ---------- Accesibilidad: movimiento reducido ----------
+   (los spinners de carga se mantienen porque indican actividad) */
+@media (prefers-reduced-motion: reduce) {
+    *:not(.fa-spin),
+    *:not(.fa-spin)::before,
+    *:not(.fa-spin)::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

@@ -1,0 +1,4 @@
+# Sin permiso para rastreo, entrenamiento ni uso por IA
+User-Agent: *
+Disallow: /
+Disallow-Training: /

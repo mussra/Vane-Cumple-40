@@ -59,7 +59,7 @@
                         <div>
                             <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Reproducción sincronizada</h4>
                             <p class="text-xs text-slate-300 leading-normal mt-0.5">
-                                Los vídeos se descargan en segundo plano mientras estás aquí. Si alguno aún no está completo, empieza igualmente y sigue descargándose. El dispositivo central lo lanza para todos a la vez.
+                                Los vídeos se descargan en segundo plano mientras estás aquí, para que se vean sin cortes. Después, el dispositivo central los lanza para todos a la vez. Deja la pantalla encendida y conectada al wifi.
                             </p>
                         </div>
                     </div>
@@ -99,6 +99,10 @@
                     <span id="conn-chip" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[11px] text-slate-300">
                         <span id="conn-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                         <span id="conn-text">Conectando…</span>
+                    </span>
+                    <span id="cache-chip" style="display:none;" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[11px] text-slate-300" title="Vídeos descargados en este dispositivo">
+                        <i id="cache-chip-icon" class="fa-solid fa-download text-slate-400"></i>
+                        <span id="cache-chip-text">0/0</span>
                     </span>
                 </div>
                 <button onclick="toggleRolOpciones()" aria-expanded="false" id="role-toggle-btn" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium transition-colors border border-slate-700">
@@ -168,16 +172,6 @@
                         </p>
                     </div>
 
-                    <div class="mt-4 text-xs">
-                        <div class="flex justify-between items-center text-slate-300 mb-1 gap-2">
-                            <span><i class="fa-solid fa-cloud-arrow-down text-amber-400 mr-1"></i> Descarga de vídeos en segundo plano (este dispositivo)</span>
-                            <span id="precarga-txt" class="font-mono"></span>
-                        </div>
-                        <div class="barra-fondo h-2 mb-2"><div id="precarga-bar" class="barra-relleno"></div></div>
-                        <div id="precarga-lista" class="space-y-1.5"></div>
-                        <button onclick="precargaReintentar()" class="mt-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-rotate-right mr-1 text-amber-400"></i> Reintentar fallidos</button>
-                    </div>
-
                     <div class="flex gap-2 flex-wrap items-center mt-4 text-xs">
                         <div class="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-800">
                             <label for="input-dispositivos" class="text-slate-400">Dispositivos esperados:</label>
@@ -188,6 +182,31 @@
                         <button onclick="borrarCacheVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-broom mr-1 text-amber-400"></i> Vaciar caché de vídeos</button>
                     </div>
                     <div id="salud-videos" class="mt-3 text-xs space-y-1"></div>
+                </div>
+            </details>
+
+            <!-- Descarga de vídeos (caché) -->
+            <details open id="panel-cache" class="mb-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-chevron-right chevron text-[10px] text-amber-500"></i>
+                    <i class="fa-solid fa-cloud-arrow-down text-amber-400"></i> Descarga de vídeos (caché)
+                </summary>
+                <div class="px-4 pb-4">
+                    <div id="cache-resumen" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3"></div>
+                    <div class="flex gap-2 flex-wrap items-center mb-3 text-xs">
+                        <button onclick="togglePrecargaRemota()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-pause mr-1 text-sky-400"></i> <span id="btn-precarga-remota-txt">Pausar descarga en todos</span></button>
+                        <button onclick="reintentarDescargas()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-rotate-right mr-1 text-amber-400"></i> Reintentar fallidos (este dispositivo)</button>
+                    </div>
+                    <div id="cache-matriz" class="overflow-x-auto pb-1"></div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] text-slate-400">
+                        <span><span class="inline-block w-3 h-3 rounded align-middle mr-1" style="background:#10b981"></span>Descargado</span>
+                        <span><span class="inline-block w-3 h-3 rounded align-middle mr-1" style="background:linear-gradient(to top,#f59e0b 60%,#1e293b 60%)"></span>Descargando (%)</span>
+                        <span><span class="inline-block w-3 h-3 rounded align-middle mr-1" style="background:linear-gradient(to top,#38bdf8 60%,#1e293b 60%)"></span>En pausa</span>
+                        <span><span class="inline-block w-3 h-3 rounded align-middle mr-1" style="background:#1e293b"></span>En cola</span>
+                        <span><span class="inline-block w-3 h-3 rounded align-middle mr-1" style="background:#f43f5e"></span>Error</span>
+                        <span><span class="inline-block w-3 h-3 rounded align-middle mr-1" style="background:#8b5cf6"></span>Solo streaming</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 leading-snug mt-2">Cada columna es un caso. Los dispositivos informan de su progreso cada pocos segundos; los que llevan 3 min sin dar señal aparecen como «sin conexión».</p>
                 </div>
             </details>
 
@@ -274,10 +293,11 @@
             <!-- Lanzamiento (solo administrador) -->
             <div id="launch-bar" style="display:none;" class="flex-col gap-2 mb-3 bg-slate-900 p-3 rounded-xl border border-amber-500/30">
                 <div class="flex justify-between text-xs text-slate-300">
-                    <span><i class="fa-solid fa-mobile-screen mr-1 text-amber-400"></i> Dispositivos listos</span>
+                    <span><i class="fa-solid fa-mobile-screen mr-1 text-amber-400"></i> Con el vídeo completo</span>
                     <span id="listos-text" class="font-mono">0/16</span>
                 </div>
                 <div class="barra-fondo h-2"><div id="listos-bar" class="barra-relleno"></div></div>
+                <p id="launch-detalle" class="text-[11px] text-slate-400 leading-snug"></p>
                 <button id="launch-btn" onclick="lanzarReproduccionActiva()" class="mt-1 w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg transition-colors flex items-center justify-center gap-2">
                     <i class="fa-solid fa-play"></i> <span id="launch-btn-txt">Lanzar con cuenta atrás</span>
                 </button>
@@ -347,7 +367,7 @@
     /* ============================================================
        CONFIGURACIÓN  (todo lo ajustable está aquí arriba)
        ============================================================ */
-    const APP_VERSION = 'v5.0';
+    const APP_VERSION = 'v5.2';
 
     const firebaseConfig = {
         apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
@@ -386,8 +406,15 @@
     // Compruébalo en el servicio donde alojas los vídeos.
     const LIMITE_DESCARGA_DIARIA_MB = 0;
 
-    const CACHE_VIDEOS = 'vane-videos-v1';
-    const PRECARGA_INTENTOS_MAX = 6;             // reintentos automáticos por vídeo en segundo plano
+    // Caché de vídeos: descarga en segundo plano de TODOS los vídeos mientras el usuario está en la web
+    const CACHE_VIDEOS = 'vane-videos-v2';
+    const PRECARGA_AUTOMATICA = true;             // false = solo se descarga el caso que se abre
+    const PRECARGA_PAUSA_REPRODUCIENDO = true;    // la cola de fondo se pausa mientras se reproduce un vídeo
+    const PRECARGA_CONTINUAR_EN_STREAM = true;    // el vídeo en reproducción sigue descargándose a la caché
+    const PRECARGA_REINTENTOS_AUTO = 4;           // reintentos automáticos por vídeo (con espera creciente)
+    const CACHE_REPORTE_MIN_MS = 10000;           // máx. 1 informe de estado cada 10 s por dispositivo
+    const CACHE_PRESENCIA_MS = 90000;             // "sigo conectado" cada 90 s
+    const CACHE_ONLINE_MS = 180000;               // sin señal durante 3 min = "sin conexión" en el panel
 
     /* ============================================================
        UTILIDADES
@@ -462,15 +489,16 @@
     let descargaAbort = null;
     let cargaToken = 0;
     let videoListo = false;
-    let modoDirecto = false;
+    let modoStream = false;          // reproduciendo desde la URL (streaming) en vez de desde la caché
     let errorVideo = null;
-    let descarga = { rec: 0, total: 0, reintento: null, directo: false, directoPct: null };
+    let directoPct = null;           // % de búfer en modo streaming
     let syncState = null;            // { paused, videoTime, serverMs, fuente }
     let syncLoopId = null;
     let tickPreciso = null;
     let hbTimer = null;
     let faseRapidaHasta = 0;
     let lanzado = false;
+    let lanzando = false;            // el administrador está preparando su streaming antes de lanzar
     let inicioAdminMs = null;
     let listosUnsub = null;
     let listosCount = 0;
@@ -1164,10 +1192,18 @@
         const inp = $('input-dispositivos');
         if (inp && document.activeElement !== inp) inp.value = dispositivosEsperados();
         actualizarBotonEmergencia();
+        iniciarListenerDispositivosCache();
         if (saludTimer) return;
         actualizarSalud();
-        saludTimer = setInterval(() => { if (isAdmin) actualizarSalud(); }, 2000);
+        actualizarAlmacenamiento();
+        saludTimer = setInterval(() => {
+            if (!isAdmin) return;
+            actualizarSalud();
+            iniciarListenerDispositivosCache();      // por si Firebase tardó en estar listo
+            programarRenderCacheUI();
+        }, 2000);
     }
+
     window.cambiarDispositivos = function (v) {
         const n = parseInt(v, 10);
         if (n > 0) { lsSet('vane_dispositivos', String(n)); actualizarSalud(); actualizarBarraListos(); }
@@ -1188,14 +1224,13 @@
             ['Reloj', rttMs != null ? `Calibrado (latencia ${rttMs} ms)` : 'Sin calibrar'],
             ['Pantalla activa', wakeLock ? 'Activa' : ('wakeLock' in navigator ? 'Inactiva' : 'No soportada')],
             ['Latido de sincronía', modoAhorro ? `${HEARTBEAT_AHORRO_MS / 1000} s (ahorro)` : `${HEARTBEAT_RAPIDO_MS / 1000} s → ${HEARTBEAT_ESTABLE_MS / 1000} s`],
-            ['Caché de vídeos', precargaResumen()],
+            ['Caché de vídeos', 'caches' in window ? 'Disponible' : 'No disponible'],
             ['Dispositivos esperados', String(dispositivosEsperados())],
             ['Modo emergencia', modoEmergencia ? 'Activo' : 'No'],
             ['Casos cargados', String(Object.keys(casosConfig).length)]
         ];
         $('salud-grid').innerHTML = tiles.map(([k, v]) => `<div class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2"><div class="text-[10px] text-slate-500">${esc(k)}</div><div class="font-medium text-slate-200">${esc(v)}</div></div>`).join('');
 
-        renderPrecarga();
         const e = estimarUso();
         pintarBarra('uso-lec-txt', 'uso-lec-bar', e.lecturas, CUOTA_LECTURAS, `${Math.round(e.lecturas).toLocaleString('es-ES')} / ${CUOTA_LECTURAS.toLocaleString('es-ES')}`);
         pintarBarra('uso-esc-txt', 'uso-esc-bar', e.escrituras, CUOTA_ESCRITURAS, `${Math.round(e.escrituras).toLocaleString('es-ES')} / ${CUOTA_ESCRITURAS.toLocaleString('es-ES')}`);
@@ -1276,11 +1311,14 @@
 
     window.borrarCacheVideos = async function () {
         try {
-            if (precarga.abort) precarga.abort.abort();
+            Object.keys(cacheVideos).forEach(cancelarDescarga);
             if ('caches' in window) await caches.delete(CACHE_VIDEOS);
-            precarga.est = {}; precarga.firma = ''; precarga.prio = null;
-            mostrarToast('Caché vaciada en este dispositivo. Se vuelve a descargar en segundo plano.');
-            precargaSincronizar();
+            cacheAbierta = null;
+            Object.values(cacheVideos).forEach((e) => Object.assign(e, { estado: 'pendiente', rec: 0, total: 0, bytes: 0, error: null, intentos: 0, fallosFetch: 0, reintentable: false, pausada: false }));
+            notificarCache(true);
+            actualizarAlmacenamiento();
+            planificarPrecarga();
+            mostrarToast('Caché de vídeos vaciada. Se volverá a descargar.');
         } catch (e) {
             mostrarToast('No se pudo vaciar la caché.', 'error');
         }
@@ -1330,7 +1368,7 @@
         if (isAdmin) renderAdminSiHaceFalta();
         tocados.forEach(({ id }) => { actualizarUI(id); if (isAdmin) sincronizarAdminDesdeServidor(id); });
         guardarCacheCasos();
-        precargaSincronizar();
+        sincronizarListaCache();
 
         if (!primera) {
             tocados.forEach(({ id, antes, data }) => {
@@ -1349,7 +1387,7 @@
             if (abierto && !activeId) openModal(abierto, false);
             manejarParametroCaso();
             calibrarReloj(5);
-            if (currentRole === 'master' && !isAdmin) { /* el listener de master decide si registrarse */ }
+            iniciarPrecargaTrasBienvenida();
         }
     }
 
@@ -1389,10 +1427,22 @@
             };
         }
         if (!videoListo) {
-            if (descarga.reintento) return { key: 'reintento', icon: 'fa-rotate fa-spin', title: 'Problema de red. Reintentando…', detail: descarga.reintento };
-            const pct = descarga.total > 0 ? Math.min(100, descarga.rec / descarga.total * 100) : descarga.directoPct;
-            const det = descarga.directo ? 'Empezando sin esperar a la descarga completa…' : (descarga.total > 0 ? `${fmtMB(descarga.rec)} de ${fmtMB(descarga.total)}` : (descarga.rec > 0 ? fmtMB(descarga.rec) : 'Conectando…'));
-            return { key: 'descarga', icon: 'fa-circle-notch fa-spin', title: 'Preparando el vídeo para que se vea fluido', detail: det, pct };
+            const e = cacheVideos[activeId];
+            if (modoStream) {
+                return {
+                    key: 'stream', icon: 'fa-circle-notch fa-spin', title: 'Conectando con el vídeo…',
+                    detail: (e && e.estado === 'descargando') ? `Reproducción en streaming · caché al ${pctDe(e)} %` : 'Reproducción en streaming', pct: directoPct
+                };
+            }
+            if (e && e.estado === 'error') {
+                if (e.reintentable) return { key: 'reintento', icon: 'fa-rotate fa-spin', title: 'Problema de red. Reintentando…', detail: e.error };
+                return { key: 'error-descarga', icon: 'fa-triangle-exclamation', iconColor: 'text-rose-400', title: 'No se pudo descargar el vídeo', detail: e.error, btn: { texto: 'Reintentar', fn: reintentarVideo } };
+            }
+            if (e && e.estado === 'descargando') {
+                const det = e.pausada ? 'Descarga en pausa…' : (e.total > 0 ? `${fmtMB(e.rec)} de ${fmtMB(e.total)}` : (e.rec > 0 ? fmtMB(e.rec) : 'Conectando…'));
+                return { key: 'descarga', icon: 'fa-circle-notch fa-spin', title: 'Preparando el vídeo para que se vea fluido', detail: det, pct: pctDe(e) };
+            }
+            return { key: 'cola', icon: 'fa-circle-notch fa-spin', title: 'Preparando el vídeo…', detail: 'En cola de descarga' };
         }
         if (modoLocal()) {
             if (p && !p.paused) return null;
@@ -1447,9 +1497,8 @@
        REPRODUCTOR: ABRIR / CERRAR
        ============================================================ */
     function resetEstadoMedia() {
-        videoListo = false; modoDirecto = false; errorVideo = null;
-        descarga = { rec: 0, total: 0, reintento: null, directo: false, directoPct: null };
-        syncState = null; lanzado = false; inicioAdminMs = null; listosCount = 0;
+        videoListo = false; modoStream = false; errorVideo = null; directoPct = null;
+        syncState = null; lanzado = false; lanzando = false; inicioAdminMs = null; listosCount = 0;
         bufferingActivo = false; seekEditando = false; ultimoSeekDuroMs = 0; ovSig = '';
     }
     function liberarBlobUrl() { if (blobUrlActivo) { try { URL.revokeObjectURL(blobUrlActivo); } catch (e) { /* ignorar */ } blobUrlActivo = null; } }
@@ -1562,6 +1611,7 @@
         activeId = '';
         sesionActiva = null;
         resetEstadoMedia();
+        planificarPrecarga();            // al cerrar el caso se reanuda la cola de fondo
         if (avisarSala) {
             escribirEstado(id, {
                 modalAbierto: false, reproduciendoDesde: null, refMs: null, tiempoActual: 0, isPaused: true,
@@ -1575,10 +1625,344 @@
     });
 
     /* ============================================================
-       REPRODUCTOR: CAPA DE CARGA
-       Si el vídeo ya está en caché se reproduce desde ahí; si no, empieza en directo
-       mientras la descarga en segundo plano sigue llenando la caché.
+       CACHÉ DE VÍDEOS: DESCARGA EN SEGUNDO PLANO
+       Todos los vídeos se descargan a la caché del navegador mientras el usuario está en la web,
+       sin esperar a que se libere ningún caso. El caso abierto tiene prioridad, y la descarga de
+       los demás se pausa mientras se reproduce un vídeo para no competir por el wifi.
        ============================================================ */
+    const cacheVideos = {};          // id -> { id, url, estado, rec, total, bytes, error, intentos, ... }
+    const dispositivosCache = {};    // (administrador) estado de caché que reporta cada dispositivo
+    let cacheAbierta = null;
+    let planTimer = null;
+    let precargaIniciada = false;
+    let comprobandoCache = false;
+    let cacheObsoletaLimpiada = false;
+    let renderCachePendiente = false;
+    let ultimoTickDescarga = 0;
+    let presenciaTimer = null;
+    let cacheUltimoReporte = 0;
+    let cacheReporteTimer = null;
+    let cacheFirma = '';
+    let precargaPausadaRemota = false;
+    let cacheDispUnsub = null;
+    let almacenamiento = null;
+
+    const numCaso = (id) => String(id).replace('caso-', '');
+    const pctDe = (e) => e.estado === 'completo' ? 100 : (e.total > 0 ? Math.min(99, Math.floor(e.rec / e.total * 100)) : 0);
+    const CODIGO_ESTADO = { completo: 'c', descargando: 'd', pendiente: 'p', comprobando: 'p', error: 'x', 'sin-cors': 'o', 'sin-cache': 'o', 'sin-espacio': 's' };
+    const codigoEstado = (e) => (e.estado === 'descargando' && e.pausada) ? 'w' : (CODIGO_ESTADO[e.estado] || 'p');
+
+    // Estado de caché de este dispositivo en el formato que se comparte con el administrador
+    function videosLocales() {
+        const m = {};
+        Object.values(cacheVideos).forEach((e) => { m[e.id] = { e: codigoEstado(e), p: pctDe(e) }; });
+        return m;
+    }
+    function firmaCache() {
+        return Object.values(cacheVideos).map((e) => `${e.id}:${codigoEstado(e)}:${Math.floor(pctDe(e) / 10)}`).join('|');
+    }
+    function nombreDispositivo() {
+        const ua = navigator.userAgent || '';
+        let tipo = 'Dispositivo';
+        if (/iPhone/.test(ua)) tipo = 'iPhone';
+        else if (/iPad/.test(ua)) tipo = 'iPad';
+        else if (/Android/.test(ua)) tipo = /TV|AFT|BRAVIA/.test(ua) ? 'TV Android' : 'Android';
+        else if (/Windows/.test(ua)) tipo = 'PC Windows';
+        else if (/Macintosh/.test(ua)) tipo = 'Mac';
+        else if (/Linux/.test(ua)) tipo = 'Linux';
+        const rol = isAdmin ? ' (admin)' : (currentRole === 'master' ? ' (TV)' : '');
+        return `${tipo} ${clientId.slice(-4)}${rol}`;
+    }
+
+    async function abrirCache() {
+        if (cacheAbierta) return cacheAbierta;
+        try { if ('caches' in window) cacheAbierta = await caches.open(CACHE_VIDEOS); } catch (e) { cacheAbierta = null; }
+        return cacheAbierta;
+    }
+
+    // Mantiene la lista de vídeos alineada con los casos (nuevos, URL cambiada, eliminados)
+    function sincronizarListaCache() {
+        const vigentes = {};
+        Object.keys(casosConfig).forEach((id) => {
+            const c = casosConfig[id];
+            if ((c.tipo || 'video') !== 'video') return;
+            const url = (c.recursoId || '').trim();
+            if (url) vigentes[id] = url;
+        });
+        let cambio = false;
+        Object.keys(cacheVideos).forEach((id) => {
+            if (vigentes[id] !== cacheVideos[id].url) { cancelarDescarga(id); delete cacheVideos[id]; cambio = true; }
+        });
+        Object.keys(vigentes).forEach((id) => {
+            if (!cacheVideos[id]) {
+                cacheVideos[id] = { id, url: vigentes[id], estado: 'comprobando', rec: 0, total: 0, bytes: 0, error: null, intentos: 0, fallosFetch: 0, reintentable: false, pausada: false, proximoIntento: 0, abort: null };
+                cambio = true;
+            }
+        });
+        if (cambio) { comprobarCacheExistente(); notificarCache(); }
+    }
+    function cancelarDescarga(id) {
+        const e = cacheVideos[id];
+        if (e && e.abort) { const a = e.abort; e.abort = null; try { a.abort(); } catch (x) { /* ignorar */ } }
+    }
+
+    // ¿Qué vídeos ya estaban en la caché de una visita anterior?
+    async function comprobarCacheExistente() {
+        if (comprobandoCache) return;
+        comprobandoCache = true;
+        try {
+            const cache = await abrirCache();
+            const pend = Object.values(cacheVideos).filter((e) => e.estado === 'comprobando');
+            for (const e of pend) {
+                if (!cache) { e.estado = 'sin-cache'; continue; }
+                try {
+                    const hit = await cache.match(e.url);
+                    if (hit) {
+                        const bytes = parseInt(hit.headers.get('content-length') || '0', 10) || 0;
+                        Object.assign(e, { estado: 'completo', bytes, rec: bytes, total: bytes });
+                    } else e.estado = 'pendiente';
+                } catch (x) { e.estado = 'pendiente'; }
+            }
+        } finally { comprobandoCache = false; }
+        notificarCache(true);
+        planificarPrecarga();
+    }
+
+    // Borra de la caché los vídeos cuya URL ya no existe (se ejecuta una vez por visita)
+    async function limpiarCacheObsoleta() {
+        if (cacheObsoletaLimpiada) return;
+        const urls = new Set(Object.values(cacheVideos).map((e) => { try { return new URL(e.url, location.href).href; } catch (x) { return e.url; } }));
+        if (!urls.size) return;
+        cacheObsoletaLimpiada = true;
+        try {
+            const cache = await abrirCache();
+            if (!cache) return;
+            const claves = await cache.keys();
+            for (const req of claves) { if (!urls.has(req.url)) await cache.delete(req); }
+        } catch (e) { /* ignorar */ }
+    }
+
+    /* ---- Planificador: qué se descarga y cuándo ---- */
+    const necesitaDescarga = (e, ahora) => e.estado === 'pendiente' || (e.estado === 'error' && e.reintentable && ahora >= e.proximoIntento);
+
+    function siguienteParaFondo() {
+        const ahora = Date.now();
+        return Object.values(cacheVideos)
+            .filter((e) => e.id !== activeId && necesitaDescarga(e, ahora))
+            .sort((a, b) => ordenCaso(a.id, b.id))[0] || null;     // los casos no se resuelven en orden: todos valen igual
+    }
+
+    function planificarPrecarga() {
+        clearTimeout(planTimer); planTimer = null;
+        const ahora = Date.now();
+        // 1) El caso abierto siempre tiene prioridad (corre en paralelo a la cola de fondo)
+        const act = activeId && cacheVideos[activeId];
+        if (act && necesitaDescarga(act, ahora)) iniciarDescarga(act.id);
+        // 2) Cola de fondo: un vídeo cada vez
+        if (PRECARGA_AUTOMATICA && precargaIniciada) {
+            const ocupado = Object.values(cacheVideos).some((e) => e.estado === 'descargando' && e.id !== activeId);
+            if (!ocupado) { const sig = siguienteParaFondo(); if (sig) iniciarDescarga(sig.id); }
+        }
+        // 3) Reintentos pendientes
+        const prox = Object.values(cacheVideos).filter((e) => e.estado === 'error' && e.reintentable).map((e) => e.proximoIntento).sort((a, b) => a - b)[0];
+        if (prox) planTimer = setTimeout(planificarPrecarga, Math.max(800, prox - ahora));
+    }
+
+    function hayReproduccionEnCurso() {
+        if (!activeId) return false;
+        const p = $('player');
+        if (p && p.ended) return false;
+        if (p && !p.paused) return true;
+        if (inicioAdminMs) return true;                         // cuenta atrás del administrador
+        return !!(!isAdmin && syncState && !syncState.paused);  // cuenta atrás o reproducción de un seguidor
+    }
+
+    // La descarga se pausa dejando de leer el flujo (el navegador aplica contrapresión a la red)
+    function descargaPausada(id) {
+        if (id === activeId) return modoStream && !PRECARGA_CONTINUAR_EN_STREAM;
+        if (precargaPausadaRemota) return true;
+        if (PRECARGA_PAUSA_REPRODUCIENDO && hayReproduccionEnCurso()) return true;
+        const a = activeId && cacheVideos[activeId];
+        return !!(a && a.estado === 'descargando');             // prioridad al caso abierto
+    }
+    async function esperarSiPausada(e, ctrl) {
+        while (!ctrl.signal.aborted && descargaPausada(e.id)) {
+            if (!e.pausada) { e.pausada = true; notificarCache(); }
+            await sleep(400);
+        }
+        if (e.pausada) { e.pausada = false; notificarCache(); }
+    }
+
+    async function iniciarDescarga(id) {
+        const e = cacheVideos[id];
+        if (!e || e.estado === 'descargando') return;
+        const ctrl = new AbortController();
+        Object.assign(e, { estado: 'descargando', rec: 0, total: 0, error: null, pausada: false, reintentable: false, abort: ctrl });
+        notificarCache(true);
+        const url = e.url;
+        const cache = await abrirCache();
+        if (e.abort !== ctrl) return;
+        if (!cache) { e.estado = 'sin-cache'; e.abort = null; notificarCache(true); return; }
+        let recibioRespuesta = false;
+        try {
+            await esperarSiPausada(e, ctrl);
+            const res = await fetch(url, { mode: 'cors', credentials: 'omit', signal: ctrl.signal });
+            recibioRespuesta = true;
+            if (!res.ok) { const er = new Error('HTTP ' + res.status); er.tipo = 'http'; er.status = res.status; throw er; }
+            e.total = parseInt(res.headers.get('content-length') || '0', 10) || 0;
+            let tipo = res.headers.get('content-type') || '';
+            if (!/^video\//i.test(tipo)) tipo = 'video/mp4';
+            const partes = [];
+            let rec = 0;
+            if (res.body && res.body.getReader) {
+                const reader = res.body.getReader();
+                for (;;) {
+                    await esperarSiPausada(e, ctrl);
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    partes.push(value);
+                    rec += value.length;
+                    e.rec = rec;
+                    const t = performance.now();
+                    if (t - ultimoTickDescarga > 250) {
+                        ultimoTickDescarga = t;
+                        notificarCache();
+                        if (e.id === activeId) renderOverlay();
+                    }
+                }
+            } else {
+                const b = await res.blob();
+                partes.push(b); rec = b.size; e.rec = rec;
+            }
+            if (e.abort !== ctrl) return;
+            const blob = new Blob(partes, { type: tipo });
+            contarDescarga(blob.size);
+            try {
+                await cache.put(url, new Response(blob, { headers: { 'Content-Type': tipo, 'Content-Length': String(blob.size) } }));
+            } catch (errPut) {
+                if (e.abort !== ctrl) return;
+                Object.assign(e, { estado: 'sin-espacio', error: 'No hay espacio en la caché del navegador', abort: null });
+                notificarCache(true);
+                if (e.id === activeId) renderOverlay();
+                return;
+            }
+            if (e.abort !== ctrl) return;
+            Object.assign(e, { estado: 'completo', bytes: blob.size, rec: blob.size, total: blob.size, error: null, intentos: 0, fallosFetch: 0, abort: null });
+            notificarCache(true);
+            actualizarAlmacenamiento();
+            alCompletarDescarga(id);
+        } catch (err) {
+            if (e.abort !== ctrl) return;      // descarga cancelada o sustituida
+            e.abort = null;
+            if (ctrl.signal.aborted) { e.estado = 'pendiente'; notificarCache(); return; }
+            marcarErrorDescarga(e, err, recibioRespuesta);
+        }
+    }
+
+    function marcarErrorDescarga(e, err, recibio) {
+        let reintentable = true, msg = 'Error de red';
+        e.estado = 'error';
+        e.intentos++;
+        if (err && err.tipo === 'http') {
+            msg = `HTTP ${err.status}`;
+            if (err.status === 404) { reintentable = false; msg = 'No encontrado (404): revisa la URL'; }
+            else if ([403, 429, 509].includes(err.status)) msg += ' (¿límite del hosting?)';
+        } else if (!recibio) {
+            if (!navigator.onLine) msg = 'Sin conexión';
+            else {
+                e.fallosFetch++;
+                if (e.fallosFetch >= 2) { e.estado = 'sin-cors'; reintentable = false; msg = 'El servidor no permite precarga (CORS): solo streaming'; }
+                else msg = 'No se pudo conectar';
+            }
+        }
+        e.error = msg;
+        e.reintentable = reintentable && e.estado === 'error' && e.intentos < PRECARGA_REINTENTOS_AUTO;
+        e.proximoIntento = Date.now() + Math.min(120000, 8000 * Math.pow(2, e.intentos - 1));
+        notificarCache(true);
+        if (e.id === activeId) renderOverlay();
+        planificarPrecarga();
+    }
+
+    function alCompletarDescarga(id) {
+        const e = cacheVideos[id];
+        // Si el caso abierto estaba esperando a esta descarga, se carga ya desde la caché
+        if (e && activeId === id && !modoStream && !videoListo && !errorVideo) cargarBlobDesdeCache(id, e.url, cargaToken);
+        actualizarBarraListos();
+        planificarPrecarga();
+    }
+
+    /* ---- Caché -> reproductor ---- */
+    async function existeEnCache(url) {
+        try { const c = await abrirCache(); return !!(c && await c.match(url)); } catch (e) { return false; }
+    }
+
+    async function cargarBlobDesdeCache(id, url, token) {
+        try {
+            const cache = await abrirCache();
+            const hit = cache && await cache.match(url);
+            if (!hit) throw new Error('sin-entrada');
+            const blob = await hit.blob();
+            if (token !== cargaToken || activeId !== id || modoStream) return;
+            const p = $('player');
+            if (!p) return;
+            liberarBlobUrl();
+            blobUrlActivo = URL.createObjectURL(blob);
+            p.src = blobUrlActivo;
+            p.load();                      // 'canplay' marca el vídeo como listo
+        } catch (err) {
+            if (token !== cargaToken || activeId !== id) return;
+            await invalidarCache(id);      // entrada corrupta o desaparecida: se vuelve a descargar
+        }
+    }
+
+    async function invalidarCache(id) {
+        const e = cacheVideos[id];
+        if (!e) return;
+        try { const cache = await abrirCache(); if (cache) await cache.delete(e.url); } catch (err) { /* ignorar */ }
+        Object.assign(e, { estado: 'pendiente', rec: 0, total: 0, bytes: 0, error: null, intentos: 0, fallosFetch: 0, reintentable: false });
+        if (activeId === id) {
+            const p = $('player');
+            if (p && !modoStream) { try { p.removeAttribute('src'); p.load(); } catch (x) { /* ignorar */ } }
+            liberarBlobUrl();
+            videoListo = false;
+        }
+        notificarCache(true);
+        planificarPrecarga();
+        renderOverlay();
+    }
+
+    // Reproducción directa desde la URL (streaming). Se usa cuando se lanza antes de que
+    // termine la descarga, o si no hay caché disponible / el servidor no permite CORS.
+    function activarStream() {
+        const p = $('player');
+        if (!p || modoStream || !activeId) return;
+        const url = ((casosConfig[activeId] || {}).recursoId || '').trim();
+        if (!url) return;
+        modoStream = true;
+        directoPct = 0;
+        liberarBlobUrl();
+        p.preload = 'auto';
+        p.src = url;
+        p.load();                          // 'canplay' marca el vídeo como listo
+        renderOverlay();
+    }
+
+    async function prepararFuenteVideo(id, url, local) {
+        const token = ++cargaToken;
+        const e = cacheVideos[id];
+        const cache = await abrirCache();
+        if (token !== cargaToken || activeId !== id) return;
+        if (!cache || !e) { activarStream(); return; }
+        if (e.estado === 'completo' || await existeEnCache(url)) {
+            if (token !== cargaToken || activeId !== id) return;
+            await cargarBlobDesdeCache(id, url, token);
+            return;
+        }
+        if (local) activarStream();        // sin sincronización no se espera a la descarga
+        planificarPrecarga();              // el caso abierto pasa a ser la prioridad
+        renderOverlay();
+    }
+
     function iniciarCargaVideo(c, local) {
         const wrapper = $('video-wrapper');
         const silenciado = !(esAdminOMaster() || local);
@@ -1594,271 +1978,17 @@
             renderOverlay();
             return;
         }
-        cargarVideoActivo(url);
-    }
-
-    async function leerDeCache(url) {
-        try {
-            if (!('caches' in window)) return null;
-            const cache = await caches.open(CACHE_VIDEOS);
-            const hit = await cache.match(url);
-            return hit ? await hit.blob() : null;
-        } catch (e) { return null; }
-    }
-
-    async function cargarVideoActivo(url) {
-        const mi = ++cargaToken;
-        errorVideo = null;
-        descarga = { rec: 0, total: 0, reintento: null, directo: false, directoPct: null };
-        renderOverlay();
-        const blob = await leerDeCache(url);
-        if (mi !== cargaToken) return;
-        const p = $('player');
-        if (!p) return;
-        if (blob) {
-            liberarBlobUrl();
-            blobUrlActivo = URL.createObjectURL(blob);
-            p.src = blobUrlActivo;
-            p.load();      // 'canplay' marcará el vídeo como listo
-            return;
-        }
-        precargaPriorizar(url);
-        cargarModoDirecto(url);
-    }
-
-    // Reproducción anticipada: se lanza desde la URL mientras la caché sigue descargándose
-    function cargarModoDirecto(url) {
-        const p = $('player');
-        if (!p) return;
-        modoDirecto = true;
-        descarga = { rec: 0, total: 0, reintento: null, directo: true, directoPct: 0 };
-        renderOverlay();
-        p.src = url;
-        p.load();
-    }
-
-    /* ============================================================
-       PRECARGA EN SEGUNDO PLANO (caché de todos los vídeos)
-       est[url] = { ids, estado: pendiente|descargando|listo|error|sin-cors, rec, total, intentos, fatal, msg, prox }
-       ============================================================ */
-    const precarga = { est: {}, corriendo: false, abort: null, actual: null, prio: null, firma: '', renderT: null };
-    const precargaDisponible = () => 'caches' in window && typeof fetch === 'function';
-    const urlActiva = () => { const c = casosConfig[activeId]; return c ? (c.recursoId || '').trim() : ''; };
-
-    function precargaUrls() {
-        const m = new Map();
-        Object.keys(casosConfig).sort(ordenCaso).forEach((id) => {
-            const c = casosConfig[id];
-            if (!c || (c.tipo || 'video') !== 'video') return;
-            const u = (c.recursoId || '').trim();
-            if (!u) return;
-            if (!m.has(u)) m.set(u, []);
-            m.get(u).push(id);
-        });
-        return Array.from(m, ([url, ids]) => ({ url, ids }));
-    }
-
-    async function precargaSincronizar() {
-        if (!precargaDisponible()) { pintarPrecarga(); return; }
-        const lista = precargaUrls();
-        const firma = lista.map((x) => x.url).join('|');
-        if (firma === precarga.firma) return;
-        precarga.firma = firma;
-        const vivas = new Set(lista.map((x) => x.url));
-        Object.keys(precarga.est).forEach((u) => { if (!vivas.has(u)) delete precarga.est[u]; });
-        let cache = null;
-        try { cache = await caches.open(CACHE_VIDEOS); } catch (e) { cache = null; }
-        for (const { url, ids } of lista) {
-            let e = precarga.est[url];
-            if (e) { e.ids = ids; continue; }
-            e = precarga.est[url] = { ids, estado: 'pendiente', rec: 0, total: 0, intentos: 0, fatal: false, msg: '', prox: 0 };
-            if (!cache) continue;
-            try {
-                const hit = await cache.match(url);
-                if (hit && precarga.est[url] === e && e.estado === 'pendiente') {
-                    e.estado = 'listo';
-                    e.rec = e.total = parseInt(hit.headers.get('content-length') || '0', 10) || 0;
-                }
-            } catch (err) { /* ignorar */ }
-        }
-        precargaArrancar();
-        pintarPrecarga();
-    }
-
-    function precargaSiguiente() {
-        const ahora = Date.now();
-        const act = urlActiva();
-        const off = !navigator.onLine;
-        const directo = !!activeId && modoDirecto;     // mientras se ve un vídeo en directo, no competimos con otros por el ancho de banda
-        const orden = precargaUrls().map((x) => x.url).filter((u) => precarga.est[u]);
-        if (precarga.prio && precarga.est[precarga.prio]) orden.unshift(precarga.prio);
-        let espera = null;
-        for (const u of orden) {
-            const e = precarga.est[u];
-            const reint = e.estado === 'error' && !e.fatal && e.intentos < PRECARGA_INTENTOS_MAX;
-            if (e.estado !== 'pendiente' && !reint) continue;
-            if (off || (directo && u !== act)) { espera = 1000; continue; }
-            if (reint && e.prox > ahora) { espera = Math.min(espera == null ? Infinity : espera, e.prox - ahora); continue; }
-            return { url: u };
-        }
-        return { espera };
-    }
-
-    async function precargaArrancar() {
-        if (precarga.corriendo || !precargaDisponible()) return;
-        precarga.corriendo = true;
-        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* ignorar */ }
-        try {
-            for (;;) {
-                const r = precargaSiguiente();
-                if (r.url) await precargaDescargar(r.url);
-                else if (r.espera != null) await sleep(Math.max(500, Math.min(r.espera, 5000)));
-                else break;
-            }
-        } finally {
-            precarga.corriendo = false;
-            if (precargaSiguiente().url) precargaArrancar();
-        }
-    }
-
-    async function precargaDescargar(url) {
-        const e = precarga.est[url];
-        if (!e) return;
-        e.estado = 'descargando'; e.rec = 0; e.msg = ''; e.intentos++;
-        const ctl = new AbortController();
-        precarga.abort = ctl; precarga.actual = url;
-        let errPut = null;
-        pintarPrecarga();
-        try {
-            const cache = await caches.open(CACHE_VIDEOS);
-            const res = await fetch(url, { mode: 'cors', credentials: 'omit', signal: ctl.signal });
-            if (!res.ok) { const er = new Error('HTTP ' + res.status); er.status = res.status; throw er; }
-            const total = parseInt(res.headers.get('content-length') || '0', 10) || 0;
-            let tipo = res.headers.get('content-type') || '';
-            if (!/^video\//i.test(tipo)) tipo = 'video/mp4';
-            e.total = total;
-            const headers = { 'Content-Type': tipo };
-            if (total) headers['Content-Length'] = String(total);
-            let bytes = 0;
-            if (res.body && res.body.tee) {
-                const [a, b] = res.body.tee();
-                const guardado = cache.put(url, new Response(b, { headers }));
-                guardado.catch((er) => { errPut = er; ctl.abort(); });
-                const reader = a.getReader();
-                for (;;) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    bytes += value.length; e.rec = bytes;
-                    pintarPrecarga();
-                }
-                await guardado;
-            } else {
-                const blob = await res.blob();
-                bytes = e.rec = blob.size;
-                await cache.put(url, new Response(blob, { headers }));
-            }
-            e.estado = 'listo'; e.rec = e.total = bytes; e.intentos = 0; e.fatal = false; e.msg = '';
-            contarDescarga(bytes);
-            if (precarga.prio === url) precarga.prio = null;
-        } catch (err) {
-            const real = errPut || err;
-            if (precarga.est[url] !== e) return;
-            if (ctl.signal.aborted && !errPut) { e.estado = 'pendiente'; e.intentos = Math.max(0, e.intentos - 1); e.rec = 0; return; }
-            e.estado = 'error';
-            if (!navigator.onLine) e.intentos = Math.max(0, e.intentos - 1);     // sin red no gastamos reintentos
-            if (real.name === 'QuotaExceededError') { e.fatal = true; e.msg = 'No hay espacio en la caché de este dispositivo.'; }
-            else if (real.status === 404) { e.fatal = true; e.msg = 'No encontrado (404): revisa la URL.'; }
-            else if (real.status) e.msg = `El servidor responde HTTP ${real.status}.`;
-            else if (real.name === 'TypeError' && !e.rec && navigator.onLine && e.intentos >= 2) { e.estado = 'sin-cors'; e.fatal = true; e.msg = 'Sin permiso CORS: solo se puede reproducir en directo.'; }
-            else e.msg = navigator.onLine ? 'Descarga interrumpida.' : 'Sin conexión.';
-            e.prox = Date.now() + Math.min(60000, 4000 * Math.pow(2, Math.max(0, e.intentos - 1))) * ([403, 429, 509].includes(real.status) ? 3 : 1);
-        } finally {
-            if (precarga.abort === ctl) { precarga.abort = null; precarga.actual = null; }
-            pintarPrecarga();
-        }
-    }
-
-    // Al abrir un caso: su vídeo pasa el primero; si se estaba bajando otro y va por menos de la mitad, se aparca
-    function precargaPriorizar(url) {
-        if (!precargaDisponible()) return;
-        precarga.prio = url;
-        const cur = precarga.actual;
-        if (cur && cur !== url && precarga.abort) {
-            const c = precarga.est[cur];
-            if (c && !(c.total && c.rec / c.total > 0.5)) precarga.abort.abort();
-        }
-        const e = precarga.est[url];
-        if (e && e.estado === 'error' && !e.fatal) e.prox = 0;
-        if (!e) precarga.firma = '', precargaSincronizar();
-        else precargaArrancar();
-    }
-
-    window.precargaReintentar = function () {
-        Object.values(precarga.est).forEach((e) => {
-            if (e.estado === 'error' || e.estado === 'sin-cors') { e.estado = 'pendiente'; e.intentos = 0; e.fatal = false; e.prox = 0; e.msg = ''; }
-        });
-        precargaArrancar();
-        pintarPrecarga();
-    };
-
-    function precargaResumen() {
-        if (!precargaDisponible()) return 'No disponible';
-        const v = Object.values(precarga.est);
-        return v.length ? `${v.filter((e) => e.estado === 'listo').length}/${v.length} en caché` : 'Sin vídeos';
-    }
-
-    function pintarPrecarga() {
-        if (precarga.renderT) return;
-        precarga.renderT = setTimeout(() => { precarga.renderT = null; renderPrecarga(); }, 300);
-    }
-
-    function renderPrecarga() {
-        if (!isAdmin) return;
-        const lista = $('precarga-lista');
-        if (!lista) return;
-        if (!precargaDisponible()) {
-            lista.innerHTML = '<p class="text-slate-400">Caché no disponible en este navegador (hace falta HTTPS). Los vídeos se reproducen en directo.</p>';
-            return;
-        }
-        const urls = precargaUrls().map((x) => x.url).filter((u) => precarga.est[u]);
-        const ahora = Date.now();
-        let suma = 0, listos = 0;
-        const filas = urls.map((u) => {
-            const e = precarga.est[u];
-            const frac = e.estado === 'listo' ? 1 : (e.estado === 'descargando' && e.total > 0 ? Math.min(1, e.rec / e.total) : 0);
-            suma += frac;
-            if (e.estado === 'listo') listos++;
-            let txt, col, msg = e.msg || '';
-            if (e.estado === 'listo') { txt = e.total ? fmtMB(e.total) : 'En caché'; col = '#10b981'; }
-            else if (e.estado === 'descargando') { txt = e.total ? `${Math.round(frac * 100)} % · ${fmtMB(e.rec)} / ${fmtMB(e.total)}` : fmtMB(e.rec); col = '#f59e0b'; }
-            else if (e.estado === 'error') {
-                txt = 'Error'; col = '#f43f5e';
-                msg += (!e.fatal && e.intentos < PRECARGA_INTENTOS_MAX) ? ` Reintento en ${Math.max(0, Math.ceil((e.prox - ahora) / 1000))} s.` : ' Sin más reintentos automáticos.';
-            }
-            else if (e.estado === 'sin-cors') { txt = 'Solo directo'; col = '#f59e0b'; }
-            else { txt = 'En cola'; col = '#64748b'; }
-            const nombre = e.ids.map((id) => (casosConfig[id] && casosConfig[id].titulo) ? `${id} · ${casosConfig[id].titulo}` : id).join(', ');
-            return `<div class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2">` +
-                `<div class="flex justify-between gap-2"><span class="text-slate-200 truncate">${esc(nombre)}</span><span class="font-mono shrink-0" style="color:${col}">${esc(txt)}</span></div>` +
-                `<div class="barra-fondo h-1.5 mt-1.5"><div class="barra-relleno" style="width:${Math.round(frac * 100)}%;background:${col}"></div></div>` +
-                (msg ? `<p class="text-[11px] text-slate-400 mt-1">${esc(msg.trim())}</p>` : '') + `</div>`;
-        });
-        lista.innerHTML = filas.length ? filas.join('') : '<p class="text-slate-400">No hay vídeos configurados.</p>';
-        const pct = urls.length ? suma / urls.length * 100 : 0;
-        const t = $('precarga-txt'), b = $('precarga-bar');
-        if (t) t.textContent = `${listos}/${urls.length} · ${Math.round(pct)} %`;
-        if (b) { b.style.width = pct + '%'; b.style.background = pct >= 100 ? '#10b981' : '#f59e0b'; }
+        prepararFuenteVideo(activeId, url, local);
     }
 
     window.reintentarVideo = function () {
-        const c = casosConfig[activeId];
-        const url = c && (c.recursoId || '').trim();
-        if (!url) return;
-        videoListo = false; modoDirecto = false; errorVideo = null;
-        const p = $('player');
-        if (p) { p.removeAttribute('src'); }
-        liberarBlobUrl();
-        cargarVideoActivo(url);
+        const e = cacheVideos[activeId];
+        errorVideo = null;
+        if (e && ['error', 'sin-cors', 'sin-espacio'].includes(e.estado)) Object.assign(e, { estado: 'pendiente', intentos: 0, fallosFetch: 0, error: null, reintentable: false });
+        if (modoStream) { modoStream = false; videoListo = false; activarStream(); }
+        notificarCache(true);
+        planificarPrecarga();
+        renderOverlay();
     };
 
     function mostrarErrorVideo(err, url) {
@@ -1867,8 +1997,6 @@
             if (err.status === 404) { titulo = 'No se encuentra el vídeo (404)'; detalle = 'La URL no existe. Revísala en el panel de administración.'; }
             else if ([403, 429, 509].includes(err.status)) { titulo = `El servidor rechaza la descarga (HTTP ${err.status})`; detalle = 'Posible límite de ancho de banda o de peticiones del hosting gratuito. Espera un poco o reintenta.'; }
             else { titulo = `Error del servidor (HTTP ${err.status})`; detalle = 'Inténtalo de nuevo en unos segundos.'; }
-        } else if (err && err.tipo === 'offline') {
-            titulo = 'Sin conexión a internet'; detalle = 'Comprueba el wifi. La descarga se reintentará al pulsar el botón.';
         }
         errorVideo = { titulo, detalle };
         renderOverlay();
@@ -1877,6 +2005,7 @@
     // Diagnóstico cuando el propio <video> da error (formato no compatible, URL caída, límite del hosting...)
     async function diagnosticarFalloVideo(p) {
         if (!vivo(p)) return;
+        if (!modoStream && blobUrlActivo) { await invalidarCache(activeId); return; }   // la copia de caché estaba dañada
         const url = ((casosConfig[activeId] || {}).recursoId || '').trim();
         let info = null;
         try { info = await sondearVideo(url); } catch (e) { /* ignorar */ }
@@ -1888,17 +2017,12 @@
     const vivo = (p) => !!p && p === $('player') && !!activeId;
 
     function enlazarEventosPlayer(p) {
-        p.addEventListener('canplay', () => {
-            if (!vivo(p)) return;
-            if (!modoDirecto) { marcarListo(); return; }
-            setTimeout(() => { if (vivo(p) && modoDirecto && p.readyState >= 3) marcarListo(); }, 4000);   // si canplaythrough tarda, no bloqueamos el inicio
-        });
-        p.addEventListener('canplaythrough', () => { if (vivo(p) && modoDirecto) marcarListo(); });
+        p.addEventListener('canplay', () => { if (vivo(p)) marcarListo(); });
         p.addEventListener('loadedmetadata', () => { if (vivo(p)) actualizarTiempo(p); });
         p.addEventListener('progress', () => {
-            if (!vivo(p) || !modoDirecto || videoListo) return;
+            if (!vivo(p) || !modoStream || videoListo) return;
             if (p.buffered && p.buffered.length > 0 && p.duration > 0) {
-                descarga.directoPct = Math.min(100, p.buffered.end(p.buffered.length - 1) / p.duration * 100);
+                directoPct = Math.min(100, p.buffered.end(p.buffered.length - 1) / p.duration * 100);
                 renderOverlay();
             }
         });
@@ -1914,11 +2038,208 @@
             if (isAdmin && !modoLocal() && lanzado && !seekEditando) pararHeartbeat(true);
             renderOverlay();
         });
-        p.addEventListener('ended', () => { if (vivo(p)) renderOverlay(); });
+        p.addEventListener('ended', () => { if (vivo(p)) { renderOverlay(); planificarPrecarga(); } });
         p.addEventListener('waiting', () => { if (vivo(p)) { bufferingActivo = true; show($('buffer-spinner'), true, 'flex'); } });
         p.addEventListener('playing', () => { if (vivo(p)) { bufferingActivo = false; show($('buffer-spinner'), false); } });
         p.addEventListener('volumechange', () => { if (vivo(p)) actualizarBarraAudio(); });
         p.addEventListener('error', () => { if (vivo(p) && !errorVideo) diagnosticarFalloVideo(p); });
+    }
+
+    /* ---- Informe de estado de la caché (interfaz + administrador) ---- */
+    function notificarCache(importante) {
+        programarRenderCacheUI();
+        if (!db || modoLocal() || !initialLoadDone) return;
+        if (firmaCache() === cacheFirma) return;
+        const espera = (importante ? 3000 : CACHE_REPORTE_MIN_MS) - (Date.now() - cacheUltimoReporte);
+        if (espera <= 0) enviarReporteCache();
+        else if (!cacheReporteTimer) cacheReporteTimer = setTimeout(() => { cacheReporteTimer = null; enviarReporteCache(); }, espera);
+    }
+
+    // Cada dispositivo publica (con pocas escrituras) qué vídeos tiene; sirve también de "presencia"
+    function enviarReporteCache() {
+        if (!db || modoLocal()) return;
+        cacheUltimoReporte = Date.now();
+        cacheFirma = firmaCache();
+        contarEscrituraComun(1);
+        db.collection('cache_dispositivos').doc(clientId).set({
+            clientId, nombre: nombreDispositivo(), rol: isAdmin ? 'admin' : currentRole, visto: ST(), videos: videosLocales()
+        }).catch((e) => manejarErrorFirestore(e, 'cache_reporte'));
+    }
+
+    function programarRenderCacheUI() {
+        if (renderCachePendiente) return;
+        renderCachePendiente = true;
+        setTimeout(() => {
+            renderCachePendiente = false;
+            actualizarChipCache();
+            renderPanelCache();
+            if (isAdmin && activeId) actualizarBarraListos();
+        }, 200);
+    }
+
+    function actualizarChipCache() {
+        const chip = $('cache-chip');
+        if (!chip) return;
+        const lista = Object.values(cacheVideos).filter((e) => e.estado !== 'sin-cors' && e.estado !== 'sin-cache');
+        if (!lista.length || !PRECARGA_AUTOMATICA) { show(chip, false); return; }
+        const completos = lista.filter((e) => e.estado === 'completo').length;
+        const hayError = lista.some((e) => e.estado === 'error' || e.estado === 'sin-espacio');
+        const desc = lista.find((e) => e.estado === 'descargando');
+        let icono = 'fa-download text-slate-400', titulo = 'Vídeos descargados en este dispositivo';
+        if (completos === lista.length) { icono = 'fa-circle-check text-emerald-400'; titulo = 'Todos los vídeos están descargados en este dispositivo'; }
+        else if (desc && desc.pausada) { icono = 'fa-pause text-sky-400'; titulo = 'Descarga en pausa'; }
+        else if (desc) { icono = 'fa-circle-notch fa-spin text-amber-400'; titulo = `Descargando vídeos (caso ${numCaso(desc.id)}, ${pctDe(desc)} %)`; }
+        else if (hayError) { icono = 'fa-triangle-exclamation text-rose-400'; titulo = 'Algún vídeo no se ha podido descargar'; }
+        $('cache-chip-icon').className = 'fa-solid ' + icono;
+        $('cache-chip-text').textContent = `${completos}/${lista.length}`;
+        chip.title = titulo;
+        show(chip, true, 'flex');
+    }
+
+    function textoEstadoPrecarga() {
+        const lista = Object.values(cacheVideos);
+        if (!lista.length) return 'Sin vídeos';
+        if (precargaPausadaRemota) return 'Pausada por el administrador';
+        const desc = lista.find((e) => e.estado === 'descargando');
+        if (desc) return desc.pausada ? `En pausa (caso ${numCaso(desc.id)})` : `Descargando caso ${numCaso(desc.id)} (${pctDe(desc)} %)`;
+        if (lista.every((e) => e.estado === 'completo')) return 'Todo descargado';
+        if (lista.some((e) => e.estado === 'error' || e.estado === 'sin-espacio')) return 'Hay vídeos con error';
+        if (!precargaIniciada) return 'Esperando para empezar';
+        return 'En cola';
+    }
+
+    function celdaCache(id, v) {
+        const base = 'w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold';
+        const t = `Caso ${numCaso(id)}: `;
+        if (!v) return `<div class="${base}" style="border:1px dashed #334155" title="${t}sin datos"></div>`;
+        const p = Math.max(0, Math.min(100, v.p || 0));
+        switch (v.e) {
+            case 'c': return `<div class="${base}" style="background:#10b981;color:#052e22" title="${t}descargado"><i class="fa-solid fa-check"></i></div>`;
+            case 'd': return `<div class="${base}" style="background:linear-gradient(to top,#f59e0b ${p}%,#1e293b ${p}%);color:#fff" title="${t}descargando ${p} %">${p}</div>`;
+            case 'w': return `<div class="${base}" style="background:linear-gradient(to top,#38bdf8 ${p}%,#1e293b ${p}%);color:#fff" title="${t}en pausa (${p} %)">${p}</div>`;
+            case 'x': return `<div class="${base}" style="background:#f43f5e;color:#fff" title="${t}error de descarga">!</div>`;
+            case 's': return `<div class="${base}" style="background:#fb7185;color:#fff" title="${t}sin espacio en la caché">!</div>`;
+            case 'o': return `<div class="${base}" style="background:#8b5cf6;color:#fff" title="${t}solo streaming (sin caché)">S</div>`;
+            default: return `<div class="${base}" style="background:#1e293b;color:#64748b" title="${t}en cola">·</div>`;
+        }
+    }
+
+    // Panel del administrador: estado de descarga de todos los vídeos en todos los dispositivos
+    function renderPanelCache() {
+        if (!isAdmin) return;
+        const det = $('panel-cache');
+        if (!det || !det.open) return;
+        const ids = Object.keys(cacheVideos).sort(ordenCaso);
+        const N = dispositivosEsperados();
+        const ahoraS = ahoraServidor();
+
+        const filas = [{ id: clientId, nombre: nombreDispositivo(), propio: true, online: true, videos: videosLocales() }];
+        Object.keys(dispositivosCache).forEach((k) => {
+            if (k === clientId) return;
+            const d = dispositivosCache[k];
+            const visto = tsMs(d.visto);
+            if (visto && ahoraS - visto > 6 * 3600 * 1000) return;       // dispositivos muy antiguos: se ocultan
+            filas.push({ id: k, nombre: d.nombre || k.slice(-6), online: !!visto && ahoraS - visto < CACHE_ONLINE_MS, videos: d.videos || {} });
+        });
+        filas.sort((a, b) => ((b.propio ? 1 : 0) - (a.propio ? 1 : 0)) || ((b.online ? 1 : 0) - (a.online ? 1 : 0)) || a.nombre.localeCompare(b.nombre));
+        const enLinea = filas.filter((f) => f.online);
+        const dispCompletos = enLinea.filter((f) => ids.length && ids.every((id) => (f.videos[id] || {}).e === 'c')).length;
+
+        // Resumen
+        const lista = Object.values(cacheVideos);
+        const cacheables = lista.filter((e) => e.estado !== 'sin-cors' && e.estado !== 'sin-cache');
+        const completos = cacheables.filter((e) => e.estado === 'completo').length;
+        const bytes = lista.filter((e) => e.estado === 'completo').reduce((s, e) => s + (e.bytes || 0), 0);
+        const alm = almacenamiento && almacenamiento.quota ? `${fmtMB(almacenamiento.usage || 0)} de ${fmtGB(almacenamiento.quota)}` : 'No disponible';
+        const tiles = [
+            ['Este dispositivo', `${completos}/${cacheables.length} vídeos · ${fmtMB(bytes)}`],
+            ['Dispositivos al 100 %', `${dispCompletos}/${enLinea.length} en línea (esperados ${N})`],
+            ['Descarga en segundo plano', textoEstadoPrecarga()],
+            ['Espacio del navegador', alm]
+        ];
+        $('cache-resumen').innerHTML = tiles.map(([k, v]) => `<div class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2"><div class="text-[10px] text-slate-500">${esc(k)}</div><div class="font-medium text-slate-200">${esc(v)}</div></div>`).join('');
+        const bt = $('btn-precarga-remota-txt');
+        if (bt) bt.textContent = precargaPausadaRemota ? 'Reanudar descarga en todos' : 'Pausar descarga en todos';
+
+        // Matriz dispositivos x vídeos
+        if (!ids.length) { $('cache-matriz').innerHTML = '<p class="text-slate-400 text-xs">No hay vídeos configurados.</p>'; return; }
+        const cab = ids.map((id) => `<th class="text-slate-400 font-mono font-normal text-center">${esc(numCaso(id))}</th>`).join('');
+        const cuerpo = filas.map((f) => {
+            const punto = f.online ? 'bg-emerald-500' : 'bg-slate-600';
+            const etiqueta = `<span class="inline-block w-2 h-2 rounded-full ${punto} mr-1.5"></span>${esc(f.nombre)}${f.propio ? ' <span class="text-amber-400">(este)</span>' : ''}${f.online ? '' : ' <span class="text-slate-500">· sin conexión</span>'}`;
+            return `<tr class="${f.online ? '' : 'opacity-50'}"><td class="sticky left-0 bg-[#0d1220] pr-2 whitespace-nowrap text-slate-300 text-[11px]">${etiqueta}</td>${ids.map((id) => `<td>${celdaCache(id, f.videos[id])}</td>`).join('')}</tr>`;
+        }).join('');
+        const pie = ids.map((id) => {
+            const n = enLinea.filter((f) => (f.videos[id] || {}).e === 'c').length;
+            const ok = enLinea.length > 0 && n === enLinea.length;
+            return `<td class="text-center font-mono ${ok ? 'text-emerald-400' : 'text-slate-400'}">${n}/${enLinea.length}</td>`;
+        }).join('');
+        $('cache-matriz').innerHTML = `<table class="text-[10px] border-separate" style="border-spacing:2px"><thead><tr><th class="sticky left-0 bg-[#0d1220] text-left pr-2 font-medium text-slate-400">Dispositivo \\ caso</th>${cab}</tr></thead><tbody>${cuerpo}</tbody><tfoot><tr><td class="sticky left-0 bg-[#0d1220] text-slate-400 pr-2">Completos</td>${pie}</tr></tfoot></table>`;
+    }
+
+    function iniciarListenerDispositivosCache() {
+        if (cacheDispUnsub || !db || !isAdmin) return;
+        cacheDispUnsub = db.collection('cache_dispositivos').onSnapshot((snap) => {
+            const n = snap.docChanges().filter((ch) => !ch.doc.metadata.hasPendingWrites).length;
+            if (n) contarLecturaExtra(n);
+            snap.docChanges().forEach((ch) => {
+                if (ch.type === 'removed') delete dispositivosCache[ch.doc.id];
+                else dispositivosCache[ch.doc.id] = ch.doc.data({ serverTimestamps: 'estimate' });
+            });
+            programarRenderCacheUI();
+            if (activeId) actualizarBarraListos();
+        }, (e) => {
+            cacheDispUnsub = null;
+            manejarErrorFirestore(e, 'cache_dispositivos');
+            setTimeout(iniciarListenerDispositivosCache, 30000);
+        });
+    }
+
+    // El administrador puede pausar/reanudar la descarga en segundo plano en todos los dispositivos
+    function suscribirPrecargaConfig() {
+        db.collection('config_sistema').doc('precarga').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            precargaPausadaRemota = !!(doc.exists && doc.data().pausada);
+            programarRenderCacheUI();
+            planificarPrecarga();
+        }, (e) => manejarErrorFirestore(e, 'precarga'));
+    }
+    window.togglePrecargaRemota = function () {
+        if (!db || modoLocal()) return;
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('precarga').set({ pausada: !precargaPausadaRemota, updatedAt: ST() }, { merge: true })
+            .catch((e) => manejarErrorFirestore(e, 'precarga'));
+    };
+
+    window.reintentarDescargas = function () {
+        let n = 0;
+        Object.values(cacheVideos).forEach((e) => {
+            if (['error', 'sin-cors', 'sin-espacio'].includes(e.estado)) {
+                Object.assign(e, { estado: 'pendiente', intentos: 0, fallosFetch: 0, error: null, reintentable: false });
+                n++;
+            }
+        });
+        notificarCache(true);
+        planificarPrecarga();
+        mostrarToast(n ? `Reintentando ${n} vídeo${n === 1 ? '' : 's'}…` : 'No hay descargas fallidas.');
+    };
+
+    function actualizarAlmacenamiento() {
+        if (!(navigator.storage && navigator.storage.estimate)) return;
+        navigator.storage.estimate().then((r) => { almacenamiento = r; programarRenderCacheUI(); }).catch(() => { /* ignorar */ });
+    }
+
+    // La descarga en segundo plano arranca al pulsar "Entrar" (así ya está activa la pantalla encendida)
+    function iniciarPrecargaTrasBienvenida() {
+        if (precargaIniciada || presenciaTimer) return;
+        esperarBienvenida(() => {
+            precargaIniciada = true;
+            limpiarCacheObsoleta();
+            enviarReporteCache();
+            actualizarAlmacenamiento();
+            presenciaTimer = setInterval(() => { enviarReporteCache(); actualizarAlmacenamiento(); }, CACHE_PRESENCIA_MS);
+            planificarPrecarga();
+        });
     }
 
     function actualizarTiempo(p) {
@@ -1931,45 +2252,62 @@
     function marcarListo() {
         if (videoListo) return;
         videoListo = true;
-        descarga.reintento = null;
         renderOverlay();
-        if (!modoLocal() && db && activeId) {
-            contarEscrituraComun(1);
-            db.collection('listos').doc(`${activeId}__${clientId}`).set({
-                caso: activeId, sesionId: sesionActiva || 'x', clientId, rol: isAdmin ? 'admin' : currentRole, ts: ST()
-            }).catch((e) => manejarErrorFirestore(e, 'listo'));
-        }
         actualizarBarraListos();
     }
 
-    /* ---- Dispositivos listos (solo administrador) ---- */
-    function suscribirListos(id, sesion) {
-        if (listosUnsub) { try { listosUnsub(); } catch (e) { /* ignorar */ } listosUnsub = null; }
-        listosCount = 0;
+    /* ---- Dispositivos con el vídeo completo (solo administrador) ----
+       Ahora se calcula a partir de lo que reporta cada dispositivo (cache_dispositivos). */
+    function suscribirListos() {
+        iniciarListenerDispositivosCache();
         actualizarBarraListos();
-        listosUnsub = db.collection('listos').where('caso', '==', id).onSnapshot((snap) => {
-            const nuevos = snap.docChanges().filter((ch) => !ch.doc.metadata.hasPendingWrites).length;
-            if (nuevos) contarLecturaExtra(nuevos);
-            listosCount = snap.docs.filter((d) => d.data().sesionId === sesion).length;
-            actualizarBarraListos();
-        }, (e) => manejarErrorFirestore(e, 'listos'));
     }
+
+    function estadoListosParaCaso(id) {
+        const ahoraS = ahoraServidor();
+        const filas = [{ nombre: nombreDispositivo(), v: videosLocales()[id] }];      // este dispositivo, en tiempo real
+        Object.keys(dispositivosCache).forEach((k) => {
+            if (k === clientId) return;
+            const d = dispositivosCache[k];
+            const visto = tsMs(d.visto);
+            if (!visto || ahoraS - visto > CACHE_ONLINE_MS) return;                    // solo dispositivos conectados
+            filas.push({ nombre: d.nombre || k.slice(-6), v: (d.videos || {})[id] });
+        });
+        let completos = 0;
+        const pendientes = [];
+        filas.forEach((f) => {
+            if (f.v && f.v.e === 'c') completos++;
+            else pendientes.push({ nombre: f.nombre, pct: f.v ? f.v.p : 0, streaming: !!(f.v && f.v.e === 'o') });
+        });
+        return { completos, pendientes, conectados: filas.length };
+    }
+
     function actualizarBarraListos() {
+        const txt = $('listos-text'), bar = $('listos-bar'), btn = $('launch-btn'), btxt = $('launch-btn-txt'), det = $('launch-detalle');
+        if (!txt || !isAdmin || !activeId) return;
         const N = dispositivosEsperados();
-        const txt = $('listos-text'), bar = $('listos-bar'), btn = $('launch-btn'), btxt = $('launch-btn-txt');
-        if (!txt) return;
-        txt.textContent = `${Math.min(listosCount, 99)}/${N}`;
-        const pct = Math.min(100, listosCount / N * 100);
-        bar.style.width = pct + '%';
-        bar.style.background = listosCount >= N ? '#10b981' : '#f59e0b';
-        const faltan = Math.max(0, N - listosCount);
-        if (!videoListo) {
-            btxt.textContent = 'Preparando tu vídeo…';
-            btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed';
-        } else {
-            btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
-            btxt.textContent = faltan === 0 ? '¡Todos listos! Lanzar con cuenta atrás' : `Lanzar (faltan ${faltan})`;
-        }
+        const { completos, pendientes, conectados } = estadoListosParaCaso(activeId);
+        listosCount = completos;
+        txt.textContent = `${Math.min(completos, 99)}/${N}`;
+        bar.style.width = Math.min(100, completos / N * 100) + '%';
+        bar.style.background = completos >= N ? '#10b981' : '#f59e0b';
+
+        let d = pendientes.length
+            ? 'Aún descargando: ' + pendientes.slice(0, 4).map((x) => `${x.nombre} ${x.streaming ? '(streaming)' : x.pct + ' %'}`).join(' · ') + (pendientes.length > 4 ? ` y ${pendientes.length - 4} más.` : '.')
+            : 'Todos los dispositivos conectados tienen el vídeo completo.';
+        if (conectados < N) d += ` Conectados: ${conectados} de ${N} esperados.`;
+        if (det) det.textContent = d;
+
+        const e = cacheVideos[activeId];
+        const propioCompleto = !!(e && e.estado === 'completo');
+        const bloqueado = lanzando || !!errorVideo;
+        btn.disabled = bloqueado;
+        btn.style.opacity = bloqueado ? '0.5' : '1';
+        btn.style.cursor = bloqueado ? 'not-allowed' : 'pointer';
+        if (lanzando) btxt.textContent = 'Preparando el streaming…';
+        else if (completos >= N && propioCompleto) btxt.textContent = '¡Todos listos! Lanzar con cuenta atrás';
+        else if (propioCompleto) btxt.textContent = `Lanzar ya (faltan ${Math.max(0, N - completos)})`;
+        else btxt.textContent = e ? `Lanzar ya en streaming (tu descarga: ${pctDe(e)} %)` : 'Lanzar ya';
     }
 
     /* ============================================================
@@ -2020,8 +2358,16 @@
         if (!activeId) return;
         const c = casosConfig[activeId];
         if (!c || (c.tipo || 'video') !== 'video') return;
-        renderOverlay();
         const p = $('player');
+        // Si el vídeo aún no está en caché pero ya hay que reproducirlo (lanzamiento anticipado,
+        // llegada tardía, o sin caché disponible), se pasa a streaming sin esperar a que termine la descarga.
+        if (p && !videoListo && !modoStream && !errorVideo) {
+            const e = cacheVideos[activeId];
+            const sinCache = !e || e.estado === 'sin-cors' || e.estado === 'sin-cache' || e.estado === 'sin-espacio';
+            const hayQueArrancar = !isAdmin && !modoLocal() && !!syncState && !syncState.paused;
+            if (sinCache || hayQueArrancar) activarStream();
+        }
+        renderOverlay();
         if (!p || !videoListo || modoLocal() || errorVideo) return;
         if (isAdmin) arranqueAdmin(p); else seguirAlAdmin(p);
     }
@@ -2127,15 +2473,39 @@
     }
 
     /* ---- Controles del administrador / Visor Maestro ---- */
-    window.lanzarReproduccionActiva = function () {
-        if (!isAdmin || !activeId || modoLocal()) return;
+    function esperarListo(ms) {
+        return new Promise((resolve) => {
+            const t0 = Date.now();
+            const iv = setInterval(() => {
+                if (videoListo) { clearInterval(iv); resolve(true); }
+                else if (!activeId || Date.now() - t0 > ms) { clearInterval(iv); resolve(false); }
+            }, 100);
+        });
+    }
+
+    window.lanzarReproduccionActiva = async function () {
+        if (!isAdmin || !activeId || modoLocal() || lanzado || lanzando) return;
         const p = $('player');
-        if (!p) return;
-        if (!videoListo) { mostrarToast('Tu vídeo aún se está preparando. Espera a que esté listo.', 'error'); return; }
-        if (lanzado) return;
+        if (!p || errorVideo) return;
         const N = dispositivosEsperados();
-        const faltan = N - listosCount;
-        if (faltan > 0 && !confirm(`Faltan ${faltan} de ${N} dispositivos por estar listos. ¿Lanzar igualmente?`)) return;
+        const { completos } = estadoListosParaCaso(activeId);
+        const faltan = N - completos;
+        if (faltan > 0 && !confirm(`Faltan ${faltan} de ${N} dispositivos por tener el vídeo completo. Los que no lo tengan lo verán en streaming mientras se les termina de descargar (con wifi lenta puede haber cortes). ¿Lanzar ahora?`)) return;
+
+        // Si la descarga propia no ha terminado, el administrador también arranca en streaming
+        // y espera a tener imagen antes de fijar la cuenta atrás (él marca el tiempo de todos).
+        if (!videoListo) {
+            lanzando = true;
+            actualizarBarraListos();
+            if (!modoStream) activarStream();
+            renderOverlay();
+            const ok = await esperarListo(12000);
+            lanzando = false;
+            actualizarBarraListos();
+            if (!vivo(p)) return;
+            if (!ok) { mostrarToast('Tu vídeo no ha podido empezar en streaming. Espera a que termine la descarga o reintenta.', 'error'); return; }
+        }
+
         lanzado = true;
         const inicioMs = ahoraServidor() + CUENTA_ATRAS_MS;
         inicioAdminMs = inicioMs;
@@ -2149,8 +2519,9 @@
     window.adminTogglePlayPause = function () {
         if (!isAdmin) return;
         const p = $('player');
-        if (!p || !videoListo) return;
+        if (!p) return;
         if (!lanzado && !modoLocal()) { lanzarReproduccionActiva(); return; }
+        if (!videoListo) return;
         if (p.paused) {
             faseRapidaHasta = Date.now() + HEARTBEAT_RAPIDO_DURACION_MS;
             intentarPlay(p);              // el evento 'play' envía el primer latido
@@ -2234,7 +2605,7 @@
     });
     window.addEventListener('online', () => {
         actualizarChipConexion();
-        precargaArrancar();
+        planificarPrecarga();
         if (db && !unsubEstado) { clearTimeout(retryEstadoTimer); suscribirEstadoJuego(); }
     });
     window.addEventListener('offline', actualizarChipConexion);
@@ -2250,6 +2621,7 @@
             // En wifis con proxies o filtros, detecta solo si hay que usar long-polling
             try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) { /* ignorar */ }
             suscribirMaster();
+            suscribirPrecargaConfig();
             suscribirEstadoJuego();
         } catch (e) {
             console.error(e);
@@ -2260,7 +2632,7 @@
 
     actualizarInterfazRol();
     const cacheInicial = cargarCacheCasos();
-    if (cacheInicial) { casosConfig = cacheInicial; precargaSincronizar(); }   // pintado instantáneo y descarga en segundo plano desde ya
+    if (cacheInicial) { casosConfig = cacheInicial; sincronizarListaCache(); }   // pintado instantáneo con los últimos datos conocidos
     renderGrid();
     actualizarChipConexion();
     if (apiKeyValida) iniciarFirebase();

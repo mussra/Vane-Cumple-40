@@ -1,3 +1,12 @@
+/* Fuentes propias (mismo origen): evitan fallos de iconos/tipografías en Edge (prevención de rastreo), bloqueadores y redes con CDN filtrados */
+@font-face{font-family:'Montserrat';font-style:normal;font-weight:300 700;font-display:swap;src:url('assets/vendor/fonts/montserrat-latin-wght-normal.woff2') format('woff2');}
+@font-face{font-family:'Lora';font-style:normal;font-weight:400 700;font-display:swap;src:url('assets/vendor/fonts/lora-latin-wght-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Lora';font-style:italic;font-weight:400 700;font-display:swap;src:url('assets/vendor/fonts/lora-latin-wght-italic.woff2') format('woff2');}
+/* Iconos: si FontAwesome no cargase, no se pintan letras ni cuadros raros */
+.fa-solid,.fa-regular,.fa-brands{font-display:block;-webkit-font-smoothing:antialiased;text-rendering:auto}
+/* Casos ocultos: desenfoque fuerte (privacidad) */
+.lock-blur{-webkit-backdrop-filter:blur(50px);backdrop-filter:blur(50px)}
+
 /* ============================================================
    40 Años de Vane · El Juego de su Memoria  (v5.0)
    Este fichero se enlaza desde index.html con:

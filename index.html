@@ -16,10 +16,10 @@
             theme: { extend: { fontFamily: { sans: ['Montserrat', 'sans-serif'], serif: ['Lora', 'serif'] } } }
         };
     </script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fuentes e iconos propios (mismo origen, sin CDN): compatibles con Edge y bloqueadores -->
+    <link rel="preload" as="font" type="font/woff2" href="assets/vendor/fontawesome/webfonts/fa-solid-900.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="assets/vendor/fonts/montserrat-latin-wght-normal.woff2" crossorigin>
+    <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <!-- Estilos propios (antes NO estaba enlazado) -->
     <link rel="stylesheet" href="styles.css">
 
@@ -876,7 +876,7 @@
         <article id="card-${e}" data-id="${e}" class="polaroid-card bg-[#1f2937] rounded-xl p-4 pb-5 border border-slate-700/60 flex flex-col justify-between">
             <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
                 <img id="img-${e}" src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
-                <div id="lock-${e}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
+                <div id="lock-${e}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 lock-blur">
                     <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
                     <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
                 </div>
@@ -1076,8 +1076,8 @@
             titulo: `Caso #${i}: Recuerdo especial`,
             descripcion: 'Momento inolvidable de la vida de Vane.',
             tipo: 'video',
-            recursoId: '',
-            imagenUrl: `assets/recuerdos/foto-${i}.jpg`,
+            recursoId: `https://media.vanecumple40.com/Vane_Cumple_40_-_CASO_${i}.mp4`,
+            imagenUrl: `https://media.vanecumple40.com/Vane_Cumple_40_-_CASO_${i}.png`,
             resuelto: false,
             modalAbierto: false,
             tiempoActual: 0,

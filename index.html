@@ -329,6 +329,11 @@
                         <input type="range" id="admin-volume-slider" aria-label="Volumen" min="0" max="1" step="0.05" value="1" oninput="adminChangeVolume(this.value)" class="w-20 accent-amber-500 cursor-pointer">
                     </div>
                 </div>
+                <div id="vol-efectos-row" style="display:none;" class="flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-300">
+                    <label class="flex items-center gap-2"><i class="fa-solid fa-music text-amber-400 w-3"></i> Música <input type="range" id="vol-musica" aria-label="Volumen de la música" min="0" max="1" step="0.05" value="1" oninput="cambiarVolEfectos('musica', this.value)" class="w-24 accent-amber-500 cursor-pointer"></label>
+                    <label class="flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 w-3"></i> Efectos <input type="range" id="vol-efectos" aria-label="Volumen de los efectos de sonido" min="0" max="1" step="0.05" value="1" oninput="cambiarVolEfectos('efectos', this.value)" class="w-24 accent-amber-500 cursor-pointer"></label>
+                    <button type="button" onclick="probarSonidoEfecto()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200"><i class="fa-solid fa-play mr-1 text-amber-400"></i> Probar</button>
+                </div>
                 <div data-solo-admin class="w-full flex items-center gap-2">
                     <input type="range" id="admin-seek-bar" aria-label="Posición del vídeo" min="0" max="100" value="0" step="0.1" oninput="adminSeeking(this.value)" onchange="adminSeekEnd(this.value)" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded">
                 </div>
@@ -451,6 +456,31 @@
         return (v >= 10 && v <= 3600) ? { ok: true, v } : { ok: false, v: null };
     }
     const duracionDe = (id) => { const d = casosConfig[id] && casosConfig[id].duracion; return d >= 10 ? d : null; };
+
+    /* ---- Selector de duración tipo temporizador: solo cifras, los «:» se ponen solos ---- */
+    window.durMascara = function (el) {
+        const d = el.value.replace(/\D/g, '').slice(-4);
+        if (!d) { el.value = ''; return; }
+        el.value = `${parseInt(d.slice(0, -2) || '0', 10)}:${d.slice(-2).padStart(2, '0')}`;
+        try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* ignorar */ }
+    };
+    window.durNormalizar = function (el) {                                 // al salir del campo: segundos > 59 se convierten en minutos y se acota a 0:10–60:00
+        const m = el.value.match(/^(\d+):(\d{2})$/);
+        if (!m) { el.value = ''; return; }
+        let tot = (+m[1]) * 60 + (+m[2]);
+        if (tot === 0) { el.value = ''; return; }
+        const aj = Math.min(3600, Math.max(10, tot));
+        if (aj !== tot) mostrarToast(`Duración ajustada a ${fmtDur(aj)} (permitido: 0:10 a 60:00).`);
+        el.value = fmtDur(aj);
+    };
+    window.durPaso = function (id, delta) {
+        const el = $('adm-dur-' + id); if (!el) return;
+        const r = parseDur(el.value);
+        const base = r.ok && r.v ? r.v : (parseInt(el.dataset.nat, 10) || 120);
+        el.value = fmtDur(Math.min(3600, Math.max(10, base + delta)));
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    window.durAuto = function (id) { const el = $('adm-dur-' + id); if (el) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); } };
     const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
     const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* almacenamiento lleno o bloqueado */ } };
     const show = (el, on, disp = 'block') => { if (el) el.style.display = on ? disp : 'none'; };
@@ -1040,10 +1070,15 @@
                             <p class="text-[10px] text-slate-500 leading-snug">Efectos de fotos: URL de la carpeta acabada en <span class="font-mono text-slate-400">/</span> (con un <span class="font-mono text-slate-400">fotos.json</span> dentro) o una URL de foto por línea.</p>
                             <button type="button" onclick="previsualizarEfecto('${e}')" class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Previsualizar</button>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <label for="adm-dur-${e}" class="text-slate-400 text-[10px] shrink-0">Duración total:</label>
-                            <input type="text" id="adm-dur-${e}" value="${esc(fmtDur(c.duracion))}" inputmode="numeric" placeholder="automática" class="w-24 bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono text-[11px] text-center">
-                            <span id="adm-dur-info-${e}" class="text-[10px] text-slate-500 leading-snug">mm:ss o segundos. Vacía = automática (según el nº de fotos).</span>
+                        <div class="space-y-1.5">
+                            <div class="flex items-center gap-2">
+                                <label for="adm-dur-${e}" class="text-slate-400 text-[10px] shrink-0"><i class="fa-regular fa-clock mr-1 text-amber-400"></i>Duración</label>
+                                <button type="button" onclick="durPaso('${e}', -10)" aria-label="Restar 10 segundos" class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-bold text-xl leading-none">−</button>
+                                <input type="text" id="adm-dur-${e}" value="${esc(fmtDur(c.duracion))}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="5" placeholder="auto" oninput="durMascara(this)" onblur="durNormalizar(this)" class="w-24 h-10 text-center bg-slate-950 border border-amber-500/40 rounded-lg text-amber-300 font-mono text-xl tracking-widest placeholder:text-slate-600 placeholder:text-sm">
+                                <button type="button" onclick="durPaso('${e}', 10)" aria-label="Sumar 10 segundos" class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-bold text-xl leading-none">+</button>
+                                <button type="button" onclick="durAuto('${e}')" class="px-3 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-bold">Auto</button>
+                            </div>
+                            <p id="adm-dur-info-${e}" class="text-[10px] text-slate-500 leading-snug">Escribe solo cifras, como en un microondas: <span class="font-mono text-slate-400">230</span> → 2:30. Mínimo 0:10, máximo 60:00. «Auto» = según el número de fotos.</p>
                         </div>
                     </div>
                 </div>
@@ -1620,6 +1655,7 @@
         document.querySelectorAll('[data-solo-admin]').forEach((el) => show(el, isAdmin, el.id === 'admin-play-pause-btn' ? 'flex' : 'flex'));
         const badge = $('sync-monitor-badge');
         show(badge, esReproducible(tipo) && !local, 'flex');
+        show($('vol-efectos-row'), esFotos(tipo) && controlesPropios, 'flex');
 
         if (tipo === 'texto') {
             wrapper.innerHTML = `
@@ -2034,6 +2070,7 @@
         const p = $('player');
         VaneEfectos.crearPlayer(p, tipo, { seed: VaneEfectos.hash(activeId + ':' + tipo), vista: vistaMuro, duracion: () => duracionDe(activeId) });
         p.muted = silenciado;
+        aplicarVolumenesGuardados(p);
         if (VaneEfectos.MURO.tipos.indexOf(tipo) >= 0) prepararChipMuro();
         enlazarEventosPlayer(p);
         actualizarBarraAudio();
@@ -2106,6 +2143,33 @@
         cargarEfecto({ parcial: true, forzarRed: true });
     }
 
+
+
+    /* ---- Volúmenes de los efectos (se recuerdan en cada dispositivo) ---- */
+    const volGuardado = (k) => { const v = parseFloat(lsGet('vane_vol_' + k, '1')); return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1; };
+    function aplicarVolumenesGuardados(p) {
+        p.volume = volGuardado('master');
+        p.volumenMusica = volGuardado('musica');
+        p.volumenEfectos = volGuardado('efectos');
+        const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+        set('admin-volume-slider', p.volume); set('vol-musica', p.volumenMusica); set('vol-efectos', p.volumenEfectos);
+        set('prev-vol-musica', p.volumenMusica); set('prev-vol-efectos', p.volumenEfectos);
+    }
+    window.cambiarVolEfectos = function (cual, val) {
+        val = Math.min(1, Math.max(0, parseFloat(val) || 0));
+        lsSet('vane_vol_' + cual, String(val));
+        [$('player'), previewPlayer].forEach((p) => {
+            if (!p || !p.esEfecto) return;
+            if (cual === 'musica') p.volumenMusica = val; else p.volumenEfectos = val;
+        });
+        ['vol-' + cual, 'prev-vol-' + cual].forEach((id) => { const el = $(id); if (el && parseFloat(el.value) !== val) el.value = val; });
+    };
+    window.probarSonidoEfecto = function () {
+        const p = $('player') && $('player').esEfecto ? $('player') : previewPlayer;
+        if (!p) return;
+        if (p.muted) { p.muted = false; actualizarBarraAudio(); }
+        p.probarSonido();
+    };
 
     /* ---- Muro de móviles (Videowall / Ola de luz) ----
        El administrador define la cuadrícula y qué móvil va en cada casilla (config_sistema/muro).
@@ -2277,11 +2341,16 @@
         ov.id = 'efecto-preview';
         ov.className = 'fixed inset-0 z-[90] bg-black flex flex-col';
         ov.innerHTML = `
-            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-slate-950 border-b border-slate-800 text-xs text-slate-300">
-                <span id="prev-info" class="truncate"><i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Leyendo la lista de fotos…</span>
+            <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 bg-slate-950 border-b border-slate-800 text-xs text-slate-300">
+                <span id="prev-info" class="truncate min-w-0 flex-1"><i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Leyendo la lista de fotos…</span>
                 <span class="flex items-center gap-2 shrink-0">
                     <button id="prev-replay" type="button" class="hidden px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200">↻ Repetir</button>
                     <button type="button" onclick="cerrarPrevisualizacion()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">Cerrar</button>
+                </span>
+                <span class="order-last basis-full flex items-center gap-3 pt-2 border-t border-slate-800/70">
+                    <label class="flex items-center gap-1.5 flex-1 min-w-0"><i class="fa-solid fa-music text-amber-400 w-3"></i><input type="range" id="prev-vol-musica" aria-label="Volumen de la música" min="0" max="1" step="0.05" value="1" oninput="cambiarVolEfectos('musica', this.value)" class="w-full min-w-0 accent-amber-500"></label>
+                    <label class="flex items-center gap-1.5 flex-1 min-w-0"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 w-3"></i><input type="range" id="prev-vol-efectos" aria-label="Volumen de los efectos" min="0" max="1" step="0.05" value="1" oninput="cambiarVolEfectos('efectos', this.value)" class="w-full min-w-0 accent-amber-500"></label>
+                    <button type="button" onclick="probarSonidoEfecto()" class="shrink-0 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200"><i class="fa-solid fa-play mr-1 text-amber-400"></i> Probar</button>
                 </span>
             </div>
             <div class="relative flex-1 min-h-0"><canvas id="prev-canvas" class="absolute inset-0 h-full w-full"></canvas></div>`;
@@ -2291,6 +2360,7 @@
         previewAbort = ctrl;
         previewPlayer = VaneEfectos.crearPlayer(cv, tipo, { seed: VaneEfectos.hash('previsualizacion:' + tipo), vista: () => null, duracion: () => { const r = parseDur(($('adm-dur-' + id) || {}).value); return r.ok ? r.v : null; } });
         cv.muted = false;
+        aplicarVolumenesGuardados(cv);
         const replay = $('prev-replay');
         replay.onclick = () => { replay.classList.add('hidden'); cv.currentTime = 0; cv.play(); };
         cv.addEventListener('ended', () => replay.classList.remove('hidden'));
@@ -2308,7 +2378,7 @@
                 info.textContent = `${urls.length} fotos · natural ${fmtDur(cv.natural)}` + (Math.round(cv.duration) !== Math.round(cv.natural) ? ` · ajustada a ${fmtDur(cv.duration)}` : '');
                 const inf = $('adm-dur-info-' + id), inp = $('adm-dur-' + id);
                 if (inf) inf.textContent = `Automática: ${fmtDur(cv.natural)} con ${urls.length} fotos.`;
-                if (inp) inp.placeholder = 'auto ' + fmtDur(cv.natural);
+                if (inp) { inp.placeholder = 'auto ' + fmtDur(cv.natural); inp.dataset.nat = String(Math.round(cv.natural)); }
             };
             await VaneEfectos.decodificarSet(urls, {
                 destino: slots, maxLado: ladoMaxFotos(), cache: cacheF, red: true, signal: ctrl.signal,
@@ -3010,6 +3080,7 @@
         const p = $('player');
         if (!p) return;
         p.volume = parseFloat(val);
+        lsSet('vane_vol_master', String(p.volume));
         if (val > 0 && p.muted) { p.muted = false; actualizarBarraAudio(); }
     };
 

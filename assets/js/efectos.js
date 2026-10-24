@@ -921,6 +921,193 @@
         return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: null };
     }
 
+    /* ======================================================================
+       EFECTO 13: TARTA DE RECUERDOS (repostería)
+       Cada foto cae sobre una placa de fondant, se queda un rato para admirarla y
+       vuela a decorar la tarta. Al final se encienden las velas del «40».
+       ====================================================================== */
+    function crearPasteleria(imgs, seed) {
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), j;
+        var INT = 4.4, T0 = 1.2, DROP = 0.9, SHOW = 3.0, FLY = 0.9, VUELO_TOTAL = DROP + SHOW + FLY;
+        var tFin = T0 + (N - 1) * INT + VUELO_TOTAL, tVelas = tFin + 0.6, duracion = tVelas + 9.5;
+        var pasteles = ['#ff8fab', '#ffd166', '#8ecae6', '#b8f2e6', '#cdb4db', '#ffafcc'];
+        var fotos = [], sprinkles = [], confeti = [], bokeh = [], ev = [];
+        for (j = 0; j < N; j++) {
+            fotos.push({ T: T0 + j * INT, idx: orden[j], rot: (rnd() - 0.5) * 0.2, ph: rnd() * TAU });
+            ev.push({ t: T0 + j * INT + 0.35, tipo: 'pop', v: 0.7 }, { t: T0 + j * INT + VUELO_TOTAL, tipo: 'click', v: 0.6 });
+        }
+        ev.push({ t: tVelas, tipo: 'chime', v: 1 }, { t: tVelas + 0.5, tipo: 'fanfarria', v: 0.9 });
+        for (j = 0; j < 170; j++) sprinkles.push({ x: rnd(), y: rnd(), r: rnd() * TAU, c: pasteles[Math.floor(rnd() * pasteles.length)], tier: Math.floor(rnd() * 3) });
+        for (j = 0; j < 110; j++) confeti.push({ x: rnd(), v: 0.12 + rnd() * 0.18, ph: rnd(), w: 4 + rnd() * 6, c: pasteles[Math.floor(rnd() * pasteles.length)], sp: 1 + rnd() * 3 });
+        for (j = 0; j < 16; j++) bokeh.push({ x: rnd(), y: rnd(), r: 0.03 + rnd() * 0.07, c: pasteles[Math.floor(rnd() * pasteles.length)], v: 0.01 + rnd() * 0.02, ph: rnd() * TAU });
+        var permSlots = barajar(400, rngDe(seed + 11)), cacheLay = {};
+
+        // Disposición: tarta de tres pisos y casillas para las fotos (empaquetado hexagonal en las caras)
+        function disposicion(w, h) {
+            var key = Math.round(w) + 'x' + Math.round(h);
+            if (cacheLay[key]) return cacheLay[key];
+            var L = {}, apais = w > h * 1.15, i, y;
+            if (apais) { L.cx = w * 0.72; L.Wc = Math.min(w * 0.5, h * 0.62); L.base = h * 0.93; L.hx = w * 0.27; L.hy = h * 0.5; L.hs = Math.min(w * 0.36, h * 0.6); L.bx = w * 0.27; L.by = h * 0.16; }
+            else { L.cx = w / 2; L.Wc = Math.min(w * 0.88, h * 0.5); L.base = h * 0.92; L.hx = w / 2; L.hy = h * 0.27; L.hs = Math.min(w * 0.62, h * 0.33); L.bx = w / 2; L.by = h * 0.1; }
+            var ws = [1, 0.74, 0.5], hh = [0.3, 0.27, 0.24];
+            y = L.base - L.Wc * 0.04; L.tiers = [];
+            for (i = 0; i < 3; i++) { var th = L.Wc * hh[i], tw = L.Wc * ws[i]; y -= th; L.tiers.push({ x: L.cx - tw / 2, y: y, w: tw, h: th, ry: tw * 0.07 }); }
+            var r = Math.min(L.Wc * 0.085, w * 0.07), slots, guard = 0;
+            do {
+                slots = []; var d = r * 2.1;
+                L.tiers.forEach(function (t, ti) {
+                    var yTop = t.y + r * 1.7, yBot = t.y + t.h - r * 0.9, rows = yBot < yTop ? 1 : Math.floor((yBot - yTop) / (d * 0.9)) + 1, k, q;
+                    for (k = 0; k < rows; k++) {
+                        var yy = rows > 1 ? yTop + k * (yBot - yTop) / (rows - 1) : (yTop + yBot) / 2;
+                        var cols = Math.max(1, Math.floor((t.w - 2 * r) / d) + 1), n = (k % 2 && cols > 1) ? cols - 1 : cols;
+                        for (q = 0; q < n; q++) slots.push({ x: L.cx + (q - (n - 1) / 2) * d, y: yy, tier: ti });
+                    }
+                });
+                r *= 0.92; guard++;
+            } while (slots.length < N && guard < 60);
+            L.r = r / 0.92; L.slots = slots; cacheLay[key] = L;
+            return L;
+        }
+        function slotDe(L, j) { return L.slots[permSlots[j] % L.slots.length]; }
+        function rebote(x) {                                                      // caída con rebote
+            x = clamp(x, 0, 1);
+            if (x < 1 / 2.75) return 7.5625 * x * x;
+            if (x < 2 / 2.75) { x -= 1.5 / 2.75; return 7.5625 * x * x + 0.75; }
+            if (x < 2.5 / 2.75) { x -= 2.25 / 2.75; return 7.5625 * x * x + 0.9375; }
+            x -= 2.625 / 2.75; return 7.5625 * x * x + 0.984375;
+        }
+        function placa(ctx, img, x, y, S, rot, alpha) {                           // placa de fondant con perlas; la foto se ve entera
+            if (alpha <= 0.003) return;
+            var cb = cajaFoto(img, S, S), b = S * 0.07, fw = cb.w + 2 * b, fh = cb.h + 2 * b;
+            ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = clamp(alpha, 0, 1);
+            ctx.shadowColor = 'rgba(190,90,120,0.45)'; ctx.shadowBlur = S * 0.12; ctx.shadowOffsetY = S * 0.04;
+            ctx.fillStyle = '#fff6f0'; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-fw / 2, -fh / 2, fw, fh, S * 0.07); else ctx.rect(-fw / 2, -fh / 2, fw, fh); ctx.fill();
+            ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+            ctx.fillStyle = '#ffd3e0'; var pr = Math.max(2, S * 0.022), per = 2 * (fw + fh), n = Math.floor(per / (pr * 3.2)), q;
+            for (q = 0; q < n; q++) {                                             // perlas de azúcar en el borde
+                var dd = q / n * per, px, py;
+                if (dd < fw) { px = -fw / 2 + dd; py = -fh / 2 + b / 2; } else if (dd < fw + fh) { px = fw / 2 - b / 2; py = -fh / 2 + (dd - fw); }
+                else if (dd < 2 * fw + fh) { px = fw / 2 - (dd - fw - fh); py = fh / 2 - b / 2; } else { px = -fw / 2 + b / 2; py = fh / 2 - (dd - 2 * fw - fh); }
+                ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.fill();
+            }
+            if (img) ctx.drawImage(img, -cb.w / 2, -cb.h / 2, cb.w, cb.h); else { ctx.fillStyle = '#e5c9d3'; ctx.fillRect(-cb.w / 2, -cb.h / 2, cb.w, cb.h); }
+            ctx.restore();
+        }
+        function decoracion(ctx, img, x, y, r, alpha) {                          // fotito redonda con aro de glaseado
+            if (alpha <= 0.003) return;
+            ctx.save(); ctx.globalAlpha = clamp(alpha, 0, 1); ctx.shadowColor = 'rgba(120,50,80,0.35)'; ctx.shadowBlur = r * 0.35; ctx.shadowOffsetY = r * 0.12;
+            ctx.fillStyle = '#fffaf5'; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+            ctx.beginPath(); ctx.arc(x, y, r * 0.84, 0, TAU); ctx.clip();
+            var mini = copiaEscalada(img, Math.max(8, Math.round(r * 3)), true);
+            if (mini) ctx.drawImage(mini, x - r * 0.84, y - r * 0.84, r * 1.68, r * 1.68);
+            ctx.restore();
+        }
+        function tarta(ctx, L, t) {
+            var cx = L.cx, i, k;
+            ctx.fillStyle = 'rgba(120,60,70,0.18)'; ctx.beginPath(); ctx.ellipse(cx, L.base + L.Wc * 0.02, L.Wc * 0.66, L.Wc * 0.09, 0, 0, TAU); ctx.fill();
+            var pl = ctx.createLinearGradient(cx - L.Wc * 0.62, 0, cx + L.Wc * 0.62, 0); pl.addColorStop(0, '#d8dce6'); pl.addColorStop(0.5, '#ffffff'); pl.addColorStop(1, '#cfd4e0');
+            ctx.fillStyle = pl; ctx.beginPath(); ctx.ellipse(cx, L.base - L.Wc * 0.015, L.Wc * 0.62, L.Wc * 0.075, 0, 0, TAU); ctx.fill();
+            var cuerpo = [['#f9c6da', '#ec94b5'], ['#fff0d2', '#f1d29a'], ['#d9bff0', '#b98ddb']];
+            for (i = 0; i < 3; i++) {
+                var T = L.tiers[i], ry = T.ry, c = cuerpo[i];
+                var g = ctx.createLinearGradient(T.x, 0, T.x + T.w, 0); g.addColorStop(0, c[1]); g.addColorStop(0.25, c[0]); g.addColorStop(0.75, c[0]); g.addColorStop(1, c[1]);
+                ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(T.x, T.y); ctx.lineTo(T.x, T.y + T.h); ctx.ellipse(cx, T.y + T.h, T.w / 2, ry, 0, Math.PI, 0, true); ctx.lineTo(T.x + T.w, T.y); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(cx, T.y, T.w / 2, ry, 0, 0, TAU); ctx.fill();            // cara superior
+                // glaseado que gotea
+                var nd = Math.max(5, Math.round(T.w / (L.Wc * 0.075))), dw = T.w / nd; ctx.fillStyle = '#fffaf6';
+                ctx.beginPath(); ctx.moveTo(T.x, T.y);
+                for (k = 0; k < nd; k++) {
+                    var xa = T.x + k * dw, xb = xa + dw, xm = (xa + xb) / 2, lg = T.h * (0.1 + 0.14 * (0.5 + 0.5 * Math.sin(k * 2.7 + i * 1.3)));
+                    var ya = T.y + ry * Math.sqrt(Math.max(0, 1 - Math.pow((xa - cx) / (T.w / 2), 2))), yb = T.y + ry * Math.sqrt(Math.max(0, 1 - Math.pow((xb - cx) / (T.w / 2), 2)));
+                    var ym = T.y + ry * Math.sqrt(Math.max(0, 1 - Math.pow((xm - cx) / (T.w / 2), 2)));
+                    ctx.lineTo(xa, ya); ctx.bezierCurveTo(xa, ym + lg, xb, ym + lg, xb, yb);
+                }
+                ctx.lineTo(T.x + T.w, T.y); ctx.ellipse(cx, T.y, T.w / 2, ry, 0, 0, Math.PI, true); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.ellipse(cx, T.y, T.w / 2, ry, 0, 0, TAU); ctx.fill();
+                // perlas en la base
+                var np = Math.max(8, Math.round(T.w / (L.Wc * 0.05))), rp = L.Wc * 0.016; ctx.fillStyle = '#fffaf6';
+                for (k = 0; k <= np; k++) { var px = T.x + (k / np) * T.w, py = T.y + T.h + ry * Math.sqrt(Math.max(0, 1 - Math.pow((px - cx) / (T.w / 2), 2))); ctx.beginPath(); ctx.arc(px, py - rp, rp, 0, TAU); ctx.fill(); }
+                // sprinkles
+                sprinkles.forEach(function (sp) { if (sp.tier !== i) return; ctx.save(); ctx.translate(T.x + sp.x * T.w, T.y + T.h * (0.2 + 0.7 * sp.y)); ctx.rotate(sp.r); ctx.fillStyle = sp.c; ctx.fillRect(-3, -1, 6, 2); ctx.restore(); });
+            }
+        }
+        function velas(ctx, L, t) {
+            var T = L.tiers[2], sd = T.w * 0.5, digitos = ['4', '0'], i;
+            for (i = 0; i < 2; i++) {
+                var x = L.cx + (i ? 1 : -1) * sd * 0.36, y = T.y + T.ry * 0.3, l = t - (tVelas + i * 0.3);
+                var al = clamp((t - (tVelas - 0.4 + i * 0.2)) / 0.5, 0, 1);
+                ctx.save(); ctx.globalAlpha = al; ctx.translate(x, y + (1 - al) * -10);
+                ctx.font = 'bold ' + Math.round(sd) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                var g = ctx.createLinearGradient(0, -sd, 0, 0); g.addColorStop(0, '#ffe08a'); g.addColorStop(0.5, '#ff9ec0'); g.addColorStop(1, '#ffd166');
+                ctx.lineWidth = Math.max(2, sd * 0.05); ctx.strokeStyle = '#b3446b'; ctx.strokeText(digitos[i], 0, 0); ctx.fillStyle = g; ctx.fillText(digitos[i], 0, 0);
+                if (l > 0) {                                                       // llama
+                    var fa = clamp(l / 0.4, 0, 1), fl = 1 + 0.12 * Math.sin(t * 17 + i * 2) + 0.06 * Math.sin(t * 29), fy = -sd * 1.0, fr = sd * 0.1;
+                    ctx.globalCompositeOperation = 'lighter';
+                    var gl = ctx.createRadialGradient(0, fy, 0, 0, fy, sd * 0.8 * fl); gl.addColorStop(0, 'rgba(255,200,90,' + (0.6 * fa) + ')'); gl.addColorStop(1, 'rgba(255,150,40,0)');
+                    ctx.fillStyle = gl; ctx.fillRect(-sd, fy - sd, sd * 2, sd * 2);
+                    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = al * fa;
+                    ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(0, fy, fr * 0.9 * fl, fr * 1.9 * fl, 0, 0, TAU); ctx.fill();
+                    ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(0, fy + fr * 0.3, fr * 0.45 * fl, fr * 1.0 * fl, 0, 0, TAU); ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+        function dibujar(ctx, w, h, t) {
+            var L = disposicion(w, h), j2, i;
+            var fondo = ctx.createLinearGradient(0, 0, 0, h); fondo.addColorStop(0, '#fff6ee'); fondo.addColorStop(1, '#ffdce6'); ctx.fillStyle = fondo; ctx.fillRect(0, 0, w, h);
+            bokeh.forEach(function (b) { ctx.globalAlpha = 0.22; ctx.fillStyle = b.c; ctx.beginPath(); ctx.arc((b.x + Math.sin(t * b.v + b.ph) * 0.03) * w, ((b.y + t * b.v * 0.3) % 1.1) * h, b.r * Math.min(w, h), 0, TAU); ctx.fill(); }); ctx.globalAlpha = 1;
+            // guirnalda de banderines
+            var sag = h * 0.045, n = 14, bw = w / n;
+            ctx.strokeStyle = 'rgba(160,100,110,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
+            for (i = 0; i <= 40; i++) { var u = i / 40, gy = h * 0.012 + Math.sin(u * Math.PI) * sag; if (i === 0) ctx.moveTo(u * w, gy); else ctx.lineTo(u * w, gy); } ctx.stroke();
+            for (i = 0; i < n; i++) {
+                var u0 = (i + 0.5) / n, gy0 = h * 0.012 + Math.sin(u0 * Math.PI) * sag, sw = Math.sin(t * 1.4 + i) * bw * 0.05;
+                ctx.fillStyle = pasteles[i % pasteles.length]; ctx.beginPath(); ctx.moveTo(u0 * w - bw * 0.36, gy0); ctx.lineTo(u0 * w + bw * 0.36, gy0); ctx.lineTo(u0 * w + sw, gy0 + bw * 0.78); ctx.closePath(); ctx.fill();
+            }
+            var mesa = ctx.createLinearGradient(0, L.base, 0, h); mesa.addColorStop(0, '#f6d9c4'); mesa.addColorStop(1, '#e9bfa6'); ctx.fillStyle = mesa; ctx.fillRect(0, L.base + L.Wc * 0.03, w, h);
+            tarta(ctx, L, t);
+            // fotos ya colocadas (y la que vuela hacia su sitio)
+            var heroS = L.hs;
+            for (j2 = 0; j2 < N; j2++) {
+                var f = fotos[j2], l = t - f.T; if (l < 0) break;
+                var sl = slotDe(L, j2), img = fotoDe(imgs, f.idx);
+                if (l >= VUELO_TOTAL) {
+                    var pop = 1 + 0.3 * Math.max(0, 1 - (l - VUELO_TOTAL) / 0.35) * Math.sin((l - VUELO_TOTAL) * 14 + 1.2);
+                    decoracion(ctx, img, sl.x, sl.y, L.r * pop, 1);
+                    if (l - VUELO_TOTAL < 0.6) {                                                   // chispitas al aterrizar
+                        var a = (l - VUELO_TOTAL) / 0.6; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(255,225,140,' + ((1 - a) * 0.9).toFixed(3) + ')'; ctx.lineWidth = 2;
+                        for (i = 0; i < 8; i++) { var an = i / 8 * TAU, r1 = L.r * (1 + a * 1.6), r2 = L.r * (1.3 + a * 2.4); ctx.beginPath(); ctx.moveTo(sl.x + Math.cos(an) * r1, sl.y + Math.sin(an) * r1); ctx.lineTo(sl.x + Math.cos(an) * r2, sl.y + Math.sin(an) * r2); ctx.stroke(); }
+                        ctx.restore();
+                    }
+                }
+            }
+            for (j2 = 0; j2 < N; j2++) {                                                           // placa en primer plano
+                var f2 = fotos[j2], l2 = t - f2.T; if (l2 < 0) break; if (l2 >= VUELO_TOTAL) continue;
+                var s2 = slotDe(L, j2), im2 = fotoDe(imgs, f2.idx), x, y, S, rot = f2.rot, al = 1;
+                if (l2 < DROP) { var u = l2 / DROP; x = L.hx; y = lerp(-heroS, L.hy, rebote(u)); S = heroS; al = Math.min(1, l2 / 0.15); }
+                else if (l2 < DROP + SHOW) { var q = l2 - DROP; x = L.hx; y = L.hy + Math.sin(q * 2 + f2.ph) * heroS * 0.012; S = heroS * (1 + 0.018 * Math.sin(q * 3 + f2.ph)); rot = f2.rot + Math.sin(q * 1.3 + f2.ph) * 0.03; }
+                else { var v = suave((l2 - DROP - SHOW) / FLY); x = lerp(L.hx, s2.x, v); y = lerp(L.hy, s2.y, v) - Math.sin(v * Math.PI) * heroS * 0.18; S = lerp(heroS, L.r * 2, v); rot = lerp(f2.rot, 0, v); al = 1 - clamp((v - 0.55) / 0.45, 0, 1); decoracion(ctx, im2, x, y, S / 2 * 0.98, clamp((v - 0.45) / 0.55, 0, 1)); }
+                placa(ctx, im2, x, y, S, rot, al);
+            }
+            if (t >= tVelas - 0.5) {
+                velas(ctx, L, t);
+                var bt = clamp((t - (tVelas + 1.0)) / 0.9, 0, 1);
+                if (bt > 0) {
+                    var sz = Math.min(w * 0.13, 60) * (0.7 + 0.3 * rebote(bt));
+                    ctx.save(); ctx.globalAlpha = bt; ctx.font = 'bold ' + Math.round(sz) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.lineWidth = sz * 0.14; ctx.strokeStyle = '#fff'; ctx.strokeText('¡Felices 40!', L.bx, L.by + sz * 0.6); ctx.fillStyle = '#d6336c'; ctx.fillText('¡Felices 40!', L.bx, L.by + sz * 0.6); ctx.restore();
+                }
+                for (i = 0; i < confeti.length; i++) {
+                    var c = confeti[i], cy = (((c.ph + (t - tVelas) * c.v) % 1) * (h + 40)) - 20, cxx = (c.x + Math.sin(t * 0.9 + c.ph * 9) * 0.03) * w, ee = Math.abs(Math.cos(t * c.sp + c.ph * 7));
+                    if (t < tVelas) continue;
+                    ctx.fillStyle = c.c; ctx.save(); ctx.translate(cxx, cy); ctx.rotate(t * c.sp); ctx.fillRect(-c.w / 2, -c.w * ee / 2, c.w, Math.max(1, c.w * ee)); ctx.restore();
+                }
+            }
+            var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
+        }
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'pasteleria' };
+    }
+
     var CATALOGO = {
         'fotos-fuegos':      { nombre: 'Fotos · Fuegos artificiales',      crear: crearFuegos },
         'fotos-nave':        { nombre: 'Fotos · Nave espacial',            crear: crearNave },
@@ -933,7 +1120,8 @@
         'fotos-tunel':       { nombre: 'Fotos · Túnel del tiempo',         crear: crearTunel },
         'fotos-farolillos':  { nombre: 'Fotos · Farolillos al cielo',      crear: crearFarolillos },
         'fotos-lluvia':      { nombre: 'Fotos · Lluvia de recuerdos',      crear: crearLluvia },
-        'fotos-tragaperras': { nombre: 'Fotos · Tragaperras de recuerdos', crear: crearTragaperras }
+        'fotos-tragaperras': { nombre: 'Fotos · Tragaperras de recuerdos', crear: crearTragaperras },
+        'fotos-pasteleria':  { nombre: 'Fotos · Tarta de recuerdos (repostería)', crear: crearPasteleria }
     };
     var MURO = { LW: 480, LH: 1000, tipos: ['fotos-muro', 'fotos-ola'] };   // celda lógica de referencia (móvil vertical)
 
@@ -1047,7 +1235,9 @@
     };
     function sonar(tipo, volumen, v) {
         var ac = audioCtx(); if (!ac || !SFX[tipo]) return;
-        try { AU.sfx.gain.value = clamp(volumen == null ? 1 : volumen, 0, 1); SFX[tipo](ac, ac.currentTime + 0.01, v == null ? 1 : v); } catch (e) { /* ignorar */ }
+        var vol = clamp(volumen == null ? 1 : volumen, 0, 1);
+        if (vol <= 0.001) return;
+        try { AU.sfx.gain.value = vol; SFX[tipo](ac, ac.currentTime + 0.01, v == null ? 1 : v); } catch (e) { /* ignorar */ }
     }
 
     /* Música generativa: cinco estilos. Cada paso depende solo del número de paso → determinista y a compás en todos los móviles */
@@ -1056,6 +1246,7 @@
         fiesta:      { bpm: 124, raiz: 57, vol: 0.5, acordes: [[0, 4, 7, 12], [9, 12, 16, 19], [5, 9, 12, 17], [7, 11, 14, 19]], patron: [0, 2, 1, 2, 0, 3, 1, 2], tipo: 'triangle', arpVol: 0.11, pad: 0.04, bajo: 0.18, lp: 3600, eco: 0.15, perc: true },
         espacio:     { bpm: 64,  raiz: 50, vol: 0.55, acordes: [[0, 3, 7, 12], [8, 12, 15, 20], [3, 7, 10, 15], [10, 14, 17, 22]], patron: [0, -1, 2, -1, 1, -1, 3, -1], tipo: 'sine', arpVol: 0.09, pad: 0.07, bajo: 0.12, lp: 1800, eco: 0.7, perc: false, dron: true, durArp: 4 },
         nostalgia:   { bpm: 72,  raiz: 53, vol: 0.5, acordes: [[0, 4, 7, 12], [9, 12, 16, 19], [5, 9, 12, 17], [7, 11, 14, 19]], patron: [0, 2, 1, 3, 0, 2, 1, 3], tipo: 'triangle', arpVol: 0.12, pad: 0.06, bajo: 0.12, lp: 2400, eco: 0.35, perc: false, durArp: 3 },
+        pasteleria:  { bpm: 104, raiz: 60, vol: 0.5, acordes: [[0, 4, 7, 11], [9, 12, 16, 19], [2, 5, 9, 12], [7, 11, 14, 17]], patron: [0, 2, 1, 3, 2, 1, 3, 1], tipo: 'triangle', arpVol: 0.11, pad: 0.04, bajo: 0.15, lp: 3600, eco: 0.25, perc: false, durArp: 1.3 },
         magico:      { bpm: 88,  raiz: 67, vol: 0.45, acordes: [[0, 4, 7, 12], [9, 12, 16, 19], [5, 9, 12, 17], [7, 11, 14, 19]], patron: [3, 1, 2, 0, 3, 1, 2, 1], tipo: 'sine', arpVol: 0.09, pad: 0.035, bajo: 0.1, lp: 5000, eco: 0.6, perc: false, durArp: 2.2, octava: 12 }
     };
     function hashPaso(n, s) { return hash(n + ':' + s); }
@@ -1086,7 +1277,9 @@
             avanzar: function (t, rate, vol) {
                 var ac = audioCtx(); if (!ac) return;
                 if (!activo) { activo = true; sig = Math.ceil(t / paso - 1e-6); }
-                try { AU.musica.gain.setTargetAtTime(E.vol * clamp(vol == null ? 1 : vol, 0, 1), ac.currentTime, 0.05); } catch (e) { /* ignorar */ }
+                var nivel = E.vol * clamp(vol == null ? 1 : vol, 0, 1);
+                try { AU.musica.gain.setTargetAtTime(nivel, ac.currentTime, 0.05); } catch (e) { /* ignorar */ }
+                if (nivel <= 0.001) { sig = Math.ceil(t / paso - 1e-6); return; }      // volumen a cero: no se programan notas, pero se mantiene el compás
                 if (sig * paso < t - 0.3) sig = Math.ceil(t / paso - 1e-6);
                 var limite = t + 0.6 * rate;
                 while (sig * paso < limite) {
@@ -1127,11 +1320,11 @@
         function sonidos(desde, hasta) {
             if (!efecto || !efecto.sonidos.length || canvas.muted || !jugando) return;
             if (hasta - desde > 0.6 || hasta < desde) return;           // saltos: no se repiten los sonidos
-            for (var i = 0; i < efecto.sonidos.length; i++) { var e = efecto.sonidos[i]; if (e.t > desde && e.t <= hasta) sonar(e.tipo, canvas.volume, e.v); }
+            for (var i = 0; i < efecto.sonidos.length; i++) { var e = efecto.sonidos[i]; if (e.t > desde && e.t <= hasta) sonar(e.tipo, canvas.volume * canvas.volumenEfectos, e.v); }
         }
         function audioEfecto(t) {
             if (!efecto || !efecto.musica) return;
-            if (jugando && !canvas.muted) { if (!musica) musica = crearMusica(efecto.musica); if (musica) musica.avanzar(t, rate, canvas.volume); }
+            if (jugando && !canvas.muted) { if (!musica) musica = crearMusica(efecto.musica); if (musica) musica.avanzar(t, rate, canvas.volume * canvas.volumenMusica); }
             else if (musica) musica.detener();
         }
         function fmtT(x) { x = Math.max(0, Math.floor(x + 0.0001)); return Math.floor(x / 60) + ':' + ('0' + (x % 60)).slice(-2); }
@@ -1188,6 +1381,8 @@
             buffered: { configurable: true, value: { length: 0 } },
             muted: { configurable: true, writable: true, value: true },
             volume: { configurable: true, writable: true, value: 1 },
+            volumenMusica: { configurable: true, writable: true, value: 1 },
+            volumenEfectos: { configurable: true, writable: true, value: 1 },
             controls: { configurable: true, writable: true, value: false },
             preload: { configurable: true, writable: true, value: 'auto' },
             esEfecto: { configurable: true, value: true },
@@ -1201,6 +1396,14 @@
                 if (jugando) { base = tiempo(); jugando = false; emitir('pause'); }
             } },
             load: { configurable: true, value: function () { /* sin recurso que cargar */ } },
+            // Sonido de prueba para ajustar el volumen sin lanzar el efecto: dos efectos y unos segundos de la música del estilo
+            probarSonido: { configurable: true, value: function () {
+                sonar('ding', canvas.volume * canvas.volumenEfectos, 1);
+                setTimeout(function () { sonar('chime', canvas.volume * canvas.volumenEfectos, 1); }, 380);
+                var estilo = efecto && efecto.musica; if (!estilo) return;
+                var m = crearMusica(estilo), tt = 0, n = 0;
+                var iv = setInterval(function () { m.avanzar(tt, 1, canvas.volume * canvas.volumenMusica); tt += 0.1; if (++n > 32) { clearInterval(iv); m.detener(); } }, 100);
+            } },
             establecerImagenes: { configurable: true, value: function (arr) {
                 imgs = arr;
                 efecto = crearEfecto(tipo, imgs, seed, { duracion: (typeof opts.duracion === 'function') ? opts.duracion() : opts.duracion });

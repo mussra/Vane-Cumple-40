@@ -296,7 +296,7 @@
             <!-- Lanzamiento (solo administrador) -->
             <div id="launch-bar" style="display:none;" class="flex-col gap-2 mb-3 bg-slate-900 p-3 rounded-xl border border-amber-500/30">
                 <div class="flex justify-between text-xs text-slate-300">
-                    <span><i class="fa-solid fa-mobile-screen mr-1 text-amber-400"></i> Con el vídeo completo</span>
+                    <span><i class="fa-solid fa-mobile-screen mr-1 text-amber-400"></i> <span id="listos-label">Con el vídeo completo</span></span>
                     <span id="listos-text" class="font-mono">0/16</span>
                 </div>
                 <div class="barra-fondo h-2"><div id="listos-bar" class="barra-relleno"></div></div>
@@ -366,6 +366,7 @@
     </footer>
 
     <!-- ===================== LÓGICA ===================== -->
+    <script src="assets/js/efectos.js"></script>
     <script>
     /* ============================================================
        CONFIGURACIÓN  (todo lo ajustable está aquí arriba)
@@ -425,6 +426,11 @@
     const $ = (id) => document.getElementById(id);
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const TIPOS_FOTOS = VaneEfectos.TIPOS;
+    const tipoDe = (c) => (c && c.tipo) || 'video';
+    const esFotos = (t) => TIPOS_FOTOS.indexOf(t) >= 0;
+    const esReproducible = (t) => t === 'video' || esFotos(t);
+    const tipoActivo = () => tipoDe(casosConfig[activeId]);
     const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
     const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* almacenamiento lleno o bloqueado */ } };
     const show = (el, on, disp = 'block') => { if (el) el.style.display = on ? disp : 'none'; };
@@ -995,9 +1001,10 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label for="adm-tipo-${e}" class="text-slate-400 text-[10px]">Tipo de contenido:</label>
-                        <select id="adm-tipo-${e}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-400 font-mono text-[11px]">
+                        <select id="adm-tipo-${e}" onchange="mostrarAyudaTipo('${e}')" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-400 font-mono text-[11px]">
                             <option value="video" ${tipoActual === 'video' ? 'selected' : ''}>Vídeo (.mp4)</option>
                             <option value="texto" ${tipoActual === 'texto' ? 'selected' : ''}>Texto en vivo</option>
+                            ${VaneEfectos.TIPOS.map((k) => `<option value="${k}" ${tipoActual === k ? 'selected' : ''}>${VaneEfectos.NOMBRES[k]}</option>`).join('')}
                         </select>
                     </div>
                     <div>
@@ -1008,6 +1015,10 @@
                 <div class="space-y-1">
                     <label for="adm-rec-${e}" class="text-slate-400 text-[10px]">Recurso (URL del vídeo o texto):</label>
                     <textarea id="adm-rec-${e}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono text-[11px]" placeholder="https://...">${esc(c.recursoId || '')}</textarea>
+                    <div id="prev-wrap-${e}" class="${esFotos(tipoActual) ? '' : 'hidden'} flex items-start justify-between gap-2 pt-1">
+                        <p class="text-[10px] text-slate-500 leading-snug">Efectos de fotos: URL de la carpeta acabada en <span class="font-mono text-slate-400">/</span> (con un <span class="font-mono text-slate-400">fotos.json</span> dentro) o una URL de foto por línea.</p>
+                        <button type="button" onclick="previsualizarEfecto('${e}')" class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Previsualizar</button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
@@ -1161,7 +1172,7 @@
             ids.forEach((id) => {
                 const c = casos[id] || {};
                 batch.set(db.collection('estado_juego').doc(id), {
-                    titulo: String(c.titulo || ''), descripcion: String(c.descripcion || ''), tipo: c.tipo === 'texto' ? 'texto' : 'video',
+                    titulo: String(c.titulo || ''), descripcion: String(c.descripcion || ''), tipo: (c.tipo === 'texto' || esFotos(c.tipo)) ? c.tipo : 'video',
                     recursoId: String(c.recursoId || ''), imagenUrl: String(c.imagenUrl || ''), resuelto: !!c.resuelto
                 }, { merge: true });
             });
@@ -1430,6 +1441,7 @@
             };
         }
         if (!videoListo) {
+            if (esFotos(tipoActivo())) return overlayFotos();
             const e = cacheVideos[activeId];
             if (modoStream) {
                 return {
@@ -1492,7 +1504,7 @@
     function renderOverlay() {
         if (!activeId) return;
         const c = casosConfig[activeId];
-        if (c && (c.tipo || 'video') !== 'video') { setOverlay(null); return; }
+        if (c && !esReproducible(tipoDe(c))) { setOverlay(null); return; }
         setOverlay(calcularOverlay());
     }
 
@@ -1514,6 +1526,8 @@
         if (listosUnsub) { try { listosUnsub(); } catch (e) { /* ignorar */ } listosUnsub = null; }
         if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) { /* ignorar */ } }
         const p = $('player');
+        if (p && p.destruir) p.destruir();
+        efectoReset();
         if (p) { try { p.pause(); p.removeAttribute('src'); p.load(); } catch (e) { /* ignorar */ } }
         liberarBlobUrl();
         const w = $('video-wrapper');
@@ -1547,11 +1561,11 @@
 
         prepararUIModal(c, tipo, local);
 
-        if (tipo === 'video') {
+        if (esReproducible(tipo)) {
             if (!local && !isAdmin) aplicarEstadoSync(casosConfig[id]);
             if (!local && isAdmin) suscribirListos(id, sesionActiva);
             if (!local) recalibrarSiHaceFalta();
-            iniciarCargaVideo(c, local);
+            if (esFotos(tipo)) iniciarCargaEfecto(c, tipo, local); else iniciarCargaVideo(c, local);
             syncLoopId = setInterval(bucleSync, 150);
         }
         $('modalTitle').focus && $('modalTitle').setAttribute('tabindex', '-1');
@@ -1559,12 +1573,16 @@
 
     function prepararUIModal(c, tipo, local) {
         const wrapper = $('video-wrapper');
-        const controlesPropios = tipo === 'video' && !local && esAdminOMaster();
-        show($('launch-bar'), tipo === 'video' && isAdmin && !local, 'flex');
+        const cont = $('modalContentContainer');
+        if (cont) { cont.classList.toggle('pantalla-efecto', esFotos(tipo)); cont.classList.toggle('aspect-video', !esFotos(tipo)); }
+        const lbl = $('listos-label');
+        if (lbl) lbl.textContent = esFotos(tipo) ? 'Con las fotos descargadas' : 'Con el vídeo completo';
+        const controlesPropios = esReproducible(tipo) && !local && esAdminOMaster();
+        show($('launch-bar'), esReproducible(tipo) && isAdmin && !local, 'flex');
         show($('admin-controls-bar'), controlesPropios, 'flex');
         document.querySelectorAll('[data-solo-admin]').forEach((el) => show(el, isAdmin, el.id === 'admin-play-pause-btn' ? 'flex' : 'flex'));
         const badge = $('sync-monitor-badge');
-        show(badge, tipo === 'video' && !local, 'flex');
+        show(badge, esReproducible(tipo) && !local, 'flex');
 
         if (tipo === 'texto') {
             wrapper.innerHTML = `
@@ -1688,22 +1706,25 @@
         const vigentes = {};
         Object.keys(casosConfig).forEach((id) => {
             const c = casosConfig[id];
-            if ((c.tipo || 'video') !== 'video') return;
+            const t = tipoDe(c);
+            if (!esReproducible(t)) return;
             const url = (c.recursoId || '').trim();
-            if (url) vigentes[id] = url;
+            if (url) vigentes[id] = { url, kind: esFotos(t) ? 'fotos' : 'video' };
         });
         let cambio = false;
         Object.keys(cacheVideos).forEach((id) => {
-            if (vigentes[id] !== cacheVideos[id].url) { cancelarDescarga(id); delete cacheVideos[id]; cambio = true; }
+            const v = vigentes[id];
+            if (!v || v.url !== cacheVideos[id].url || v.kind !== cacheVideos[id].kind) { cancelarDescarga(id); delete cacheVideos[id]; cambio = true; }
         });
         Object.keys(vigentes).forEach((id) => {
             if (!cacheVideos[id]) {
-                cacheVideos[id] = { id, url: vigentes[id], estado: 'comprobando', rec: 0, total: 0, bytes: 0, error: null, intentos: 0, fallosFetch: 0, reintentable: false, pausada: false, proximoIntento: 0, abort: null };
+                cacheVideos[id] = { id, kind: vigentes[id].kind, url: vigentes[id].url, estado: 'comprobando', rec: 0, total: 0, bytes: 0, error: null, intentos: 0, fallosFetch: 0, reintentable: false, pausada: false, proximoIntento: 0, abort: null };
                 cambio = true;
             }
         });
         if (cambio) { comprobarCacheExistente(); notificarCache(); }
     }
+
     function cancelarDescarga(id) {
         const e = cacheVideos[id];
         if (e && e.abort) { const a = e.abort; e.abort = null; try { a.abort(); } catch (x) { /* ignorar */ } }
@@ -1717,6 +1738,15 @@
             const cache = await abrirCache();
             const pend = Object.values(cacheVideos).filter((e) => e.estado === 'comprobando');
             for (const e of pend) {
+                if (e.kind === 'fotos') {
+                    try {
+                        const cf = await abrirCacheFotos();
+                        const r = cf ? await VaneEfectos.leerSetDeCache(e.url, cf) : null;
+                        if (r) Object.assign(e, { estado: 'completo', rec: r.urls.length, total: r.urls.length });
+                        else e.estado = cf ? 'pendiente' : 'sin-cache';
+                    } catch (x) { e.estado = 'pendiente'; }
+                    continue;
+                }
                 if (!cache) { e.estado = 'sin-cache'; continue; }
                 try {
                     const hit = await cache.match(e.url);
@@ -1734,7 +1764,7 @@
     // Borra de la caché los vídeos cuya URL ya no existe (se ejecuta una vez por visita)
     async function limpiarCacheObsoleta() {
         if (cacheObsoletaLimpiada) return;
-        const urls = new Set(Object.values(cacheVideos).map((e) => { try { return new URL(e.url, location.href).href; } catch (x) { return e.url; } }));
+        const urls = new Set(Object.values(cacheVideos).filter((e) => e.kind !== 'fotos').map((e) => { try { return new URL(e.url, location.href).href; } catch (x) { return e.url; } }));
         if (!urls.size) return;
         cacheObsoletaLimpiada = true;
         try {
@@ -1798,6 +1828,7 @@
 
     async function iniciarDescarga(id) {
         const e = cacheVideos[id];
+        if (e && e.kind === 'fotos') return iniciarDescargaFotos(id);
         if (!e || e.estado === 'descargando') return;
         const ctrl = new AbortController();
         Object.assign(e, { estado: 'descargando', rec: 0, total: 0, error: null, pausada: false, reintentable: false, abort: ctrl });
@@ -1862,6 +1893,302 @@
         }
     }
 
+
+    /* ============================================================
+       EFECTOS DE FOTOS (fuegos artificiales / nave espacial)
+       Se comportan como un vídeo: un «reproductor virtual» sobre un <canvas> con currentTime,
+       play(), pause()... así reutilizan la cuenta atrás, el latido y la corrección de desfase.
+       Las fotos se descargan en segundo plano a la caché (como los vídeos) y al abrir el caso
+       se decodifican reducidas en memoria.
+       ============================================================ */
+    const CACHE_FOTOS = 'vane-fotos-v1';
+    let cacheFotosAbierta = null;
+    let efectoCtx = null;       // { id, urls, slots[], montado, parcial }
+    let efectoDecod = null;     // { n, total }: progreso de la decodificación
+    let efectoAbort = null;
+    let ultimoTickFotos = 0;
+
+    async function abrirCacheFotos() {
+        if (cacheFotosAbierta) return cacheFotosAbierta;
+        try { if ('caches' in window) cacheFotosAbierta = await caches.open(CACHE_FOTOS); } catch (e) { cacheFotosAbierta = null; }
+        return cacheFotosAbierta;
+    }
+    function efectoReset() {
+        if (efectoAbort) { try { efectoAbort.abort(); } catch (e) { /* ignorar */ } }
+        efectoAbort = null; efectoCtx = null; efectoDecod = null;
+    }
+    const ladoMaxFotos = () => Math.round(Math.min(1100, Math.max(640, Math.max(screen.width || 0, screen.height || 0) * 0.6)));
+
+    async function iniciarDescargaFotos(id) {
+        const e = cacheVideos[id];
+        if (!e || e.estado === 'descargando') return;
+        const ctrl = new AbortController();
+        Object.assign(e, { estado: 'descargando', rec: 0, total: 0, error: null, pausada: false, reintentable: false, abort: ctrl });
+        notificarCache(true);
+        const cache = await abrirCacheFotos();
+        if (e.abort !== ctrl) return;
+        if (!cache) { e.estado = 'sin-cache'; e.abort = null; notificarCache(true); return; }
+        let recibio = false;
+        try {
+            const r = await VaneEfectos.descargarSet(e.url, cache, {
+                signal: ctrl.signal,
+                esperar: () => esperarSiPausada(e, ctrl),
+                alRecibir: () => { recibio = true; },
+                alProgreso: (n, total, bytes) => {
+                    if (e.abort !== ctrl) return;
+                    e.rec = n; e.total = total; e.bytes = bytes;
+                    const t = performance.now();
+                    if (t - ultimoTickFotos > 250) { ultimoTickFotos = t; notificarCache(); if (e.id === activeId) renderOverlay(); }
+                }
+            });
+            if (e.abort !== ctrl) return;
+            contarDescarga(r.bytes);
+            Object.assign(e, { estado: 'completo', bytes: r.bytes, rec: r.urls.length, total: r.urls.length, error: null, intentos: 0, fallosFetch: 0, abort: null });
+            notificarCache(true);
+            actualizarAlmacenamiento();
+            alCompletarDescarga(id);
+        } catch (err) {
+            if (e.abort !== ctrl) return;
+            e.abort = null;
+            if (ctrl.signal.aborted) { e.estado = 'pendiente'; notificarCache(); return; }
+            if (err && (err.name === 'QuotaExceededError' || /quota/i.test(String(err.message || '')))) {
+                Object.assign(e, { estado: 'sin-espacio', error: 'No hay espacio en la caché del navegador' });
+                notificarCache(true); if (e.id === activeId) renderOverlay(); return;
+            }
+            if (err && (err.tipo === 'vacio' || err.tipo === 'sin-fotos')) {
+                Object.assign(e, { estado: 'error', error: err.tipo === 'vacio' ? 'Sin recurso' : 'La lista de fotos está vacía', reintentable: false });
+                notificarCache(true); if (e.id === activeId) renderOverlay(); return;
+            }
+            marcarErrorDescarga(e, err, recibio);
+        }
+    }
+
+    function overlayFotos() {
+        const e = cacheVideos[activeId];
+        if (efectoDecod && efectoDecod.total) {
+            const { n, total } = efectoDecod;
+            return { key: 'decod', icon: 'fa-circle-notch fa-spin', title: 'Preparando las fotos…', detail: `${n} de ${total}`, pct: Math.floor(n / total * 100) };
+        }
+        if (e && e.estado === 'error') {
+            if (e.reintentable) return { key: 'reintento', icon: 'fa-rotate fa-spin', title: 'Problema de red. Reintentando…', detail: e.error };
+            return { key: 'error-descarga', icon: 'fa-triangle-exclamation', iconColor: 'text-rose-400', title: 'No se pudieron descargar las fotos', detail: e.error, btn: { texto: 'Reintentar', fn: reintentarVideo } };
+        }
+        if (e && e.estado === 'descargando') {
+            const det = e.pausada ? 'Descarga en pausa…' : (e.total > 0 ? `${e.rec} de ${e.total} fotos` : 'Leyendo la lista de fotos…');
+            return { key: 'descarga', icon: 'fa-circle-notch fa-spin', title: 'Descargando las fotos…', detail: det, pct: pctDe(e) };
+        }
+        return { key: 'cola', icon: 'fa-circle-notch fa-spin', title: 'Preparando las fotos…', detail: 'En cola de descarga' };
+    }
+
+    function mostrarErrorFotos(err) {
+        let titulo = 'No se pudieron cargar las fotos', detalle = 'Comprueba la conexión y que el servidor permite CORS.';
+        if (err && err.tipo === 'http') {
+            if (err.status === 404) { titulo = 'No se encuentra la lista de fotos (404)'; detalle = 'Sube un fotos.json a la carpeta (mira tools/preparar_fotos.py) o pega una URL de foto por línea.'; }
+            else titulo = `El servidor rechaza la petición (HTTP ${err.status})`;
+        } else if (err && err.tipo === 'sin-fotos') { titulo = 'La lista de fotos está vacía'; detalle = 'El fotos.json no contiene imágenes (jpg, png, webp...).'; }
+        errorVideo = { titulo, detalle };
+        renderOverlay();
+    }
+
+    function iniciarCargaEfecto(c, tipo, local) {
+        const wrapper = $('video-wrapper');
+        const silenciado = !(esAdminOMaster() || local);
+        wrapper.innerHTML = '<canvas id="player" class="block h-full w-full bg-black"></canvas>';
+        const p = $('player');
+        VaneEfectos.crearPlayer(p, tipo, { seed: VaneEfectos.hash(activeId + ':' + tipo), vista: vistaMuro });
+        p.muted = silenciado;
+        if (VaneEfectos.MURO.tipos.indexOf(tipo) >= 0) prepararSelectorMuro();
+        enlazarEventosPlayer(p);
+        actualizarBarraAudio();
+        efectoReset();
+        if (!(c.recursoId || '').trim()) {
+            errorVideo = { titulo: 'Este caso aún no tiene fotos', detalle: 'Indica en el panel de administración la carpeta de fotos (URL acabada en /) o una lista de URLs.', sinReintento: true };
+            renderOverlay();
+            return;
+        }
+        cargarEfecto();
+    }
+
+    // Lee la colección (de la caché si está completa; si no, espera a la descarga o lee de la red) y la decodifica
+    async function cargarEfecto(opc) {
+        opc = opc || {};
+        const id = activeId, c = casosConfig[id], p = $('player');
+        if (!id || !c || !p) return;
+        if (efectoCtx && efectoCtx.id === id && efectoCtx.slots) { if (opc.parcial) { efectoCtx.parcial = true; montarEfecto(); } return; }
+        const recurso = (c.recursoId || '').trim();
+        const e = cacheVideos[id];
+        const cacheF = await abrirCacheFotos();
+        if (activeId !== id) return;
+        let urls = null;
+        if (cacheF && !opc.forzarRed) { try { const r = await VaneEfectos.leerSetDeCache(recurso, cacheF); urls = r && r.urls; } catch (x) { urls = null; } }
+        if (activeId !== id || (efectoCtx && efectoCtx.slots)) return;
+        if (!urls) {
+            const sinCache = opc.forzarRed || !cacheF || !e || ['sin-cors', 'sin-cache', 'sin-espacio'].includes(e.estado);
+            if (!sinCache) { planificarPrecarga(); renderOverlay(); return; }      // alCompletarDescarga() volverá a llamar aquí
+            try { urls = await VaneEfectos.resolverLista(recurso, cacheF, null); }
+            catch (err) { if (activeId === id) mostrarErrorFotos(err); return; }
+            if (activeId !== id || (efectoCtx && efectoCtx.slots)) return;
+        }
+        const ctx = { id, urls, slots: new Array(urls.length).fill(null), montado: false, parcial: !!opc.parcial };
+        efectoCtx = ctx;
+        efectoDecod = { n: 0, total: urls.length };
+        const ctrl = new AbortController();
+        efectoAbort = ctrl;
+        renderOverlay();
+        VaneEfectos.decodificarSet(urls, {
+            destino: ctx.slots, maxLado: ladoMaxFotos(), cache: cacheF, red: true, signal: ctrl.signal,
+            alProgreso: (n, total) => {
+                if (efectoCtx !== ctx) return;
+                efectoDecod = { n, total };
+                montarEfecto();
+                if (!ctx.montado) renderOverlay();
+            }
+        }).then(() => { if (efectoCtx === ctx) montarEfecto(true); })
+          .catch(() => { if (efectoCtx === ctx) montarEfecto(true); });
+    }
+
+    function montarEfecto(final) {
+        const ctx = efectoCtx;
+        if (!ctx || ctx.montado) return;
+        const p = $('player');
+        if (!p || !vivo(p) || ctx.id !== activeId) return;
+        const listas = ctx.slots.filter(Boolean).length;
+        if (listas === ctx.slots.length || (ctx.parcial && listas >= Math.min(3, ctx.slots.length)) || (final && listas > 0)) {
+            ctx.montado = true; efectoDecod = null;
+            p.establecerImagenes(ctx.slots);               // lanza 'canplay' → marcarListo()
+        } else if (final && listas === 0) {
+            errorVideo = { titulo: 'No se pudieron leer las fotos', detalle: 'Comprueba que las URLs existen y que el servidor permite CORS.' };
+            renderOverlay();
+        }
+    }
+
+    // Hay que arrancar y aún faltan fotos por decodificar: se empieza con las que ya estén (el resto se van sumando)
+    function efectoArranqueParcial() {
+        if (!activeId || videoListo || errorVideo || !esFotos(tipoActivo())) return;
+        if (efectoCtx && efectoCtx.slots) { efectoCtx.parcial = true; montarEfecto(); return; }
+        cargarEfecto({ parcial: true, forzarRed: true });
+    }
+
+
+    /* ---- Videowall / Ola de luz: cada móvil es una casilla del muro 4×4 ---- */
+    function vistaMuro() {
+        const n = parseInt(lsGet('vane_muro_pos', '0'), 10) || 0;
+        const { cols, rows } = VaneEfectos.MURO;
+        if (n < 1 || n > cols * rows) return null;                // 0 = pantalla completa (la TV)
+        return { cols, rows, c: (n - 1) % cols, r: Math.floor((n - 1) / cols) };
+    }
+    function etiquetaMuro() { const n = parseInt(lsGet('vane_muro_pos', '0'), 10) || 0; return n ? `Casilla ${n}` : 'Pantalla completa'; }
+    function prepararSelectorMuro() {
+        const w = $('video-wrapper');
+        if (!w) return;
+        const chip = document.createElement('button');
+        chip.id = 'muro-chip'; chip.type = 'button';
+        chip.className = 'absolute top-2 left-2 z-30 px-2.5 py-1 rounded-lg bg-black/70 border border-amber-500/40 text-amber-300 text-[11px] font-mono';
+        chip.innerHTML = `<i class="fa-solid fa-table-cells mr-1"></i><span id="muro-chip-txt">${esc(etiquetaMuro())}</span> · cambiar`;
+        chip.onclick = abrirSelectorMuro;
+        w.appendChild(chip);
+        if (lsGet('vane_muro_pos', null) === null) abrirSelectorMuro();      // primera vez: hay que elegir casilla
+    }
+    function abrirSelectorMuro() {
+        const w = $('video-wrapper');
+        if (!w || $('muro-selector')) return;
+        const { cols, rows } = VaneEfectos.MURO;
+        const ov = document.createElement('div');
+        ov.id = 'muro-selector';
+        ov.className = 'absolute inset-0 z-40 bg-slate-950/95 flex flex-col items-center justify-center gap-3 p-4 text-center';
+        let celdas = '';
+        for (let i = 1; i <= cols * rows; i++) celdas += `<button type="button" data-pos="${i}" class="aspect-square rounded-lg bg-slate-800 hover:bg-amber-500 hover:text-slate-950 border border-slate-600 text-slate-100 font-bold text-sm">${i}</button>`;
+        ov.innerHTML = `
+            <p class="font-serif text-base font-semibold text-white">¿Qué casilla del muro es este móvil?</p>
+            <p class="text-[11px] text-slate-400 max-w-xs">Coloca los móviles en una cuadrícula ${cols}×${rows}, numerados por filas de izquierda a derecha y de arriba abajo.</p>
+            <div class="grid gap-1.5 w-56 max-w-full" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${celdas}</div>
+            <button type="button" data-pos="0" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold"><i class="fa-solid fa-tv mr-1.5 text-amber-400"></i> Pantalla completa (TV)</button>`;
+        ov.onclick = (ev) => {
+            const b = ev.target.closest('[data-pos]');
+            if (!b) return;
+            lsSet('vane_muro_pos', b.dataset.pos);
+            ov.remove();
+            const t = $('muro-chip-txt'); if (t) t.textContent = etiquetaMuro();
+        };
+        w.appendChild(ov);
+    }
+
+    /* ---- Previsualización en el panel de administración (local, sin sincronizar) ---- */
+    window.mostrarAyudaTipo = function (id) {
+        const sel = $('adm-tipo-' + id), w = $('prev-wrap-' + id);
+        if (sel && w) w.classList.toggle('hidden', !esFotos(sel.value));
+    };
+    let previewAbort = null, previewPlayer = null;
+    window.cerrarPrevisualizacion = function () {
+        if (previewAbort) { try { previewAbort.abort(); } catch (e) { /* ignorar */ } previewAbort = null; }
+        if (previewPlayer && previewPlayer.destruir) previewPlayer.destruir();
+        previewPlayer = null;
+        const ov = $('efecto-preview'); if (ov) ov.remove();
+    };
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('efecto-preview')) cerrarPrevisualizacion(); });
+
+    window.previsualizarEfecto = async function (id) {
+        const sel = $('adm-tipo-' + id), rec = $('adm-rec-' + id);
+        const tipo = sel ? sel.value : tipoDe(casosConfig[id]);
+        const recurso = rec ? rec.value.trim() : '';
+        if (!esFotos(tipo)) { mostrarToast('Elige antes el tipo «Fotos · …».', 'error'); return; }
+        if (!recurso) { mostrarToast('Indica la carpeta o la lista de fotos.', 'error'); return; }
+        cerrarPrevisualizacion();
+        const ov = document.createElement('div');
+        ov.id = 'efecto-preview';
+        ov.className = 'fixed inset-0 z-[90] bg-black flex flex-col';
+        ov.innerHTML = `
+            <div class="flex items-center justify-between gap-2 px-3 py-2 bg-slate-950 border-b border-slate-800 text-xs text-slate-300">
+                <span id="prev-info" class="truncate"><i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Leyendo la lista de fotos…</span>
+                <span class="flex items-center gap-2 shrink-0">
+                    <button id="prev-replay" type="button" class="hidden px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200">↻ Repetir</button>
+                    <button type="button" onclick="cerrarPrevisualizacion()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">Cerrar</button>
+                </span>
+            </div>
+            <div class="relative flex-1 min-h-0"><canvas id="prev-canvas" class="absolute inset-0 h-full w-full"></canvas></div>`;
+        document.body.appendChild(ov);
+        const cv = $('prev-canvas'), info = $('prev-info');
+        const ctrl = new AbortController();
+        previewAbort = ctrl;
+        previewPlayer = VaneEfectos.crearPlayer(cv, tipo, { seed: VaneEfectos.hash('previsualizacion:' + tipo), vista: () => null });
+        cv.muted = false;
+        const replay = $('prev-replay');
+        replay.onclick = () => { replay.classList.add('hidden'); cv.currentTime = 0; cv.play(); };
+        cv.addEventListener('ended', () => replay.classList.remove('hidden'));
+        try {
+            const cacheF = await abrirCacheFotos();
+            const urls = await VaneEfectos.resolverLista(recurso, cacheF, ctrl.signal);
+            if (previewAbort !== ctrl) return;
+            const slots = new Array(urls.length).fill(null);
+            let arrancado = false;
+            const arrancar = () => {
+                if (arrancado || previewAbort !== ctrl) return;
+                arrancado = true;
+                cv.establecerImagenes(slots);
+                cv.play();
+                const d = Math.round(cv.duration);
+                info.textContent = `${urls.length} fotos · duración ${Math.floor(d / 60)}:${String(d % 60).padStart(2, '0')}`;
+            };
+            await VaneEfectos.decodificarSet(urls, {
+                destino: slots, maxLado: ladoMaxFotos(), cache: cacheF, red: true, signal: ctrl.signal,
+                alProgreso: (n, total, ok) => {
+                    if (previewAbort !== ctrl) return;
+                    if (!arrancado) info.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-amber-400 mr-1.5"></i> Cargando fotos ${n}/${total}…`;
+                    if (ok >= Math.min(3, total)) arrancar();      // empieza en cuanto hay unas pocas; el resto se suma
+                }
+            });
+            if (previewAbort !== ctrl) return;
+            if (!slots.some(Boolean)) { info.textContent = 'No se pudo cargar ninguna foto (¿URL o CORS?).'; return; }
+            arrancar();
+        } catch (err) {
+            if (previewAbort !== ctrl) return;
+            let m = 'No se pudieron leer las fotos (¿CORS?).';
+            if (err && err.tipo === 'http' && err.status === 404) m = 'No se encuentra fotos.json (404) en esa carpeta.';
+            else if (err && err.tipo === 'sin-fotos') m = 'La lista de fotos está vacía.';
+            info.textContent = m;
+        }
+    };
+
     function marcarErrorDescarga(e, err, recibio) {
         let reintentable = true, msg = 'Error de red';
         e.estado = 'error';
@@ -1889,7 +2216,8 @@
     function alCompletarDescarga(id) {
         const e = cacheVideos[id];
         // Si el caso abierto estaba esperando a esta descarga, se carga ya desde la caché
-        if (e && activeId === id && !modoStream && !videoListo && !errorVideo) cargarBlobDesdeCache(id, e.url, cargaToken);
+        if (e && activeId === id && e.kind === 'fotos') { if (!videoListo && !errorVideo) cargarEfecto(); }
+        else if (e && activeId === id && !modoStream && !videoListo && !errorVideo) cargarBlobDesdeCache(id, e.url, cargaToken);
         actualizarBarraListos();
         planificarPrecarga();
     }
@@ -1938,7 +2266,7 @@
     // termine la descarga, o si no hay caché disponible / el servidor no permite CORS.
     function activarStream() {
         const p = $('player');
-        if (!p || modoStream || !activeId) return;
+        if (!p || modoStream || !activeId || esFotos(tipoActivo())) return;
         const url = ((casosConfig[activeId] || {}).recursoId || '').trim();
         if (!url) return;
         modoStream = true;
@@ -1987,6 +2315,7 @@
     window.reintentarVideo = function () {
         const e = cacheVideos[activeId];
         errorVideo = null;
+        if (esFotos(tipoActivo())) { efectoReset(); setTimeout(() => { if (activeId && !videoListo) cargarEfecto(); }, 0); }
         if (e && ['error', 'sin-cors', 'sin-espacio'].includes(e.estado)) Object.assign(e, { estado: 'pendiente', intentos: 0, fallosFetch: 0, error: null, reintentable: false });
         if (modoStream) { modoStream = false; videoListo = false; activarStream(); }
         notificarCache(true);
@@ -2310,7 +2639,7 @@
         if (lanzando) btxt.textContent = 'Preparando el streaming…';
         else if (completos >= N && propioCompleto) btxt.textContent = '¡Todos listos! Lanzar con cuenta atrás';
         else if (propioCompleto) btxt.textContent = `Lanzar ya (faltan ${Math.max(0, N - completos)})`;
-        else btxt.textContent = e ? `Lanzar ya en streaming (tu descarga: ${pctDe(e)} %)` : 'Lanzar ya';
+        else btxt.textContent = e ? (e.kind === 'fotos' ? `Lanzar ya (fotos descargadas: ${pctDe(e)} %)` : `Lanzar ya en streaming (tu descarga: ${pctDe(e)} %)`) : 'Lanzar ya';
     }
 
     /* ============================================================
@@ -2360,11 +2689,13 @@
     function bucleSync() {
         if (!activeId) return;
         const c = casosConfig[activeId];
-        if (!c || (c.tipo || 'video') !== 'video') return;
+        if (!c || !esReproducible(tipoDe(c))) return;
         const p = $('player');
         // Si el vídeo aún no está en caché pero ya hay que reproducirlo (lanzamiento anticipado,
         // llegada tardía, o sin caché disponible), se pasa a streaming sin esperar a que termine la descarga.
-        if (p && !videoListo && !modoStream && !errorVideo) {
+        if (esFotos(tipoDe(c))) {
+            if (p && !videoListo && !errorVideo && !isAdmin && !modoLocal() && syncState && !syncState.paused) efectoArranqueParcial();
+        } else if (p && !videoListo && !modoStream && !errorVideo) {
             const e = cacheVideos[activeId];
             const sinCache = !e || e.estado === 'sin-cors' || e.estado === 'sin-cache' || e.estado === 'sin-espacio';
             const hayQueArrancar = !isAdmin && !modoLocal() && !!syncState && !syncState.paused;
@@ -2500,7 +2831,7 @@
         if (!videoListo) {
             lanzando = true;
             actualizarBarraListos();
-            if (!modoStream) activarStream();
+            if (esFotos(tipoActivo())) efectoArranqueParcial(); else if (!modoStream) activarStream();
             renderOverlay();
             const ok = await esperarListo(12000);
             lanzando = false;

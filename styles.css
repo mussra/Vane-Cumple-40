@@ -190,3 +190,8 @@ details[open] > summary .chevron {
         scroll-behavior: auto !important;
     }
 }
+
+/* Pantalla de los efectos de fotos (fuegos / nave): más alta que el vídeo para que las fotos se vean grandes */
+.pantalla-efecto { aspect-ratio: 3 / 4; }
+@media (min-width: 640px) { .pantalla-efecto { aspect-ratio: 4 / 3; } }
+#modalContentContainer:fullscreen.pantalla-efecto, #modalContentContainer:-webkit-full-screen.pantalla-efecto { aspect-ratio: auto; }

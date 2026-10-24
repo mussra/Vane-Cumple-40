@@ -93,10 +93,11 @@
         var k, j, i;
         for (k = 0; k < K; k++) {
             var fotos = [], ch = [];
-            for (j = 0; j < P; j++) {
+            var cnt = Math.min(P, N - k * P);
+            for (j = 0; j < cnt; j++) {
                 fotos.push({
-                    idx: orden[(k * P + j) % N],
-                    ang: (j / P) * TAU + Math.PI / 4 + (k % 2) * 0.3 + (rnd() - 0.5) * 0.3,
+                    idx: orden[k * P + j],
+                    ang: (j / cnt) * TAU + Math.PI / 4 + (k % 2) * 0.3 + (rnd() - 0.5) * 0.3,
                     rad: 0.92 + rnd() * 0.16, rot: (rnd() - 0.5) * 0.3,
                     hue: Math.floor(rnd() * 360), ph: rnd() * TAU, delay: j * 0.07
                 });
@@ -188,7 +189,7 @@
                 }
             }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: sonidos };
+        return { duracion: duracion, dibujar: dibujar, sonidos: sonidos, musica: null };
     }
 
     /* ======================================================================
@@ -369,7 +370,8 @@
             var fin = clamp(1 - (duracion - t) / 1.6, 0, 1);
             if (fin > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fin.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        var ev = []; met.forEach(function (m) { ev.push({ t: m.T, tipo: 'whoosh', v: 0.4 }); });
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'espacio' };
     }
 
     /* ======================================================================
@@ -475,7 +477,8 @@
             }
             var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [], muro: true };
+        var ev = []; for (var q0 = 0; q0 < N; q0++) ev.push({ t: 1 + q0 * TF, tipo: 'whoosh', v: 0.5 }); ev.push({ t: fin0 + 0.5, tipo: 'fanfarria', v: 1 });
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, muro: true, musica: 'celebracion' };
     }
 
     /* ======================================================================
@@ -522,7 +525,8 @@
             }
             var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [], muro: true };
+        var ev = []; for (var q0 = 0; q0 < N; q0++) ev.push({ t: 1 + q0 * INT + 0.6, tipo: 'whoosh', v: 0.5 }); ev.push({ t: fin0, tipo: 'fanfarria', v: 1 });
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, muro: true, musica: 'fiesta' };
     }
 
     /* ======================================================================
@@ -537,20 +541,30 @@
         return q <= 1 && q >= 0.36;
     }
     function crearMosaico(imgs, seed) {
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), G = 18, celdas = [], gx, gy, dg;
-        for (dg = 0; dg < 2; dg++) for (gy = 0; gy < G; gy++) for (gx = 0; gx < G; gx++) {
-            var x = (gx + 0.5) / G, y = (gy + 0.5) / G;
-            if (dg === 0 ? dentroDe4(x, y) : dentroDe0(x, y)) celdas.push({ d: dg, gx: gx, gy: gy });
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), G = clamp(Math.ceil(Math.sqrt(N / 0.8)), 9, 18);
+        function construir(g) {
+            var cs = [], gx, gy, dg;
+            for (dg = 0; dg < 2; dg++) for (gy = 0; gy < g; gy++) for (gx = 0; gx < g; gx++) {
+                var x = (gx + 0.5) / g, y = (gy + 0.5) / g;
+                if (dg === 0 ? dentroDe4(x, y) : dentroDe0(x, y)) cs.push({ d: dg, gx: gx, gy: gy });
+            }
+            return cs;
         }
-        var orden = barajar(celdas.length, rnd), TA = 14, VUELO = 1.5, HOLD = 8, duracion = 1 + TA + VUELO + HOLD;
+        var celdas = construir(G);
+        while (celdas.length < N && G < 26) { G++; celdas = construir(G); }       // al menos una casilla por foto: todas aparecen
+        var orden = barajar(celdas.length, rnd), fotoOrden = barajar(N, rnd), TA = 14, VUELO = 1.5, HOLD = 8, duracion = 1 + TA + VUELO + HOLD, ev = [];
         celdas.forEach(function (c, i) {
-            c.ta = 1 + (orden[i] / celdas.length) * TA; c.ang = rnd() * TAU; c.dist = 0.7 + rnd() * 0.6; c.rot = (rnd() - 0.5) * 6; c.foto = Math.floor(rnd() * N); c.ph = rnd() * TAU;
+            var rango = orden[i];
+            c.ta = 1 + (rango / celdas.length) * TA; c.ang = rnd() * TAU; c.dist = 0.7 + rnd() * 0.6; c.rot = (rnd() - 0.5) * 6;
+            c.foto = fotoOrden[rango % N];                       // las N primeras en llegar son todas distintas; el resto completa el dibujo
+            if (rango % 5 === 0) ev.push({ t: c.ta + VUELO * 0.85, tipo: 'pop', v: 0.5 });
         });
+        ev.push({ t: 1 + TA + VUELO, tipo: 'chime', v: 1 });
         function dibujar(ctx, w, h, t) {
             fondoNoche(ctx, w, h, '#06040f', '#150b2a');
-            var vertical = w <= h * 1.1, side, cs, ox, oy;
-            if (vertical) { cs = Math.min(w * 0.94 / G, h * 0.95 / (2 * G)); }
-            else { cs = Math.min(w * 0.94 / (2 * G), h * 0.9 / G); }
+            var vertical = w <= h * 1.1, cs, ox, oy;
+            if (vertical) cs = Math.min(w * 0.94 / G, h * 0.95 / (2 * G));
+            else cs = Math.min(w * 0.94 / (2 * G), h * 0.9 / G);
             var tamTotalW = vertical ? G * cs : 2 * G * cs, tamTotalH = vertical ? 2 * G * cs : G * cs;
             ox = (w - tamTotalW) / 2; oy = (h - tamTotalH) / 2;
             var llegadas = clamp((t - 1) / TA, 0, 1);
@@ -577,7 +591,7 @@
             var rr = rngDe(seed + 5); if (llegadas > 0.5) chispas(ctx, w, h, t, 90, rr);
             var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'magico' };
     }
 
     /* ======================================================================
@@ -611,7 +625,8 @@
             if (prog < 1) { ctx.save(); ctx.globalAlpha = alfa * (1 - prog); ctx.font = 'bold ' + Math.round(Math.min(w * 0.08, 34)) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fde9a8'; ctx.fillText('¿Quién será?', w / 2, h * 0.07); ctx.restore(); }
             var fo = clamp(1 - (duracion - t) / 1.0, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        var ev = []; for (var q0 = 0; q0 < N; q0++) { ev.push({ t: 1 + q0 * TF + 0.1, tipo: 'whoosh', v: 0.4 }, { t: 1 + q0 * TF + 5.6, tipo: 'ding', v: 1 }); }
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia' };
     }
 
     /* ======================================================================
@@ -646,7 +661,8 @@
             }
             var fo = clamp(1 - (duracion - t) / 1.0, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        var ev = []; for (var q0 = 0; q0 < N; q0++) { var b0 = 1 + q0 * TF; piezas.forEach(function (pz) { ev.push({ t: b0 + 0.3 + pz.d + 1.2, tipo: 'click', v: 0.6 }); }); ev.push({ t: b0 + 4.0, tipo: 'chime', v: 0.9 }, { t: b0 + 7.3, tipo: 'whoosh', v: 0.5 }); }
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'magico' };
     }
 
     /* ======================================================================
@@ -687,14 +703,15 @@
             }
             var fo = clamp(1 - (duracion - t) / 1.4, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        var ev = []; for (var q0 = 0; q0 < N; q0++) { var tj = 1 + q0 * INT; ev.push({ t: tj + 0.05, tipo: 'obturador', v: 1 }, { t: tj + 0.2, tipo: 'impresora', v: 0.8 }, { t: tj + 4.9, tipo: 'ding', v: 0.8 }); }
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia' };
     }
 
     /* ======================================================================
        EFECTO 9: TÚNEL DEL TIEMPO — viaje por un túnel con las fotos en las paredes
        ====================================================================== */
     function crearTunel(imgs, seed) {
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), V = 1.25, GAP = 3.4, Z0 = 9, duracion = (Z0 + (N - 1) * GAP + 6) / V;
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), V = 1.25, GAP = 3.4, Z0 = 9, duracion = (Z0 + (N - 1) * GAP + 3.5) / V;
         var X0 = 1, paneles = [];
         for (var j = 0; j < N; j++) paneles.push({ idx: orden[j], pared: j % 4, z: Z0 + j * GAP, hue: Math.floor(rnd() * 360) });
         function tira(ctx, img, pared, z1, z2, L, vx, vy, F, Y0, mitadAlto, ancho) {
@@ -753,7 +770,8 @@
             ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
             var fo = clamp(1 - (duracion - t) / 1.4, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        var ev = []; paneles.forEach(function (pn) { ev.push({ t: (pn.z - 2.4) / V, tipo: 'whoosh', v: 0.5 }); });
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'espacio' };
     }
 
     /* ======================================================================
@@ -791,7 +809,7 @@
             }
             var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'magico' };
     }
 
     /* ======================================================================
@@ -822,56 +840,76 @@
             }
             var ff = clamp(1 - (duracion - t) / 1.2, 0, 1); if (ff > 0) { ctx.fillStyle = 'rgba(0,0,0,' + ff.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'fiesta' };
     }
 
     /* ======================================================================
        EFECTO 12: TRAGAPERRAS DE RECUERDOS — tres rodillos giran y se paran en tres fotos
        ====================================================================== */
     function crearTragaperras(imgs, seed) {
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), RONDA = 8.4, R = Math.ceil(N / 3), duracion = 1 + R * RONDA + 1.5;
-        var D = [0, 1, 2].map(function (r) { return N * Math.ceil((16 + 5 * r) / N); }), DUR = [2.4, 3.3, 4.2], bombillas = 22, chisp = [];
-        for (var i = 0; i < 40; i++) chisp.push({ a: rnd() * TAU, v: 0.4 + rnd() * 0.9, hue: Math.floor(rnd() * 360) });
-        function pos(r, t) {                                                   // posición (en casillas) del rodillo r
-            var k = Math.floor((t - 1) / RONDA); if (k < 0) return 0;
-            k = Math.min(k, R - 1);
-            var l = t - 1 - k * RONDA, base = k * (D[r] + 1), x = clamp((l - 0.4) / DUR[r], 0, 1), e = 1 - Math.pow(1 - x, 3);
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), RONDA = 8.4, R = Math.ceil(N / 3);
+        var duracion = 1 + (R - 1) * RONDA + 7.6;
+        var D = [0, 1, 2].map(function (r) { return R * Math.ceil((16 + 5 * r) / R); }), DUR = [2.4, 3.3, 4.2], bombillas = 22, chisp = [], ev = [], i, r, k, m;
+        for (i = 0; i < 40; i++) chisp.push({ a: rnd() * TAU, v: 0.4 + rnd() * 0.9, hue: Math.floor(rnd() * 360) });
+        for (k = 0; k < R; k++) {                                                // sonidos: ticks de los rodillos, topes y premio
+            for (r = 0; r < 3; r++) {
+                var ultimo = -1;
+                for (m = 1; m <= D[r] + 1; m++) {
+                    var f = m / (D[r] + 1), x = 1 - Math.pow(1 - f, 1 / 3), tt = 1 + k * RONDA + 0.4 + DUR[r] * x;
+                    if (tt - ultimo >= 0.04) { ev.push({ t: tt, tipo: 'tick', v: 0.35 + 0.65 * (1 - x) }); ultimo = tt; }
+                }
+                ev.push({ t: 1 + k * RONDA + 0.4 + DUR[r], tipo: 'tope', v: 1 });
+            }
+            ev.push({ t: 1 + k * RONDA + 0.5 + DUR[2], tipo: 'premio', v: 1 });
+        }
+        function pos(r, t) {                                                     // posición (en casillas) del rodillo r
+            var kk = Math.floor((t - 1) / RONDA); if (kk < 0) return 0;
+            kk = Math.min(kk, R - 1);
+            var l = t - 1 - kk * RONDA, base = kk * (D[r] + 1), xx = clamp((l - 0.4) / DUR[r], 0, 1), e = 1 - Math.pow(1 - xx, 3);
             return base + (D[r] + 1) * e;
         }
-        function foto(r, k) { return fotoDe(imgs, orden[(((3 * k + r) % N) + N) % N]); }
+        // casilla c del rodillo r → foto (cada foto sale exactamente una vez en las paradas; si sobran huecos, ficha «40»)
+        function foto(rr, c) { var q = 3 * ((((c - 1) % R) + R) % R) + rr; return q < N ? fotoDe(imgs, orden[q]) : null; }
+        function fichaDorada(ctx, x, y, s) {
+            var g = ctx.createLinearGradient(x, y - s / 2, x, y + s / 2); g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, '#f5b82e'); g.addColorStop(1, '#b8731a');
+            ctx.fillStyle = g; ctx.fillRect(x - s * 0.44, y - s * 0.44, s * 0.88, s * 0.88);
+            ctx.fillStyle = '#5a3406'; ctx.font = 'bold ' + Math.round(s * 0.42) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('40', x, y + 2);
+        }
         function dibujar(ctx, w, h, t) {
             fondoNoche(ctx, w, h, '#14041f', '#33081c');
-            var cs = Math.min(w * 0.27, h * 0.2), anchoMaq = cs * 3.24 + cs * 0.1, altoVent = cs * 1.0, cx = w / 2, cy = h * 0.5;
+            var cs = Math.min(w * 0.27, h * 0.2), anchoMaq = cs * 3.34, altoVent = cs * 1.0, cx = w / 2, cy = h * 0.5, b;
             var ma = ctx.createLinearGradient(0, cy - cs * 1.4, 0, cy + cs * 1.4); ma.addColorStop(0, '#ffd966'); ma.addColorStop(0.5, '#c8860f'); ma.addColorStop(1, '#8a5206');
             ctx.fillStyle = ma; var rx = cx - anchoMaq / 2 - cs * 0.12, ry = cy - cs * 0.95, rw = anchoMaq + cs * 0.24, rh = cs * 1.9;
-            ctx.beginPath(); ctx.roundRect ? ctx.roundRect(rx, ry, rw, rh, cs * 0.15) : ctx.rect(rx, ry, rw, rh); ctx.fill();
+            ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(rx, ry, rw, rh, cs * 0.15); else ctx.rect(rx, ry, rw, rh); ctx.fill();
             ctx.save(); ctx.globalCompositeOperation = 'lighter';
-            for (var b = 0; b < bombillas; b++) {                              // bombillas del marco
-                var q = b / bombillas, bx, by; var per = 2 * (rw + rh), d = q * per;
+            for (b = 0; b < bombillas; b++) {                                  // bombillas del marco
+                var q = b / bombillas, bx, by, per = 2 * (rw + rh), d = q * per;
                 if (d < rw) { bx = rx + d; by = ry; } else if (d < rw + rh) { bx = rx + rw; by = ry + (d - rw); } else if (d < 2 * rw + rh) { bx = rx + rw - (d - rw - rh); by = ry + rh; } else { bx = rx; by = ry + rh - (d - 2 * rw - rh); }
                 var on = Math.sin(t * 6 + b * 0.9) > 0; ctx.fillStyle = on ? 'rgba(255,250,200,0.95)' : 'rgba(255,170,40,0.35)'; ctx.beginPath(); ctx.arc(bx, by, cs * 0.045, 0, TAU); ctx.fill();
             }
             ctx.restore();
             textoGrande(ctx, '¡SORTEO!', cx, ry - cs * 0.42, Math.min(cs * 0.55, w * 0.1), '#ffe9a0', 1);
             ctx.fillStyle = '#12060e'; ctx.fillRect(cx - anchoMaq / 2, cy - altoVent, anchoMaq, altoVent * 2);
-            var k = Math.floor((t - 1) / RONDA), l = t - 1 - Math.max(0, k) * RONDA, quietos = 0;
-            for (var r = 0; r < 3; r++) {
-                var rxr = cx - (cs * 3.16) / 2 + r * (cs * 1.08), p = pos(r, t), vel = Math.abs(pos(r, t + 0.04) - pos(r, t - 0.04)) / 0.08;
+            var kr = Math.floor((t - 1) / RONDA), l = t - 1 - Math.max(0, kr) * RONDA;
+            for (var rr = 0; rr < 3; rr++) {
+                var rxr = cx - (cs * 3.16) / 2 + rr * (cs * 1.08), p = pos(rr, t), vel = Math.abs(pos(rr, t + 0.04) - pos(rr, t - 0.04)) / 0.08;
                 ctx.save(); ctx.beginPath(); ctx.rect(rxr, cy - altoVent, cs, altoVent * 2); ctx.clip();
                 ctx.fillStyle = '#f4f1e8'; ctx.fillRect(rxr, cy - altoVent, cs, altoVent * 2);
                 for (var c = Math.floor(p) - 2; c <= Math.floor(p) + 2; c++) {
-                    var y = cy + (c - p) * cs * 1.0, im = foto(r, c), cb = cajaFoto(im, cs * 0.88, cs * 0.88);
-                    ctx.globalAlpha = vel > 6 ? 0.85 : 1; ctx.drawImage(im, rxr + (cs - cb.w) / 2, y - cb.h / 2, cb.w, cb.h);
+                    var y = cy + (c - p) * cs, im = foto(rr, c);
+                    ctx.globalAlpha = vel > 6 ? 0.85 : 1;
+                    if (!im) { fichaDorada(ctx, rxr + cs / 2, y, cs); continue; }
+                    var cb = cajaFoto(im, cs * 0.88, cs * 0.88);
+                    ctx.drawImage(im, rxr + (cs - cb.w) / 2, y - cb.h / 2, cb.w, cb.h);
                     if (vel > 6) { ctx.globalAlpha = 0.3; ctx.drawImage(im, rxr + (cs - cb.w) / 2, y - cb.h / 2 + vel * 0.9, cb.w, cb.h); }
                 }
                 ctx.restore();
-                if (vel < 0.05 && k >= 0) quietos++;
             }
             ctx.save(); ctx.strokeStyle = 'rgba(255,60,60,0.85)'; ctx.lineWidth = Math.max(2, cs * 0.03); ctx.beginPath(); ctx.moveTo(cx - anchoMaq / 2, cy); ctx.lineTo(cx + anchoMaq / 2, cy); ctx.stroke(); ctx.restore();
             var sh = ctx.createLinearGradient(0, cy - altoVent, 0, cy + altoVent); sh.addColorStop(0, 'rgba(0,0,0,0.7)'); sh.addColorStop(0.3, 'rgba(0,0,0,0)'); sh.addColorStop(0.7, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.7)');
             ctx.fillStyle = sh; ctx.fillRect(cx - anchoMaq / 2, cy - altoVent, anchoMaq, altoVent * 2);
-            var fin = 0.4 + DUR[2] + 0.1;                                      // explosión de premio cuando se para el último rodillo
-            if (k >= 0 && l > fin && l < fin + 2.4) {
+            var fin = 0.4 + DUR[2] + 0.1;                                      // explosión de premio al parar el último rodillo
+            if (kr >= 0 && l > fin && l < fin + 2.4) {
                 var a = (l - fin) / 2.4; ctx.save(); ctx.globalCompositeOperation = 'lighter';
                 for (var s = 0; s < chisp.length; s++) { var ch = chisp[s], d2 = ch.v * cs * 2.4 * (1 - Math.exp(-3 * a * 1.3)), x2 = cx + Math.cos(ch.a) * d2, y2 = cy + Math.sin(ch.a) * d2 + a * a * cs * 0.8;
                     ctx.fillStyle = 'hsla(' + ch.hue + ',100%,65%,' + ((1 - a) * 0.9).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(x2, y2, 2 + cs * 0.025, 0, TAU); ctx.fill(); }
@@ -880,7 +918,7 @@
             }
             var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [] };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: null };
     }
 
     var CATALOGO = {
@@ -897,38 +935,167 @@
         'fotos-lluvia':      { nombre: 'Fotos · Lluvia de recuerdos',      crear: crearLluvia },
         'fotos-tragaperras': { nombre: 'Fotos · Tragaperras de recuerdos', crear: crearTragaperras }
     };
-    var MURO = { cols: 4, rows: 4, tipos: ['fotos-muro', 'fotos-ola'] };
+    var MURO = { LW: 480, LH: 1000, tipos: ['fotos-muro', 'fotos-ola'] };   // celda lógica de referencia (móvil vertical)
 
-    function crearEfecto(tipo, imgs, seed) {
-        var d = CATALOGO[tipo] || CATALOGO['fotos-fuegos'];
-        return d.crear(imgs, seed);
+    // Crea el efecto. opc.duracion (s): duración total deseada; el efecto se estira o comprime a ese tiempo (velocidad = natural / deseada)
+    function crearEfecto(tipo, imgs, seed, opc) {
+        opc = opc || {};
+        var d = CATALOGO[tipo] || CATALOGO['fotos-fuegos'], base = d.crear(imgs, seed), D0 = base.duracion;
+        var D = (Number(opc.duracion) >= 10) ? Math.min(Number(opc.duracion), 3600) : D0, k = D0 / D;
+        if (Math.abs(k - 1) < 1e-6) { base.natural = D0; base.velocidad = 1; return base; }
+        return {
+            duracion: D, natural: D0, velocidad: k, muro: base.muro, musica: base.musica,
+            dibujar: function (ctx, w, h, t) { base.dibujar(ctx, w, h, t * k); },
+            sonidos: base.sonidos.map(function (e) { return { t: e.t / k, tipo: e.tipo, v: e.v }; })
+        };
     }
 
-    /* ------------------------------ sonido (fuegos) ------------------------------ */
-    var audio = { ctx: null };
+    /* ======================================================================
+       AUDIO: efectos de sonido y música de fondo, todo generado con WebAudio
+       (sin archivos). La música sigue el tiempo del efecto, así que todos los
+       dispositivos suenan al compás aunque entren tarde.
+       ====================================================================== */
+    var AU = { ctx: null, sfx: null, musica: null, eco: null, ruido: null };
+    function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
     function audioCtx() {
-        if (!audio.ctx) { try { var AC = global.AudioContext || global.webkitAudioContext; if (AC) audio.ctx = new AC(); } catch (e) { audio.ctx = null; } }
-        if (audio.ctx && audio.ctx.state === 'suspended') { try { audio.ctx.resume(); } catch (e) { /* ignorar */ } }
-        return audio.ctx && audio.ctx.state === 'running' ? audio.ctx : null;
+        if (!AU.ctx) {
+            try { var AC = global.AudioContext || global.webkitAudioContext; if (AC) AU.ctx = new AC(); } catch (e) { AU.ctx = null; }
+            if (AU.ctx) cadenaAudio(AU.ctx);
+        }
+        if (AU.ctx && AU.ctx.state === 'suspended') { try { AU.ctx.resume(); } catch (e) { /* ignorar */ } }
+        return AU.ctx && AU.ctx.state === 'running' ? AU.ctx : null;
     }
-    function sonar(tipo, volumen) {
-        var ac = audioCtx(); if (!ac) return;
-        var vol = clamp(volumen == null ? 1 : volumen, 0, 1), t = ac.currentTime;
-        try {
-            if (tipo === 'lanzar') {
-                var o = ac.createOscillator(), g = ac.createGain();
-                o.type = 'sine'; o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(700, t + 0.3);
-                g.gain.setValueAtTime(0.05 * vol, t); g.gain.linearRampToValueAtTime(0.001, t + 0.3);
-                o.connect(g); g.connect(ac.destination); o.start(); o.stop(t + 0.3);
-            } else {
-                var len = Math.floor(ac.sampleRate * 0.5), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
-                for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-                var ns = ac.createBufferSource(); ns.buffer = buf;
-                var fi = ac.createBiquadFilter(); fi.type = 'lowpass'; fi.frequency.setValueAtTime(1000, t); fi.frequency.exponentialRampToValueAtTime(40, t + 0.5);
-                var gg = ac.createGain(); gg.gain.setValueAtTime(0.28 * vol, t); gg.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-                ns.connect(fi); fi.connect(gg); gg.connect(ac.destination); ns.start(); ns.stop(t + 0.5);
+    function cadenaAudio(ac) {
+        var comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4;
+        var master = ac.createGain(); master.gain.value = 0.9; master.connect(comp); comp.connect(ac.destination);
+        AU.sfx = ac.createGain(); AU.sfx.connect(master);
+        AU.musica = ac.createGain(); AU.musica.gain.value = 0; AU.musica.connect(master);
+        var eco = ac.createDelay(1), fb = ac.createGain(), lp = ac.createBiquadFilter();
+        eco.delayTime.value = 0.36; fb.gain.value = 0.34; lp.type = 'lowpass'; lp.frequency.value = 2600;
+        eco.connect(lp); lp.connect(fb); fb.connect(eco); lp.connect(AU.musica);
+        AU.eco = eco;
+        var len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        AU.ruido = buf;
+    }
+    function voz(ac, dest, o) {
+        var osc = ac.createOscillator(), g = ac.createGain(), at = o.ataque || 0.01, fin = o.t + o.dur;
+        osc.type = o.tipo || 'sine'; osc.frequency.setValueAtTime(o.f, o.t);
+        if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, fin);
+        g.gain.setValueAtTime(0.0001, o.t); g.gain.linearRampToValueAtTime(o.vol, o.t + at); g.gain.exponentialRampToValueAtTime(0.0001, fin);
+        var nodo = osc;
+        if (o.lp) { var f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; osc.connect(f); nodo = f; }
+        nodo.connect(g); g.connect(dest);
+        if (o.eco && AU.eco) { var s = ac.createGain(); s.gain.value = o.eco; g.connect(s); s.connect(AU.eco); }
+        osc.start(o.t); osc.stop(fin + 0.05);
+    }
+    function ruidoV(ac, dest, o) {
+        var src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(), fin = o.t + o.dur;
+        src.buffer = AU.ruido; f.type = o.filtro || 'lowpass'; f.frequency.setValueAtTime(o.f1, o.t);
+        if (o.f2) f.frequency.exponentialRampToValueAtTime(o.f2, fin);
+        if (o.q) f.Q.value = o.q;
+        g.gain.setValueAtTime(o.vol, o.t); g.gain.exponentialRampToValueAtTime(0.0001, fin);
+        src.connect(f); f.connect(g); g.connect(dest); src.start(o.t, Math.random() * 1.5); src.stop(fin + 0.05);
+    }
+
+    /* Efectos de sonido (ac, tiempo de audio, volumen) */
+    var SFX = {
+        lanzar: function (ac, t, v) {          // silbido del cohete al subir
+            voz(ac, AU.sfx, { tipo: 'sine', f: 380, f2: 2300, t: t, dur: 1.1, vol: 0.07 * v, ataque: 0.05 });
+            ruidoV(ac, AU.sfx, { t: t, dur: 1.1, vol: 0.05 * v, filtro: 'bandpass', f1: 900, f2: 3600, q: 3 });
+        },
+        estallar: function (ac, t, v) {        // estallido + chisporroteo
+            voz(ac, AU.sfx, { tipo: 'sine', f: 150, f2: 32, t: t, dur: 0.7, vol: 0.55 * v, ataque: 0.004 });
+            ruidoV(ac, AU.sfx, { t: t, dur: 0.8, vol: 0.5 * v, filtro: 'lowpass', f1: 2200, f2: 60 });
+            for (var i = 0; i < 12; i++) ruidoV(ac, AU.sfx, { t: t + 0.08 + Math.random() * 1.3, dur: 0.05, vol: (0.08 + Math.random() * 0.1) * v, filtro: 'highpass', f1: 3500 + Math.random() * 3000 });
+        },
+        tick: function (ac, t, v) { voz(ac, AU.sfx, { tipo: 'square', f: 1500 + Math.random() * 300, t: t, dur: 0.03, vol: 0.04 * v, ataque: 0.002 }); },
+        tope: function (ac, t, v) {
+            voz(ac, AU.sfx, { tipo: 'sine', f: 240, f2: 70, t: t, dur: 0.16, vol: 0.4 * v, ataque: 0.003 });
+            ruidoV(ac, AU.sfx, { t: t, dur: 0.05, vol: 0.18 * v, filtro: 'highpass', f1: 1800 });
+        },
+        premio: function (ac, t, v) {
+            [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach(function (f, i) { voz(ac, AU.sfx, { tipo: 'triangle', f: f, t: t + i * 0.09, dur: 0.7, vol: 0.13 * v, ataque: 0.005, eco: 0.3 }); });
+            for (var i = 0; i < 8; i++) ruidoV(ac, AU.sfx, { t: t + 0.1 + i * 0.07, dur: 0.06, vol: 0.07 * v, filtro: 'highpass', f1: 5000 });
+        },
+        obturador: function (ac, t, v) {
+            ruidoV(ac, AU.sfx, { t: t, dur: 0.025, vol: 0.3 * v, filtro: 'highpass', f1: 1800 });
+            ruidoV(ac, AU.sfx, { t: t + 0.075, dur: 0.03, vol: 0.24 * v, filtro: 'highpass', f1: 1200 });
+        },
+        impresora: function (ac, t, v) {
+            voz(ac, AU.sfx, { tipo: 'sawtooth', f: 150, f2: 230, t: t, dur: 0.95, vol: 0.05 * v, ataque: 0.08, lp: 700 });
+            ruidoV(ac, AU.sfx, { t: t, dur: 0.9, vol: 0.05 * v, filtro: 'bandpass', f1: 2200, q: 4 });
+        },
+        ding: function (ac, t, v) {
+            voz(ac, AU.sfx, { tipo: 'sine', f: 1318.5, t: t, dur: 1.1, vol: 0.14 * v, ataque: 0.004, eco: 0.25 });
+            voz(ac, AU.sfx, { tipo: 'sine', f: 1976, t: t, dur: 0.8, vol: 0.06 * v, ataque: 0.004 });
+        },
+        click: function (ac, t, v) {
+            voz(ac, AU.sfx, { tipo: 'sine', f: 700, f2: 280, t: t, dur: 0.07, vol: 0.14 * v, ataque: 0.002 });
+            ruidoV(ac, AU.sfx, { t: t, dur: 0.02, vol: 0.06 * v, filtro: 'highpass', f1: 3000 });
+        },
+        pop: function (ac, t, v) { voz(ac, AU.sfx, { tipo: 'sine', f: 900, f2: 220, t: t, dur: 0.09, vol: 0.09 * v, ataque: 0.002 }); },
+        chime: function (ac, t, v) {
+            [783.99, 987.77, 1174.66, 1567.98].forEach(function (f, i) { voz(ac, AU.sfx, { tipo: 'sine', f: f, t: t + i * 0.12, dur: 1.4, vol: 0.1 * v, ataque: 0.005, eco: 0.4 }); });
+        },
+        fanfarria: function (ac, t, v) {
+            [261.63, 329.63, 392, 523.25].forEach(function (f) { voz(ac, AU.sfx, { tipo: 'sawtooth', f: f, t: t, dur: 1.8, vol: 0.07 * v, ataque: 0.18, lp: 2200, eco: 0.3 }); });
+            [1046.5, 1318.5, 1568, 2093].forEach(function (f, i) { voz(ac, AU.sfx, { tipo: 'triangle', f: f, t: t + 0.25 + i * 0.1, dur: 1.2, vol: 0.07 * v, ataque: 0.004, eco: 0.35 }); });
+            ruidoV(ac, AU.sfx, { t: t + 0.2, dur: 0.9, vol: 0.12 * v, filtro: 'bandpass', f1: 3000, f2: 7000, q: 1 });
+        },
+        whoosh: function (ac, t, v) { ruidoV(ac, AU.sfx, { t: t, dur: 0.6, vol: 0.12 * v, filtro: 'bandpass', f1: 300, f2: 2400, q: 1.5 }); }
+    };
+    function sonar(tipo, volumen, v) {
+        var ac = audioCtx(); if (!ac || !SFX[tipo]) return;
+        try { AU.sfx.gain.value = clamp(volumen == null ? 1 : volumen, 0, 1); SFX[tipo](ac, ac.currentTime + 0.01, v == null ? 1 : v); } catch (e) { /* ignorar */ }
+    }
+
+    /* Música generativa: cinco estilos. Cada paso depende solo del número de paso → determinista y a compás en todos los móviles */
+    var ESTILOS = {
+        celebracion: { bpm: 112, raiz: 60, vol: 0.5, acordes: [[0, 4, 7, 12], [9, 12, 16, 21], [5, 9, 12, 17], [7, 11, 14, 19]], patron: [0, 1, 2, 3, 2, 1, 2, 3], tipo: 'triangle', arpVol: 0.1, pad: 0.05, bajo: 0.17, lp: 3200, eco: 0.2, perc: true },
+        fiesta:      { bpm: 124, raiz: 57, vol: 0.5, acordes: [[0, 4, 7, 12], [9, 12, 16, 19], [5, 9, 12, 17], [7, 11, 14, 19]], patron: [0, 2, 1, 2, 0, 3, 1, 2], tipo: 'triangle', arpVol: 0.11, pad: 0.04, bajo: 0.18, lp: 3600, eco: 0.15, perc: true },
+        espacio:     { bpm: 64,  raiz: 50, vol: 0.55, acordes: [[0, 3, 7, 12], [8, 12, 15, 20], [3, 7, 10, 15], [10, 14, 17, 22]], patron: [0, -1, 2, -1, 1, -1, 3, -1], tipo: 'sine', arpVol: 0.09, pad: 0.07, bajo: 0.12, lp: 1800, eco: 0.7, perc: false, dron: true, durArp: 4 },
+        nostalgia:   { bpm: 72,  raiz: 53, vol: 0.5, acordes: [[0, 4, 7, 12], [9, 12, 16, 19], [5, 9, 12, 17], [7, 11, 14, 19]], patron: [0, 2, 1, 3, 0, 2, 1, 3], tipo: 'triangle', arpVol: 0.12, pad: 0.06, bajo: 0.12, lp: 2400, eco: 0.35, perc: false, durArp: 3 },
+        magico:      { bpm: 88,  raiz: 67, vol: 0.45, acordes: [[0, 4, 7, 12], [9, 12, 16, 19], [5, 9, 12, 17], [7, 11, 14, 19]], patron: [3, 1, 2, 0, 3, 1, 2, 1], tipo: 'sine', arpVol: 0.09, pad: 0.035, bajo: 0.1, lp: 5000, eco: 0.6, perc: false, durArp: 2.2, octava: 12 }
+    };
+    function hashPaso(n, s) { return hash(n + ':' + s); }
+    function tocarPaso(ac, dest, E, n, t0, paso, nombre) {
+        var s = n % 32, ci = Math.floor(s / 8) % 4, sb = s % 8, ac_ = E.acordes[ci], i, v = hashPaso(n, nombre);
+        if (sb === 0) {
+            for (i = 0; i < ac_.length; i++) voz(ac, dest, { tipo: 'triangle', f: mtof(E.raiz + ac_[i] - 12), t: t0, dur: paso * 8.2, vol: E.pad, ataque: paso * 3, lp: 1100, eco: 0.3 });
+            if (E.dron && ci % 2 === 0) voz(ac, dest, { tipo: 'sawtooth', f: mtof(E.raiz - 24), t: t0, dur: paso * 16, vol: 0.05, ataque: paso * 5, lp: 260 });
+        }
+        if (sb === 0 || sb === 4) voz(ac, dest, { tipo: 'sine', f: mtof(E.raiz + ac_[0] - 24), t: t0, dur: paso * 3.4, vol: E.bajo, ataque: 0.012 });
+        if (E.perc && (sb === 3 || sb === 7) && v % 3 === 0) voz(ac, dest, { tipo: 'sine', f: mtof(E.raiz + ac_[0] - 24), t: t0, dur: paso * 1.2, vol: E.bajo * 0.7, ataque: 0.01 });
+        var idx = E.patron[sb];
+        if (idx >= 0) {
+            var oct = (E.octava || 0) + ((v % 7 === 0) ? 12 : 0) + (sb === 7 && v % 5 === 0 ? -12 : 0);
+            voz(ac, dest, { tipo: E.tipo, f: mtof(E.raiz + ac_[idx % ac_.length] + oct), t: t0, dur: paso * (E.durArp || 1.6), vol: E.arpVol, ataque: 0.006, lp: E.lp, eco: E.eco });
+        }
+        if (E.perc) {
+            if (sb === 0 || sb === 4) { voz(ac, dest, { tipo: 'sine', f: 130, f2: 42, t: t0, dur: 0.16, vol: 0.28, ataque: 0.003 }); }
+            if (sb % 2 === 1) ruidoV(ac, dest, { t: t0, dur: 0.045, vol: 0.05, filtro: 'highpass', f1: 7500 });
+        }
+    }
+    function crearMusica(nombre) {
+        var E = ESTILOS[nombre]; if (!E) return null;
+        var paso = 60 / E.bpm / 2, sig = 0, activo = false;
+        return {
+            reiniciar: function (t) { sig = Math.ceil(t / paso - 1e-6); },
+            detener: function () { if (activo && AU.ctx && AU.musica) { try { AU.musica.gain.setTargetAtTime(0, AU.ctx.currentTime, 0.06); } catch (e) { /* ignorar */ } } activo = false; },
+            avanzar: function (t, rate, vol) {
+                var ac = audioCtx(); if (!ac) return;
+                if (!activo) { activo = true; sig = Math.ceil(t / paso - 1e-6); }
+                try { AU.musica.gain.setTargetAtTime(E.vol * clamp(vol == null ? 1 : vol, 0, 1), ac.currentTime, 0.05); } catch (e) { /* ignorar */ }
+                if (sig * paso < t - 0.3) sig = Math.ceil(t / paso - 1e-6);
+                var limite = t + 0.6 * rate;
+                while (sig * paso < limite) {
+                    var ct = ac.currentTime + (sig * paso - t) / rate;
+                    if (ct > ac.currentTime) tocarPaso(ac, AU.musica, E, sig, ct, paso, nombre);
+                    sig++;
+                }
             }
-        } catch (e) { /* ignorar */ }
+        };
     }
 
     /* ======================================================================
@@ -939,7 +1106,7 @@
         var seed = opts.seed || 1;
         var ctx = canvas.getContext ? canvas.getContext('2d') : null;
         var efecto = null, imgs = [], base = 0, t0 = 0, jugando = false, fin = false, rate = 1, listo = false;
-        var raf = 0, destruido = false, ultimoTU = 0, ultimoT = 0, wPx = 0, hPx = 0;
+        var raf = 0, destruido = false, ultimoTU = 0, ultimoT = 0, wPx = 0, hPx = 0, musica = null;
 
         function emitir(nombre) { try { canvas.dispatchEvent(new global.Event(nombre)); } catch (e) { /* ignorar */ } }
         function tiempo() {
@@ -960,7 +1127,19 @@
         function sonidos(desde, hasta) {
             if (!efecto || !efecto.sonidos.length || canvas.muted || !jugando) return;
             if (hasta - desde > 0.6 || hasta < desde) return;           // saltos: no se repiten los sonidos
-            for (var i = 0; i < efecto.sonidos.length; i++) { var s = efecto.sonidos[i]; if (s.t > desde && s.t <= hasta) sonar(s.tipo, canvas.volume); }
+            for (var i = 0; i < efecto.sonidos.length; i++) { var e = efecto.sonidos[i]; if (e.t > desde && e.t <= hasta) sonar(e.tipo, canvas.volume, e.v); }
+        }
+        function audioEfecto(t) {
+            if (!efecto || !efecto.musica) return;
+            if (jugando && !canvas.muted) { if (!musica) musica = crearMusica(efecto.musica); if (musica) musica.avanzar(t, rate, canvas.volume); }
+            else if (musica) musica.detener();
+        }
+        function fmtT(x) { x = Math.max(0, Math.floor(x + 0.0001)); return Math.floor(x / 60) + ':' + ('0' + (x % 60)).slice(-2); }
+        function pintarReloj(t, dur) {
+            var txt = fmtT(t) + ' / ' + fmtT(dur);
+            ctx.save(); ctx.font = '600 11px ui-monospace, Menlo, Consolas, monospace'; ctx.textBaseline = 'middle';
+            var pw = ctx.measureText(txt).width + 14, ph = 20, x = wPx - pw - 8, y = 8;
+            ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, y, pw, ph); ctx.fillStyle = 'rgba(255,236,170,0.95)'; ctx.fillText(txt, x + 7, y + ph / 2 + 0.5); ctx.restore();
         }
         function bucle() {
             if (destruido) return;
@@ -974,12 +1153,16 @@
                 if (efecto) {
                     try {
                         var vista = (efecto.muro && opts.vista) ? opts.vista() : null;
-                        if (vista) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, wPx, hPx); ctx.clip(); ctx.translate(-vista.c * wPx, -vista.r * hPx); efecto.dibujar(ctx, wPx * vista.cols, hPx * vista.rows, t); ctx.restore(); }
-                        else efecto.dibujar(ctx, wPx, hPx, t);
+                        if (vista) {                                    // casilla del muro: se dibuja la parte que le corresponde de la escena común
+                            var LW = MURO.LW, LH = MURO.LH, ks = Math.max(wPx / LW, hPx / LH);
+                            ctx.save(); ctx.translate(wPx / 2, hPx / 2); ctx.scale(ks, ks); ctx.translate(-(vista.c + 0.5) * LW, -(vista.r + 0.5) * LH);
+                            efecto.dibujar(ctx, LW * vista.cols, LH * vista.rows, t); ctx.restore();
+                        } else efecto.dibujar(ctx, wPx, hPx, t);
+                        if (opts.reloj !== false) pintarReloj(t, efecto.duracion);
                     } catch (e) { try { ctx.restore(); } catch (e2) { /* ignorar */ } /* un fotograma fallido no debe parar el efecto */ }
-                }
-                else { ctx.fillStyle = '#04040c'; ctx.fillRect(0, 0, wPx, hPx); }
+                } else { ctx.fillStyle = '#04040c'; ctx.fillRect(0, 0, wPx, hPx); }
             }
+            audioEfecto(t);
             sonidos(ultimoT, t); ultimoT = t;
             var ahora = ahoraMs();
             if (jugando && ahora - ultimoTU > 250) { ultimoTU = ahora; emitir('timeupdate'); }
@@ -990,7 +1173,7 @@
             currentTime: { configurable: true, get: tiempo, set: function (v) {
                 v = Number(v); if (!isFinite(v)) return;
                 var dur = efecto ? efecto.duracion : 0;
-                base = clamp(v, 0, dur || v); t0 = ahoraMs(); ultimoT = base;
+                base = clamp(v, 0, dur || v); t0 = ahoraMs(); ultimoT = base; if (musica) musica.reiniciar(base);
                 if (efecto && base >= dur) { if (jugando) { jugando = false; fin = true; emitir('pause'); emitir('ended'); } else fin = true; }
                 else fin = false;
                 emitir('timeupdate');
@@ -1000,6 +1183,7 @@
             seeking: { configurable: true, get: function () { return false; } },
             readyState: { configurable: true, get: function () { return listo ? 4 : 0; } },
             duration: { configurable: true, get: function () { return efecto ? efecto.duracion : NaN; } },
+            natural: { configurable: true, get: function () { return efecto ? efecto.natural : NaN; } },
             playbackRate: { configurable: true, get: function () { return rate; }, set: function (v) { v = Number(v); if (!isFinite(v) || v <= 0) return; base = tiempo(); t0 = ahoraMs(); rate = v; } },
             buffered: { configurable: true, value: { length: 0 } },
             muted: { configurable: true, writable: true, value: true },
@@ -1019,10 +1203,10 @@
             load: { configurable: true, value: function () { /* sin recurso que cargar */ } },
             establecerImagenes: { configurable: true, value: function (arr) {
                 imgs = arr;
-                efecto = crearEfecto(tipo, imgs, seed);
+                efecto = crearEfecto(tipo, imgs, seed, { duracion: (typeof opts.duracion === 'function') ? opts.duracion() : opts.duracion });
                 if (!listo) { listo = true; emitir('loadedmetadata'); emitir('canplay'); }
             } },
-            destruir: { configurable: true, value: function () { destruido = true; jugando = false; if (raf) global.cancelAnimationFrame(raf); raf = 0; } }
+            destruir: { configurable: true, value: function () { destruido = true; jugando = false; if (musica) musica.detener(); if (raf) global.cancelAnimationFrame(raf); raf = 0; } }
         };
         Object.keys(props).forEach(function (k) { Object.defineProperty(canvas, k, props[k]); });
         raf = global.requestAnimationFrame(bucle);

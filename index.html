@@ -188,6 +188,15 @@
                 </div>
             </details>
 
+            <!-- Muro de móviles -->
+            <details id="panel-muro" class="mb-4 bg-slate-950/60 border border-slate-800 rounded-xl" ontoggle="renderPanelMuro(false)">
+                <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-chevron-right chevron text-[10px] text-amber-500"></i>
+                    <i class="fa-solid fa-table-cells text-amber-400"></i> Muro de móviles (Videowall y Ola de luz)
+                </summary>
+                <div id="muro-body" class="px-4 pb-4"></div>
+            </details>
+
             <!-- Descarga de vídeos (caché) -->
             <details open id="panel-cache" class="mb-4 bg-slate-950/60 border border-slate-800 rounded-xl">
                 <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
@@ -431,6 +440,17 @@
     const esFotos = (t) => TIPOS_FOTOS.indexOf(t) >= 0;
     const esReproducible = (t) => t === 'video' || esFotos(t);
     const tipoActivo = () => tipoDe(casosConfig[activeId]);
+    const fmtDur = (n) => { n = Math.round(Number(n)); return n >= 10 ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}` : ''; };
+    // «2:30», «150» o vacío (= automática). Válido entre 10 s y 60 min.
+    function parseDur(txt) {
+        txt = String(txt || '').trim();
+        if (!txt) return { ok: true, v: null };
+        let v = NaN, m;
+        if ((m = txt.match(/^(\d+):(\d{1,2})$/))) v = (+m[1]) * 60 + (+m[2]);
+        else if (/^\d+(\.\d+)?$/.test(txt)) v = Math.round(+txt);
+        return (v >= 10 && v <= 3600) ? { ok: true, v } : { ok: false, v: null };
+    }
+    const duracionDe = (id) => { const d = casosConfig[id] && casosConfig[id].duracion; return d >= 10 ? d : null; };
     const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
     const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* almacenamiento lleno o bloqueado */ } };
     const show = (el, on, disp = 'block') => { if (el) el.style.display = on ? disp : 'none'; };
@@ -1015,9 +1035,16 @@
                 <div class="space-y-1">
                     <label for="adm-rec-${e}" class="text-slate-400 text-[10px]">Recurso (URL del vídeo o texto):</label>
                     <textarea id="adm-rec-${e}" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono text-[11px]" placeholder="https://...">${esc(c.recursoId || '')}</textarea>
-                    <div id="prev-wrap-${e}" class="${esFotos(tipoActual) ? '' : 'hidden'} flex items-start justify-between gap-2 pt-1">
-                        <p class="text-[10px] text-slate-500 leading-snug">Efectos de fotos: URL de la carpeta acabada en <span class="font-mono text-slate-400">/</span> (con un <span class="font-mono text-slate-400">fotos.json</span> dentro) o una URL de foto por línea.</p>
-                        <button type="button" onclick="previsualizarEfecto('${e}')" class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Previsualizar</button>
+                    <div id="prev-wrap-${e}" class="${esFotos(tipoActual) ? '' : 'hidden'} space-y-2 pt-1">
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-[10px] text-slate-500 leading-snug">Efectos de fotos: URL de la carpeta acabada en <span class="font-mono text-slate-400">/</span> (con un <span class="font-mono text-slate-400">fotos.json</span> dentro) o una URL de foto por línea.</p>
+                            <button type="button" onclick="previsualizarEfecto('${e}')" class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Previsualizar</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label for="adm-dur-${e}" class="text-slate-400 text-[10px] shrink-0">Duración total:</label>
+                            <input type="text" id="adm-dur-${e}" value="${esc(fmtDur(c.duracion))}" inputmode="numeric" placeholder="automática" class="w-24 bg-slate-900 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono text-[11px] text-center">
+                            <span id="adm-dur-info-${e}" class="text-[10px] text-slate-500 leading-snug">mm:ss o segundos. Vacía = automática (según el nº de fotos).</span>
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -1049,6 +1076,7 @@
         poner('adm-tipo', c.tipo || 'video', 'value');
         poner('adm-rec', c.recursoId || '', 'value');
         poner('adm-img', c.imagenUrl || '', 'value');
+        poner('adm-dur', fmtDur(c.duracion), 'value');
         poner('adm-res', !!c.resuelto, 'checked');
     }
 
@@ -1056,9 +1084,16 @@
         if (!db) return;
         const batch = db.batch();
         let docs = 0;
+        let durInvalida = false;
         Object.keys(casosConfig).forEach((id) => {
             const actual = casosConfig[id];
             const cambios = {};
+            const durEl = $(`adm-dur-${id}`);
+            if (durEl) {
+                const r = parseDur(durEl.value);
+                if (!r.ok) durInvalida = true;
+                else { const previo = duracionDe(id); if (r.v !== previo) cambios.duracion = r.v; }
+            }
             Object.keys(CAMPOS_EDITOR).forEach((campo) => {
                 const el = $(`${CAMPOS_EDITOR[campo]}-${id}`);
                 if (!el) return;
@@ -1074,6 +1109,7 @@
             }
             if (Object.keys(cambios).length) { batch.set(db.collection('estado_juego').doc(id), cambios, { merge: true }); docs++; }
         });
+        if (durInvalida) { mostrarToast('La duración debe estar entre 0:10 y 60:00 (o vacía para automática).', 'error'); return; }
         if (!docs) { mostrarToast('No hay cambios que guardar.'); return; }
         contarEscrituraAdmin(docs);
         batch.commit().then(() => {
@@ -1146,7 +1182,7 @@
         const casos = {};
         Object.keys(casosConfig).sort(ordenCaso).forEach((id) => {
             const c = casosConfig[id];
-            casos[id] = { titulo: c.titulo || '', descripcion: c.descripcion || '', tipo: c.tipo || 'video', recursoId: c.recursoId || '', imagenUrl: c.imagenUrl || '', resuelto: !!c.resuelto };
+            casos[id] = { titulo: c.titulo || '', descripcion: c.descripcion || '', tipo: c.tipo || 'video', recursoId: c.recursoId || '', imagenUrl: c.imagenUrl || '', resuelto: !!c.resuelto, duracion: duracionDe(id) };
         });
         const blob = new Blob([JSON.stringify({ version: 1, exportado: new Date().toISOString(), casos }, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
@@ -1173,7 +1209,8 @@
                 const c = casos[id] || {};
                 batch.set(db.collection('estado_juego').doc(id), {
                     titulo: String(c.titulo || ''), descripcion: String(c.descripcion || ''), tipo: (c.tipo === 'texto' || esFotos(c.tipo)) ? c.tipo : 'video',
-                    recursoId: String(c.recursoId || ''), imagenUrl: String(c.imagenUrl || ''), resuelto: !!c.resuelto
+                    recursoId: String(c.recursoId || ''), imagenUrl: String(c.imagenUrl || ''), resuelto: !!c.resuelto,
+                    duracion: Number(c.duracion) >= 10 ? Math.min(3600, Math.round(Number(c.duracion))) : null
                 }, { merge: true });
             });
             contarEscrituraAdmin(ids.length);
@@ -1995,9 +2032,9 @@
         const silenciado = !(esAdminOMaster() || local);
         wrapper.innerHTML = '<canvas id="player" class="block h-full w-full bg-black"></canvas>';
         const p = $('player');
-        VaneEfectos.crearPlayer(p, tipo, { seed: VaneEfectos.hash(activeId + ':' + tipo), vista: vistaMuro });
+        VaneEfectos.crearPlayer(p, tipo, { seed: VaneEfectos.hash(activeId + ':' + tipo), vista: vistaMuro, duracion: () => duracionDe(activeId) });
         p.muted = silenciado;
-        if (VaneEfectos.MURO.tipos.indexOf(tipo) >= 0) prepararSelectorMuro();
+        if (VaneEfectos.MURO.tipos.indexOf(tipo) >= 0) prepararChipMuro();
         enlazarEventosPlayer(p);
         actualizarBarraAudio();
         efectoReset();
@@ -2070,48 +2107,150 @@
     }
 
 
-    /* ---- Videowall / Ola de luz: cada móvil es una casilla del muro 4×4 ---- */
+    /* ---- Muro de móviles (Videowall / Ola de luz) ----
+       El administrador define la cuadrícula y qué móvil va en cada casilla (config_sistema/muro).
+       Los móviles que no están asignados ven la escena a pantalla completa. */
+    let muroConfig = { cols: 4, rows: 2, asig: {} };
+    let muroEdit = null, muroSucio = false;
+    const acotar = (n, a, b, d) => { n = parseInt(n, 10); return Number.isFinite(n) ? Math.min(b, Math.max(a, n)) : d; };
+
     function vistaMuro() {
-        const n = parseInt(lsGet('vane_muro_pos', '0'), 10) || 0;
-        const { cols, rows } = VaneEfectos.MURO;
-        if (n < 1 || n > cols * rows) return null;                // 0 = pantalla completa (la TV)
-        return { cols, rows, c: (n - 1) % cols, r: Math.floor((n - 1) / cols) };
+        const a = muroConfig.asig && muroConfig.asig[clientId];
+        if (!a || a.c >= muroConfig.cols || a.r >= muroConfig.rows) return null;
+        return { cols: muroConfig.cols, rows: muroConfig.rows, c: a.c, r: a.r };
     }
-    function etiquetaMuro() { const n = parseInt(lsGet('vane_muro_pos', '0'), 10) || 0; return n ? `Casilla ${n}` : 'Pantalla completa'; }
-    function prepararSelectorMuro() {
+    function etiquetaMuro() {
+        const v = vistaMuro();
+        return v ? `Muro ${v.cols}×${v.rows} · columna ${v.c + 1}, fila ${v.r + 1}` : 'Fuera del muro · pantalla completa';
+    }
+    function actualizarChipMuro() { const t = $('muro-chip-txt'); if (t) t.textContent = etiquetaMuro(); }
+    function prepararChipMuro() {
         const w = $('video-wrapper');
         if (!w) return;
-        const chip = document.createElement('button');
-        chip.id = 'muro-chip'; chip.type = 'button';
-        chip.className = 'absolute top-2 left-2 z-30 px-2.5 py-1 rounded-lg bg-black/70 border border-amber-500/40 text-amber-300 text-[11px] font-mono';
-        chip.innerHTML = `<i class="fa-solid fa-table-cells mr-1"></i><span id="muro-chip-txt">${esc(etiquetaMuro())}</span> · cambiar`;
-        chip.onclick = abrirSelectorMuro;
+        const chip = document.createElement('div');
+        chip.id = 'muro-chip';
+        chip.className = 'absolute top-2 left-2 z-30 px-2.5 py-1 rounded-lg bg-black/70 border border-amber-500/40 text-amber-300 text-[11px] font-mono pointer-events-none';
+        chip.innerHTML = `<i class="fa-solid fa-table-cells mr-1"></i><span id="muro-chip-txt">${esc(etiquetaMuro())}</span>`;
         w.appendChild(chip);
-        if (lsGet('vane_muro_pos', null) === null) abrirSelectorMuro();      // primera vez: hay que elegir casilla
     }
-    function abrirSelectorMuro() {
-        const w = $('video-wrapper');
-        if (!w || $('muro-selector')) return;
-        const { cols, rows } = VaneEfectos.MURO;
-        const ov = document.createElement('div');
-        ov.id = 'muro-selector';
-        ov.className = 'absolute inset-0 z-40 bg-slate-950/95 flex flex-col items-center justify-center gap-3 p-4 text-center';
+    // El administrador pulsa «Identificar» y ese móvil muestra su nombre y su casilla a toda pantalla unos segundos
+    let identTimer = null;
+    function mostrarIdentificacion(hasta) {
+        let ov = $('muro-ident');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'muro-ident';
+            ov.className = 'fixed inset-0 z-[120] bg-amber-400 text-slate-950 flex flex-col items-center justify-center gap-3 text-center p-6';
+            ov.onclick = () => ov.remove();
+            document.body.appendChild(ov);
+        }
+        ov.innerHTML = `<i class="fa-solid fa-mobile-screen-button text-5xl"></i><div class="font-serif text-3xl font-bold">${esc(nombreDispositivo())}</div><div class="text-lg font-semibold">${esc(etiquetaMuro())}</div>`;
+        clearTimeout(identTimer);
+        identTimer = setTimeout(() => { const o = $('muro-ident'); if (o) o.remove(); }, Math.min(8000, Math.max(800, hasta - ahoraServidor())));
+    }
+    function suscribirMuroConfig() {
+        db.collection('config_sistema').doc('muro').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            const d = doc.exists ? doc.data() : {};
+            muroConfig = { cols: acotar(d.cols, 1, 6, 4), rows: acotar(d.rows, 1, 6, 2), asig: (d.asig && typeof d.asig === 'object') ? d.asig : {} };
+            actualizarChipMuro();
+            if (!muroSucio) muroEdit = null;
+            renderPanelMuro(true);
+            const idn = d.identificar;
+            if (idn && (idn.id === clientId || idn.id === '*') && idn.hasta > ahoraServidor()) mostrarIdentificacion(idn.hasta);
+        }, (e) => manejarErrorFirestore(e, 'muro'));
+    }
+
+    // ---- Panel del administrador ----
+    function muroDispositivos() {
+        const lista = [{ id: clientId, nombre: nombreDispositivo() + ' · este', online: true }];
+        const ahoraS = ahoraServidor();
+        Object.keys(dispositivosCache).forEach((k) => {
+            if (k === clientId) return;
+            const d = dispositivosCache[k], visto = tsMs(d.visto);
+            if (visto && ahoraS - visto > 6 * 3600 * 1000) return;
+            lista.push({ id: k, nombre: d.nombre || k.slice(-6), online: !!visto && ahoraS - visto < CACHE_ONLINE_MS });
+        });
+        return lista;
+    }
+    function muroEditInicial() {
+        const celdas = {};
+        Object.keys(muroConfig.asig || {}).forEach((id) => { const a = muroConfig.asig[id]; if (a && a.c < muroConfig.cols && a.r < muroConfig.rows) celdas[`${a.c},${a.r}`] = id; });
+        return { cols: muroConfig.cols, rows: muroConfig.rows, celdas };
+    }
+    window.renderPanelMuro = renderPanelMuro;
+    function renderPanelMuro(auto) {
+        if (!isAdmin) return;
+        const det = $('panel-muro'), body = $('muro-body');
+        if (!det || !body || !det.open) return;
+        if (auto && document.activeElement && document.activeElement.closest && document.activeElement.closest('#panel-muro')) return;   // no cerrar un desplegable abierto
+        if (!muroEdit) muroEdit = muroEditInicial();
+        const disp = muroDispositivos(), E = muroEdit;
+        const opts = (sel) => `<option value="">— vacía —</option>` + disp.map((d) => `<option value="${esc(d.id)}" ${d.id === sel ? 'selected' : ''}>${esc(d.nombre)}${d.online ? '' : ' (sin conexión)'}</option>`).join('');
         let celdas = '';
-        for (let i = 1; i <= cols * rows; i++) celdas += `<button type="button" data-pos="${i}" class="aspect-square rounded-lg bg-slate-800 hover:bg-amber-500 hover:text-slate-950 border border-slate-600 text-slate-100 font-bold text-sm">${i}</button>`;
-        ov.innerHTML = `
-            <p class="font-serif text-base font-semibold text-white">¿Qué casilla del muro es este móvil?</p>
-            <p class="text-[11px] text-slate-400 max-w-xs">Coloca los móviles en una cuadrícula ${cols}×${rows}, numerados por filas de izquierda a derecha y de arriba abajo.</p>
-            <div class="grid gap-1.5 w-56 max-w-full" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${celdas}</div>
-            <button type="button" data-pos="0" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold"><i class="fa-solid fa-tv mr-1.5 text-amber-400"></i> Pantalla completa (TV)</button>`;
-        ov.onclick = (ev) => {
-            const b = ev.target.closest('[data-pos]');
-            if (!b) return;
-            lsSet('vane_muro_pos', b.dataset.pos);
-            ov.remove();
-            const t = $('muro-chip-txt'); if (t) t.textContent = etiquetaMuro();
-        };
-        w.appendChild(ov);
+        for (let r = 0; r < E.rows; r++) for (let c = 0; c < E.cols; c++) {
+            const id = E.celdas[`${c},${r}`] || '';
+            celdas += `<div class="bg-slate-900 border ${id ? 'border-amber-500/50' : 'border-slate-700'} rounded-lg p-1.5 space-y-1">
+                <div class="text-[10px] text-slate-400 font-mono">Col ${c + 1} · Fila ${r + 1}</div>
+                <select onchange="muroAsignar(${c},${r},this.value)" class="w-full bg-slate-950 border border-slate-700 rounded p-1 text-[11px] text-slate-200">${opts(id)}</select>
+                ${id ? `<button type="button" onclick="muroIdentificar('${esc(id)}')" class="w-full px-2 py-1 rounded bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 text-[10px] font-bold"><i class="fa-solid fa-bullseye mr-1"></i> Identificar</button>` : ''}
+            </div>`;
+        }
+        const usados = Object.keys(E.celdas).length;
+        const sel = (n, v) => Array.from({ length: 6 }, (_, i) => `<option value="${i + 1}" ${i + 1 === v ? 'selected' : ''}>${i + 1}</option>`).join('');
+        body.innerHTML = `
+            <div class="flex flex-wrap items-center gap-3 mb-3 text-xs">
+                <label class="flex items-center gap-1.5 text-slate-300">Columnas <select id="muro-cols" onchange="muroCambiarTam()" class="bg-slate-900 border border-slate-700 rounded p-1 text-amber-300">${sel(0, E.cols)}</select></label>
+                <label class="flex items-center gap-1.5 text-slate-300">Filas <select id="muro-rows" onchange="muroCambiarTam()" class="bg-slate-900 border border-slate-700 rounded p-1 text-amber-300">${sel(0, E.rows)}</select></label>
+                <span class="text-slate-500">${usados} de ${E.cols * E.rows} casillas con móvil${muroSucio ? ' · <span class="text-amber-400">cambios sin guardar</span>' : ''}</span>
+            </div>
+            <div class="grid gap-2 mb-3" style="grid-template-columns:repeat(${E.cols},minmax(0,1fr))">${celdas}</div>
+            <div class="flex flex-wrap gap-2 text-xs mb-3">
+                <button type="button" onclick="muroAuto()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-amber-400"></i> Asignar automáticamente</button>
+                <button type="button" onclick="muroVaciar()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200"><i class="fa-solid fa-eraser mr-1 text-amber-400"></i> Vaciar</button>
+                <button type="button" onclick="muroGuardar()" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar muro</button>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-snug mb-1">Coloca los móviles <b>en vertical</b>, pegados, en la misma disposición que ves aquí (la casilla «Col 1 · Fila 1» es la esquina superior izquierda). No hace falta rellenar todas: las casillas vacías son huecos del muro y los móviles sin casilla ven la escena a pantalla completa.</p>
+            <p class="text-[11px] text-slate-500 leading-snug">La resolución no importa (se dibuja a la nitidez de cada pantalla). Sí importan el <b>tamaño y la proporción</b>: con móviles distintos las uniones no encajan al milímetro y cada pantalla recorta un poco los bordes. Para el mejor resultado usa móviles parecidos.</p>`;
     }
+    window.muroCambiarTam = function () {
+        if (!muroEdit) muroEdit = muroEditInicial();
+        muroEdit.cols = acotar($('muro-cols').value, 1, 6, 4); muroEdit.rows = acotar($('muro-rows').value, 1, 6, 2);
+        Object.keys(muroEdit.celdas).forEach((k) => { const [c, r] = k.split(',').map(Number); if (c >= muroEdit.cols || r >= muroEdit.rows) delete muroEdit.celdas[k]; });
+        muroSucio = true; renderPanelMuro(false);
+    };
+    window.muroAsignar = function (c, r, id) {
+        if (!muroEdit) muroEdit = muroEditInicial();
+        Object.keys(muroEdit.celdas).forEach((k) => { if (muroEdit.celdas[k] === id) delete muroEdit.celdas[k]; });      // un móvil, una sola casilla
+        if (id) muroEdit.celdas[`${c},${r}`] = id; else delete muroEdit.celdas[`${c},${r}`];
+        muroSucio = true; renderPanelMuro(false);
+    };
+    window.muroAuto = function () {
+        if (!muroEdit) muroEdit = muroEditInicial();
+        const online = muroDispositivos().filter((d) => d.online);
+        muroEdit.celdas = {};
+        let i = 0;
+        for (let r = 0; r < muroEdit.rows; r++) for (let c = 0; c < muroEdit.cols; c++) { if (online[i]) muroEdit.celdas[`${c},${r}`] = online[i++].id; }
+        muroSucio = true; renderPanelMuro(false);
+        mostrarToast(`Asignados ${i} móviles conectados. Usa «Identificar» para ver cuál es cuál.`);
+    };
+    window.muroVaciar = function () { if (!muroEdit) muroEdit = muroEditInicial(); muroEdit.celdas = {}; muroSucio = true; renderPanelMuro(false); };
+    window.muroGuardar = function () {
+        if (!db || !muroEdit) return;
+        const asig = {};
+        Object.keys(muroEdit.celdas).forEach((k) => { const [c, r] = k.split(',').map(Number); asig[muroEdit.celdas[k]] = { c, r }; });
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('muro').set({ cols: muroEdit.cols, rows: muroEdit.rows, asig, updatedAt: ST() })
+            .then(() => { muroSucio = false; muroEdit = null; mostrarToast('Muro guardado y enviado a todos los móviles.'); })
+            .catch((e) => { manejarErrorFirestore(e, 'muro'); mostrarToast('No se pudo guardar el muro: ' + (e.message || e.code), 'error'); });
+    };
+    window.muroIdentificar = function (id) {
+        if (!db) return;
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('muro').set({ identificar: { id, hasta: ahoraServidor() + 5000 } }, { merge: true })
+            .catch((e) => manejarErrorFirestore(e, 'muro'));
+        if (id === clientId) mostrarIdentificacion(ahoraServidor() + 3000);
+    };
 
     /* ---- Previsualización en el panel de administración (local, sin sincronizar) ---- */
     window.mostrarAyudaTipo = function (id) {
@@ -2150,7 +2289,7 @@
         const cv = $('prev-canvas'), info = $('prev-info');
         const ctrl = new AbortController();
         previewAbort = ctrl;
-        previewPlayer = VaneEfectos.crearPlayer(cv, tipo, { seed: VaneEfectos.hash('previsualizacion:' + tipo), vista: () => null });
+        previewPlayer = VaneEfectos.crearPlayer(cv, tipo, { seed: VaneEfectos.hash('previsualizacion:' + tipo), vista: () => null, duracion: () => { const r = parseDur(($('adm-dur-' + id) || {}).value); return r.ok ? r.v : null; } });
         cv.muted = false;
         const replay = $('prev-replay');
         replay.onclick = () => { replay.classList.add('hidden'); cv.currentTime = 0; cv.play(); };
@@ -2166,8 +2305,10 @@
                 arrancado = true;
                 cv.establecerImagenes(slots);
                 cv.play();
-                const d = Math.round(cv.duration);
-                info.textContent = `${urls.length} fotos · duración ${Math.floor(d / 60)}:${String(d % 60).padStart(2, '0')}`;
+                info.textContent = `${urls.length} fotos · natural ${fmtDur(cv.natural)}` + (Math.round(cv.duration) !== Math.round(cv.natural) ? ` · ajustada a ${fmtDur(cv.duration)}` : '');
+                const inf = $('adm-dur-info-' + id), inp = $('adm-dur-' + id);
+                if (inf) inf.textContent = `Automática: ${fmtDur(cv.natural)} con ${urls.length} fotos.`;
+                if (inp) inp.placeholder = 'auto ' + fmtDur(cv.natural);
             };
             await VaneEfectos.decodificarSet(urls, {
                 destino: slots, maxLado: ladoMaxFotos(), cache: cacheF, red: true, signal: ctrl.signal,
@@ -2405,6 +2546,7 @@
             renderCachePendiente = false;
             actualizarChipCache();
             renderPanelCache();
+            renderPanelMuro(true);
             if (isAdmin && activeId) actualizarBarraListos();
         }, 200);
     }
@@ -2956,6 +3098,7 @@
             try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) { /* ignorar */ }
             suscribirMaster();
             suscribirPrecargaConfig();
+            suscribirMuroConfig();
             suscribirEstadoJuego();
         } catch (e) {
             console.error(e);

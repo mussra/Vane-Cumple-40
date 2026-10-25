@@ -180,7 +180,7 @@
                             <label for="input-dispositivos" class="text-slate-400">Dispositivos esperados:</label>
                             <input type="number" id="input-dispositivos" min="1" max="60" class="w-12 bg-slate-950 text-amber-400 font-bold text-center rounded border border-slate-700 p-1" onchange="cambiarDispositivos(this.value)">
                         </div>
-                        <button onclick="verificarVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-film mr-1 text-amber-400"></i> Comprobar vídeos</button>
+                        <button onclick="comprobarMedios()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-film mr-1 text-amber-400"></i> Comprobar medios</button>
                         <button onclick="recalibrarManual()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-clock mr-1 text-amber-400"></i> Recalibrar reloj</button>
                         <button onclick="borrarCacheVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-broom mr-1 text-amber-400"></i> Vaciar caché de vídeos</button>
                     </div>
@@ -931,7 +931,7 @@
         return `
         <article id="card-${e}" data-id="${e}" class="polaroid-card bg-[#1f2937] rounded-xl p-4 pb-5 border border-slate-700/60 flex flex-col justify-between">
             <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
-                <img id="img-${e}" src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
+                <img id="img-${e}" src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
                 <div id="lock-${e}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 lock-blur">
                     <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
                     <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
@@ -1395,6 +1395,69 @@
         cont.innerHTML = html;
     };
 
+
+    /* ---- Diagnóstico de medios: imágenes de los casos, listas de fotos y estado del servidor ---- */
+    function sondearImagen(url) {
+        return new Promise((resolve) => {
+            const im = new Image();
+            const t = setTimeout(() => { im.onload = im.onerror = null; resolve({ ok: false, tiempo: true }); }, 12000);
+            im.onload = () => { clearTimeout(t); resolve({ ok: true, w: im.naturalWidth, h: im.naturalHeight }); };
+            im.onerror = () => { clearTimeout(t); resolve({ ok: false }); };
+            im.src = url;
+        });
+    }
+    async function sondearServidor(host) {                         // no-cors: se resuelve con cualquier respuesta HTTP; solo falla si no hay conexión (DNS, TLS, bloqueo)
+        const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 10000);
+        try { await fetch('https://' + host + '/', { mode: 'no-cors', credentials: 'omit', cache: 'no-store', signal: ctrl.signal }); clearTimeout(t); return true; }
+        catch (e) { clearTimeout(t); return false; }
+    }
+    function explicarFallo(st, esImagen) {
+        if (st.tiempo) return 'El servidor no responde (tiempo agotado).';
+        if (st.status === 404) return 'No existe (404): el nombre o la carpeta no coinciden con lo que hay en el bucket (R2 distingue mayúsculas y minúsculas).';
+        if ([401, 403].includes(st.status)) return `Rechazado (HTTP ${st.status}): una regla de Cloudflare (WAF, protección de hotlink) o el acceso del bucket bloquea la petición.`;
+        if (st.status >= 500) return `Error del servidor (HTTP ${st.status}).`;
+        if (st.status) return `Error HTTP ${st.status}.`;
+        if (st.ok && !st.cors) return 'El servidor responde pero no se puede leer desde la web (falta la política CORS) o no devuelve una imagen válida.';
+        return 'No se puede conectar (DNS, certificado o bloqueo).';
+    }
+    window.comprobarMedios = async function () {
+        await verificarVideos();
+        const cont = $('salud-videos');
+        const pend = [];
+        Object.keys(casosConfig).sort(ordenCaso).forEach((id) => {
+            const c = casosConfig[id], t = tipoDe(c), im = (c.imagenUrl || '').trim();
+            if (im) pend.push({ id, que: 'Imagen del caso', url: im, img: true });
+            if (esFotos(t)) {
+                const a = VaneEfectos.analizarRecurso((c.recursoId || '').trim());
+                if (a.tipo === 'manifiesto') pend.push({ id, que: 'Lista de fotos', url: a.url, img: false });
+                else if (a.tipo === 'lista' && a.urls[0]) pend.push({ id, que: 'Primera foto', url: a.urls[0], img: true });
+            }
+        });
+        const hosts = {};
+        pend.forEach((p) => { try { hosts[new URL(p.url, location.href).host] = null; } catch (e) { /* URL inválida */ } });
+        const hostsLista = Object.keys(hosts).filter((h) => h !== location.host);
+        const filas = [];
+        for (const h of hostsLista) { const ok = await sondearServidor(h); hosts[h] = ok; filas.push([ok ? 'ok' : 'error', h, ok ? 'El servidor responde.' : 'No se puede conectar con este dominio (DNS, certificado HTTPS o bloqueo).', '']); }
+        let i = 0;
+        const trabajador = async () => {
+            while (i < pend.length) {
+                const p = pend[i++];
+                let host = ''; try { host = new URL(p.url, location.href).host; } catch (e) { /* ignorar */ }
+                if (host && hosts[host] === false) { p.res = ['error', p.id, `${p.que}: sin conexión con ${host}.`, p.url]; continue; }
+                const [vis, st] = await Promise.all([p.img ? sondearImagen(p.url) : Promise.resolve(null), sondearVideo(p.url)]);
+                if (p.img && vis.ok) p.res = ['ok', p.id, `${p.que}: se carga bien (${vis.w}×${vis.h}).`, p.url];
+                else if (!p.img && st.ok && st.cors) p.res = ['ok', p.id, `${p.que}: accesible.`, p.url];
+                else p.res = ['error', p.id, `${p.que}: ${explicarFallo(st, p.img)}${st.tipo && p.img ? ` (tipo recibido: ${st.tipo})` : ''}`, p.url];
+            }
+        };
+        await Promise.all([trabajador(), trabajador(), trabajador()]);
+        pend.forEach((p) => filas.push(p.res));
+        const col = { ok: 'text-emerald-400 fa-circle-check', aviso: 'text-amber-400 fa-triangle-exclamation', error: 'text-rose-400 fa-circle-xmark' };
+        const html = filas.map(([n, id, txt, url]) => `<div class="flex items-start gap-2"><i class="fa-solid ${col[n]} mt-0.5"></i><span class="text-slate-300"><b class="font-mono text-slate-200">${esc(id)}</b> · ${esc(txt)}${url ? ` <a href="${esc(url)}" target="_blank" rel="noopener" class="underline text-amber-300">abrir ↗</a>` : ''}</span></div>`).join('');
+        const malos = filas.filter((f) => f[0] === 'error').length;
+        cont.innerHTML += `<div class="mt-3 pt-3 border-t border-slate-800"><p class="font-semibold text-slate-200 mb-1.5">Imágenes, listas de fotos y servidor · ${malos ? `<span class="text-rose-300">${malos} con problemas</span>` : '<span class="text-emerald-300">todo correcto</span>'}</p><div class="space-y-1">${html || '<p class="text-slate-400">No hay imágenes configuradas.</p>'}</div></div>`;
+    };
+
     window.borrarCacheVideos = async function () {
         try {
             Object.keys(cacheVideos).forEach(cancelarDescarga);
@@ -1662,7 +1725,7 @@
             wrapper.innerHTML = `
                 <div class="flex flex-col items-center justify-center p-4 text-center h-full w-full bg-slate-900 overflow-y-auto gap-3">
                     <div class="relative w-28 sm:w-36 aspect-[3/4] shrink-0 overflow-hidden rounded-lg bg-slate-950 shadow-xl border border-slate-700">
-                        <img src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" onerror="this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain" alt="Imagen del caso">
+                        <img src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain" alt="Imagen del caso">
                     </div>
                     <div>
                         <h4 class="font-serif text-base font-bold text-white mb-1"><i class="fa-solid fa-microphone-lines text-amber-400 mr-1.5"></i> Explicación en vivo</h4>

@@ -55,12 +55,13 @@
     }
 
     /* Marco tipo polaroid con halo de color. La foto se muestra COMPLETA (sin recortar). */
-    function pintarFoto(ctx, img, x, y, S, rot, alpha, hue, brillo) {
+    function pintarFoto(ctx, img, x, y, S, rot, alpha, hue, brillo, zs, idx) {
         if (alpha <= 0.003) return;
         var iw = img ? img.width : 4, ih = img ? img.height : 3;
         var k = Math.min(S / iw, S / ih), dw = iw * k, dh = ih * k;
         var b = S * 0.05, base = S * 0.07;
         var fw = dw + 2 * b, fh = dh + 2 * b + base;
+        if (zs && alpha > 0.5) zs.push({ i: idx, x: x, y: y, w: fw, h: fh, rot: rot });
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(rot);
@@ -111,6 +112,7 @@
         var sonidos = [];
         bursts.forEach(function (b) { sonidos.push({ t: b.L, tipo: 'lanzar' }, { t: b.B, tipo: 'estallar' }); });
 
+        var zonas = [];
         function tam(w, h) { return (w <= h * 1.15) ? Math.min(w * 0.40, h * 0.30) : Math.min(h * 0.46, w * 0.20); }
         function centro(b, w, h) {
             var S = tam(w, h), ext = S * 0.66 * 1.08 * 0.78 + S * 0.62, c;
@@ -122,6 +124,7 @@
         }
 
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             // Fondo nocturno
             var g = ctx.createLinearGradient(0, 0, 0, h);
             g.addColorStop(0, '#04040c'); g.addColorStop(0.6, '#0a0a1e'); g.addColorStop(1, '#140a24');
@@ -175,21 +178,21 @@
                 // Fotos
                 for (j = 0; j < b.fotos.length; j++) {
                     var f = b.fotos[j], af = ag - f.delay;
-                    if (af < 0 || af > VIDA) continue;
+                    if (af < 0 || (af > VIDA && k < K - 1)) continue;
                     var vu = salidaCubica(af / VUELA);
                     var px2 = c.x + Math.cos(f.ang) * rho * f.rad * vu + Math.sin(af * 0.9 + f.ph) * S * 0.025;
                     var py2 = c.y + Math.sin(f.ang) * rho * f.rad * vu + Math.cos(af * 0.7 + f.ph) * S * 0.03;
                     var esc = (0.35 + 0.65 * vu) * (1 + 0.022 * Math.sin(af * 2.1 + f.ph));
                     var al = Math.min(1, af / 0.22), rot = f.rot + (1 - vu) * 0.9 * (j % 2 ? 1 : -1) + Math.sin(af * 0.8 + f.ph) * 0.035;
-                    if (af > HOLD) {
+                    if (af > HOLD && k < K - 1) {
                         var o = (af - HOLD) / (VIDA - HOLD);
                         al *= 1 - o; py2 += o * o * S * 0.35; esc *= 1 + o * 0.08;
                     }
-                    pintarFoto(ctx, fotoDe(imgs, f.idx), px2, py2, S * esc, rot, al, f.hue, 0.22);
+                    pintarFoto(ctx, fotoDe(imgs, f.idx), px2, py2, S * esc, rot, al, f.hue, 0.22, zonas, f.idx);
                 }
             }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: sonidos, musica: null };
+        return { duracion: duracion, dibujar: dibujar, sonidos: sonidos, musica: null, zonas: zonas };
     }
 
     /* ======================================================================
@@ -300,7 +303,9 @@
             ctx.restore();
         }
 
+        var zonas = [];
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             var D = Math.min(w, h * 0.9), Lx = 0.45 * w, Ly = 0.45 * D, vx = w / 2, vy = h * 0.40, shipY = h * 0.76;
             var vS = (shipY - vy) / Ly, uShip = naveX(t), camU = uShip * 0.55, k, q;
             // Fondo: nebulosas
@@ -332,6 +337,7 @@
             }
             for (q = 0; q < fotos.length; q++) {
                 o = fotos[q]; tau = t - o.Tp;
+                if (q === fotos.length - 1) tau = Math.min(tau, -0.2);          // la última foto se queda a la vista
                 if (tau < -7.5 || tau > 3.6) continue;
                 obj.push({ tipo: 'f', o: o, Z: zFoto(tau), tau: tau });
             }
@@ -362,16 +368,13 @@
                     var lx = Math.cos(lun) * Sf * 0.95, ly = Math.sin(lun) * Sf * 0.3, ca = Math.cos(-0.35), sa = Math.sin(-0.35);
                     ctx.arc(lx * ca - ly * sa, lx * sa + ly * ca, Math.max(1.5, Sf * 0.035), 0, TAU); ctx.fill();
                     ctx.restore();
-                    pintarFoto(ctx, fotoDe(imgs, ff.idx), fx, fy, Sf, ff.rot + Math.sin(t * 0.5 + ff.ph) * 0.05, alf, ff.hue, 0.24);
+                    pintarFoto(ctx, fotoDe(imgs, ff.idx), fx, fy, Sf, ff.rot + Math.sin(t * 0.5 + ff.ph) * 0.05, alf, ff.hue, 0.24, zonas, ff.idx);
                 }
             }
             if (!navePintada) pintarNaveEspacial(ctx, nx, shipY + Math.sin(t * 2.3) * D * 0.006, sNave, roll, t);
-            // Final: fundido a negro
-            var fin = clamp(1 - (duracion - t) / 1.6, 0, 1);
-            if (fin > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fin.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
         var ev = []; met.forEach(function (m) { ev.push({ t: m.T, tipo: 'whoosh', v: 0.4 }); });
-        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'espacio' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'espacio', zonas: zonas };
     }
 
     /* ======================================================================
@@ -475,7 +478,6 @@
                 var rr = rngDe(seed + 99); chispas(ctx, w, h, t, 160, rr);
                 var flash = Math.max(0, 1 - (f - 0.5) / 0.6); if (f > 0.5 && flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (flash * 0.5).toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
             }
-            var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
         var ev = []; for (var q0 = 0; q0 < N; q0++) ev.push({ t: 1 + q0 * TF, tipo: 'whoosh', v: 0.5 }); ev.push({ t: fin0 + 0.5, tipo: 'fanfarria', v: 1 });
         return { duracion: duracion, dibujar: dibujar, sonidos: ev, muro: true, musica: 'celebracion' };
@@ -523,7 +525,6 @@
                 var dor = ctx.createLinearGradient(0, h / 2 - px / 2, 0, h / 2 + px / 2); dor.addColorStop(0, '#fff3b0'); dor.addColorStop(1, '#d9901c');
                 textoGrande(ctx, '40', w / 2, h / 2, px * (0.7 + 0.3 * e), dor, e);
             }
-            var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
         var ev = []; for (var q0 = 0; q0 < N; q0++) ev.push({ t: 1 + q0 * INT + 0.6, tipo: 'whoosh', v: 0.5 }); ev.push({ t: fin0, tipo: 'fanfarria', v: 1 });
         return { duracion: duracion, dibujar: dibujar, sonidos: ev, muro: true, musica: 'fiesta' };
@@ -560,7 +561,9 @@
             if (rango % 5 === 0) ev.push({ t: c.ta + VUELO * 0.85, tipo: 'pop', v: 0.5 });
         });
         ev.push({ t: 1 + TA + VUELO, tipo: 'chime', v: 1 });
+        var zonas = [];
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             fondoNoche(ctx, w, h, '#06040f', '#150b2a');
             var vertical = w <= h * 1.1, cs, ox, oy;
             if (vertical) cs = Math.min(w * 0.94 / G, h * 0.95 / (2 * G));
@@ -582,6 +585,7 @@
                 ctx.save(); ctx.translate(x1, y1); ctx.rotate(c.rot * (1 - e));
                 var s = cs * (0.5 + 0.5 * e) * 0.94;
                 ctx.drawImage(copiaEscalada(fotoDe(imgs, c.foto), lado, true), -s / 2, -s / 2, s, s);
+                if (u >= 1) zonas.push({ i: c.foto, x: x1, y: y1, w: s, h: s, rot: 0 });
                 if (u >= 1 && brillo >= 0) {                                   // barrido dorado al final
                     var dx = ((tx - ox) / tamTotalW + (ty - oy) / tamTotalH) * 0.5, a = Math.max(0, 1 - Math.abs(dx - ((brillo * 1.6) % 1.4 - 0.2)) * 7);
                     if (a > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,220,120,' + (a * 0.65).toFixed(3) + ')'; ctx.fillRect(-s / 2, -s / 2, s, s); }
@@ -589,28 +593,30 @@
                 ctx.restore();
             }
             var rr = rngDe(seed + 5); if (llegadas > 0.5) chispas(ctx, w, h, t, 90, rr);
-            var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'magico' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'magico', zonas: zonas };
     }
 
     /* ======================================================================
        EFECTO 6: ENFOQUE DE MISTERIO — cada foto aparece borrosa y se va descubriendo
        ====================================================================== */
     function crearEnfoque(imgs, seed) {
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), TF = 8.6, duracion = 1 + N * TF + 1;
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), TF = 8.6, duracion = 1 + (N - 1) * TF + 7.8, zonas = [];
         var niveles = [6, 10, 16, 26, 42, 70, 120, 220, 9999];
         var fases = []; for (var i = 0; i < N; i++) fases.push({ a: rnd() * TAU, b: rnd() * TAU, f1: 0.6 + rnd() * 0.5, f2: 0.8 + rnd() * 0.5 });
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             fondoNoche(ctx, w, h, '#07050f', '#130a22');
-            var k = Math.floor((t - 1) / TF); if (k < 0 || k >= N) { var rr = rngDe(seed + 1); chispas(ctx, w, h, t, 60, rr); return; }
-            var l = t - 1 - k * TF, img = fotoDe(imgs, orden[k % N]), fz = fases[k];
+            var k = Math.floor((t - 1) / TF); if (k < 0) { var rr = rngDe(seed + 1); chispas(ctx, w, h, t, 60, rr); return; }
+            var l = t - 1 - k * TF; if (k >= N) { k = N - 1; l = TF; }
+            var img = fotoDe(imgs, orden[k % N]), fz = fases[k], ultima = (k === N - 1);
             var caja = cajaFoto(img, w * 0.9, h * 0.78), x = w / 2, y = h * 0.5, fw = caja.w, fh = caja.h;
-            var alfa = Math.min(clamp(l / 0.6, 0, 1), clamp((TF - l) / 0.5, 0, 1));
+            var alfa = Math.min(clamp(l / 0.6, 0, 1), ultima ? 1 : clamp((TF - l) / 0.5, 0, 1));
             var prog = clamp((l - 0.6) / 5.0, 0, 1), nivel = prog * (niveles.length - 2), n0 = Math.floor(nivel), fr = nivel - n0;
             ctx.save(); ctx.globalAlpha = alfa; ctx.translate(x, y);
             var b = Math.min(fw, fh) * 0.035; ctx.fillStyle = '#f7f7f7'; ctx.shadowColor = 'rgba(255,230,160,0.55)'; ctx.shadowBlur = Math.min(w, h) * 0.05;
             ctx.fillRect(-fw / 2 - b, -fh / 2 - b, fw + 2 * b, fh + 2 * b); ctx.shadowBlur = 0;
+            if (prog >= 1) zonas.push({ i: orden[k % N], x: x, y: y, w: fw + 2 * b, h: fh + 2 * b, rot: 0 });
             ctx.beginPath(); ctx.rect(-fw / 2, -fh / 2, fw, fh); ctx.clip();
             ctx.imageSmoothingEnabled = true;
             var A = copiaEscalada(img, niveles[n0]), B = copiaEscalada(img, niveles[n0 + 1]);
@@ -623,27 +629,28 @@
             var ff = (l - 5.6) / 0.7; if (ff > 0 && ff < 1) { ctx.fillStyle = 'rgba(255,255,255,' + ((1 - ff) * 0.8).toFixed(3) + ')'; ctx.fillRect(-fw / 2, -fh / 2, fw, fh); }
             ctx.restore();
             if (prog < 1) { ctx.save(); ctx.globalAlpha = alfa * (1 - prog); ctx.font = 'bold ' + Math.round(Math.min(w * 0.08, 34)) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fde9a8'; ctx.fillText('¿Quién será?', w / 2, h * 0.07); ctx.restore(); }
-            var fo = clamp(1 - (duracion - t) / 1.0, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
         var ev = []; for (var q0 = 0; q0 < N; q0++) { ev.push({ t: 1 + q0 * TF + 0.1, tipo: 'whoosh', v: 0.4 }, { t: 1 + q0 * TF + 5.6, tipo: 'ding', v: 1 }); }
-        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia', zonas: zonas };
     }
 
     /* ======================================================================
        EFECTO 7: ROMPECABEZAS — las piezas vuelan y la foto se recompone
        ====================================================================== */
     function crearPuzzle(imgs, seed) {
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), CX = 4, CY = 3, TF = 9, duracion = 1 + N * TF + 1;
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), CX = 4, CY = 3, TF = 9, duracion = 1 + (N - 1) * TF + 7.5, zonas = [];
         var piezas = []; for (var i = 0; i < CX * CY; i++) piezas.push({ ang: rnd() * TAU, dist: 0.8 + rnd() * 0.5, rot: (rnd() - 0.5) * 5, d: rnd() * 0.9 });
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             fondoNoche(ctx, w, h, '#0a0a18', '#1a1030');
             var k = Math.floor((t - 1) / TF), rr = rngDe(seed + 2); chispas(ctx, w, h, t, 40, rr);
-            if (k < 0 || k >= N) return;
-            var l = t - 1 - k * TF, img = fotoDe(imgs, orden[k % N]), cb = cajaFoto(img, w * 0.9, h * 0.74), fw = cb.w, fh = cb.h;
+            if (k < 0) return;
+            var l = t - 1 - k * TF; if (k >= N) { k = N - 1; l = TF; }
+            var ultima = (k === N - 1), img = fotoDe(imgs, orden[k % N]), cb = cajaFoto(img, w * 0.9, h * 0.74), fw = cb.w, fh = cb.h;
             var x0 = (w - fw) / 2, y0 = (h - fh) / 2, pw = fw / CX, ph = fh / CY, sw = img.width / CX, sh = img.height / CY;
             for (var p = 0; p < piezas.length; p++) {
                 var pi = piezas[p], cx = p % CX, cy = Math.floor(p / CX);
-                var entra = clamp((l - 0.3 - pi.d) / 1.2, 0, 1), sale = clamp((l - 7.3 - pi.d * 0.5) / 1.1, 0, 1);
+                var entra = clamp((l - 0.3 - pi.d) / 1.2, 0, 1), sale = ultima ? 0 : clamp((l - 7.3 - pi.d * 0.5) / 1.1, 0, 1);
                 var e = salidaCubica(entra), se = sale * sale, R = Math.max(w, h) * pi.dist;
                 var tx = x0 + cx * pw + pw / 2, ty = y0 + cy * ph + ph / 2;
                 var ex = w / 2 + Math.cos(pi.ang) * R, ey = h / 2 + Math.sin(pi.ang) * R;
@@ -655,14 +662,14 @@
                 ctx.drawImage(img, cx * sw, cy * sh, sw, sh, -pw / 2 + gap / 2, -ph / 2 + gap / 2, pw - gap, ph - gap);
                 ctx.restore();
             }
-            if (l > 4.0 && l < 7.4) {                                          // foto completa: marco y destello
-                var a = Math.min(clamp((l - 4.0) / 0.5, 0, 1), clamp((7.4 - l) / 0.5, 0, 1));
+            if (l > 4.0 && (l < 7.4 || ultima)) {
+                zonas.push({ i: orden[k % N], x: w / 2, y: h / 2, w: fw, h: fh, rot: 0 });                                          // foto completa: marco y destello
+                var a = Math.min(clamp((l - 4.0) / 0.5, 0, 1), ultima ? 1 : clamp((7.4 - l) / 0.5, 0, 1));
                 ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = '#fde9a8'; ctx.lineWidth = Math.max(3, w * 0.01); ctx.shadowColor = '#f5b82e'; ctx.shadowBlur = w * 0.04; ctx.strokeRect(x0, y0, fw, fh); ctx.restore();
             }
-            var fo = clamp(1 - (duracion - t) / 1.0, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
         var ev = []; for (var q0 = 0; q0 < N; q0++) { var b0 = 1 + q0 * TF; piezas.forEach(function (pz) { ev.push({ t: b0 + 0.3 + pz.d + 1.2, tipo: 'click', v: 0.6 }); }); ev.push({ t: b0 + 4.0, tipo: 'chime', v: 0.9 }, { t: b0 + 7.3, tipo: 'whoosh', v: 0.5 }); }
-        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'magico' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'magico', zonas: zonas };
     }
 
     /* ======================================================================
@@ -670,9 +677,10 @@
        ====================================================================== */
     function crearPolaroid(imgs, seed) {
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), INT = 5.2, duracion = 1 + (N - 1) * INT + 6.8 + 3;
-        var casillas = barajar(N + 10, rnd), items = [];
+        var casillas = barajar(N + 10, rnd), items = [], zonas = [];
         for (var j = 0; j < N; j++) items.push({ idx: orden[j], cas: casillas[j], rot: (rnd() - 0.5) * 0.5, ph: rnd() * TAU, jx: rnd() - 0.5, jy: rnd() - 0.5 });
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             var g = ctx.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#2b1b12'); g.addColorStop(1, '#171009'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
             var cols = w < h ? 4 : 7, filas = Math.ceil((N + 10) / cols), S = Math.min(w, h) * 0.78, Sp = Math.min(w / cols * 1.15, h / filas * 1.15) * 0.92, j;
             for (j = 0; j < N; j++) {
@@ -680,13 +688,14 @@
                 var cx0 = it.cas % cols, cy0 = Math.floor(it.cas / cols), px = (cx0 + 0.5 + it.jx * 0.3) / cols * w, py = (cy0 + 0.5 + it.jy * 0.3) / filas * h;
                 var e = suave((l - 6.0) / 0.8);
                 var fx = lerp(w / 2, px, e), fy = lerp(h * 0.5, py, e), esc = lerp(1, Sp / S, e);
-                pintarFoto(ctx, fotoDe(imgs, it.idx), fx, fy, S * esc, lerp(0, it.rot, e), 0.97, 40, 0.06);
+                pintarFoto(ctx, fotoDe(imgs, it.idx), fx, fy, S * esc, lerp(0, it.rot, e), 0.97, 40, 0.06, zonas, it.idx);
             }
             var k = Math.floor((t - 1) / INT); if (k >= 0 && k < N) {
                 var l2 = t - 1 - k * INT; if (l2 < 6.8) {
                     var itc = items[k], dentro = salidaCubica(l2 / 1.0), caeA = l2 > 6.0 ? suave((l2 - 6.0) / 0.8) : 0, img = fotoDe(imgs, itc.idx);
                     if (caeA === 0) {
                         var yc = lerp(h * 1.0 + S * 0.5, h * 0.5, dentro), cb = cajaFoto(img, S, S), b = S * 0.05, base = S * 0.07, fw = cb.w + 2 * b, fh = cb.h + 2 * b + base;
+                        zonas.push({ i: itc.idx, x: w / 2, y: yc, w: fw, h: fh, rot: itc.rot * 0.5 * (1 - dentro) });
                         ctx.save(); ctx.translate(w / 2, yc); ctx.rotate(itc.rot * 0.5 * (1 - dentro)); ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = S * 0.08; ctx.shadowOffsetY = S * 0.03;
                         ctx.fillStyle = '#fbfaf6'; ctx.fillRect(-fw / 2, -fh / 2, fw, fh); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
                         ctx.fillStyle = '#d9d6cc'; ctx.fillRect(-cb.w / 2, -fh / 2 + b, cb.w, cb.h);
@@ -697,21 +706,20 @@
                         ctx.restore();
                     } else {
                         var c2 = items[k], cx1 = c2.cas % cols, cy1 = Math.floor(c2.cas / cols), ppx = (cx1 + 0.5 + c2.jx * 0.3) / cols * w, ppy = (cy1 + 0.5 + c2.jy * 0.3) / filas * h;
-                        pintarFoto(ctx, img, lerp(w / 2, ppx, caeA), lerp(h * 0.5, ppy, caeA), lerp(S, Sp, caeA), lerp(0, c2.rot, caeA), 0.97, 40, 0.06);
+                        pintarFoto(ctx, img, lerp(w / 2, ppx, caeA), lerp(h * 0.5, ppy, caeA), lerp(S, Sp, caeA), lerp(0, c2.rot, caeA), 0.97, 40, 0.06, zonas, c2.idx);
                     }
                 }
             }
-            var fo = clamp(1 - (duracion - t) / 1.4, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
         var ev = []; for (var q0 = 0; q0 < N; q0++) { var tj = 1 + q0 * INT; ev.push({ t: tj + 0.05, tipo: 'obturador', v: 1 }, { t: tj + 0.2, tipo: 'impresora', v: 0.8 }, { t: tj + 4.9, tipo: 'ding', v: 0.8 }); }
-        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia', zonas: zonas };
     }
 
     /* ======================================================================
        EFECTO 9: TÚNEL DEL TIEMPO — viaje por un túnel con las fotos en las paredes
        ====================================================================== */
     function crearTunel(imgs, seed) {
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), V = 1.25, GAP = 3.4, Z0 = 9, duracion = (Z0 + (N - 1) * GAP + 3.5) / V;
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), V = 1.25, GAP = 3.4, Z0 = 9, camMax = Z0 + (N - 1) * GAP - 2.8, duracion = camMax / V + 3.5;
         var X0 = 1, paneles = [];
         for (var j = 0; j < N; j++) paneles.push({ idx: orden[j], pared: j % 4, z: Z0 + j * GAP, hue: Math.floor(rnd() * 360) });
         function tira(ctx, img, pared, z1, z2, L, vx, vy, F, Y0, mitadAlto, ancho) {
@@ -736,7 +744,7 @@
             }
         }
         function dibujar(ctx, w, h, t) {
-            var F = w * 0.5, vx = w / 2, vy = h / 2, Y0 = h / w * X0, cam = V * t, k;
+            var F = w * 0.5, vx = w / 2, vy = h / 2, Y0 = h / w * X0, cam = Math.min(V * t, camMax), k;
             ctx.fillStyle = '#02020a'; ctx.fillRect(0, 0, w, h);
             // Anillos de luz que vienen hacia la cámara
             ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -768,7 +776,6 @@
             }
             var vg = ctx.createRadialGradient(vx, vy, 0, vx, vy, Math.max(w, h) * 0.65); vg.addColorStop(0, 'rgba(120,160,255,0.22)'); vg.addColorStop(0.35, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.35)');
             ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
-            var fo = clamp(1 - (duracion - t) / 1.4, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
         var ev = []; paneles.forEach(function (pn) { ev.push({ t: (pn.z - 2.4) / V, tipo: 'whoosh', v: 0.5 }); });
         return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'espacio' };
@@ -778,11 +785,12 @@
        EFECTO 10: FAROLILLOS AL CIELO — fotos que suben flotando en la noche
        ====================================================================== */
     function crearFarolillos(imgs, seed) {
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), INT = 2.4, VIDA = 15, duracion = 1 + (N - 1) * INT + VIDA + 1, j;
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), INT = 2.4, VIDA = 15, duracion = 1 + (N - 1) * INT + VIDA * 0.45 + 4.5, j, zonas = [];
         var fa = [], estrellas = crearEstrellas(rnd, 110), orbes = [];
         for (j = 0; j < N; j++) fa.push({ T: 1 + j * INT, x: 0.14 + rnd() * 0.72, prof: 0.8 + rnd() * 0.45, ph: rnd() * TAU, amp: 0.02 + rnd() * 0.035, idx: orden[j] });
         for (j = 0; j < Math.floor(duracion / 0.8); j++) orbes.push({ T: rnd() * duracion, x: rnd(), v: 0.06 + rnd() * 0.06, r: 2 + rnd() * 4, ph: rnd() * TAU });
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             fondoNoche(ctx, w, h, '#050818', '#1d1030');
             var s;
             for (s = 0; s < estrellas.length; s++) { var e = estrellas[s], a = 0.3 + 0.3 * Math.sin(t * e.f + e.ph); ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')'; ctx.fillRect(e.x * w, e.y * h * 0.8, e.r, e.r); }
@@ -797,19 +805,18 @@
             ctx.restore();
             var Sb = Math.min(w * 0.34, h * 0.2);
             for (j = 0; j < N; j++) {
-                var f = fa[j], l = t - f.T; if (l < 0 || l > VIDA) continue;
-                var u = l / VIDA, py = lerp(h + Sb * 0.8, -Sb * 0.9, u), px = (f.x + Math.sin(l * 0.55 + f.ph) * f.amp) * w, sz = Sb * f.prof;
-                var al = Math.min(clamp(l / 1.2, 0, 1), clamp((VIDA - l) / 1.8, 0, 1)), fl = 0.88 + 0.12 * Math.sin(l * 9 + f.ph);
+                var f = fa[j], l = t - f.T, esUlt = (j === N - 1); if (l < 0 || (l > VIDA && !esUlt)) continue;
+                var u = (esUlt ? Math.min(l, VIDA * 0.45) : l) / VIDA, py = lerp(h + Sb * 0.8, -Sb * 0.9, u), px = (f.x + Math.sin(l * 0.55 + f.ph) * f.amp) * w, sz = Sb * f.prof;
+                var al = Math.min(clamp(l / 1.2, 0, 1), esUlt ? 1 : clamp((VIDA - l) / 1.8, 0, 1)), fl = 0.88 + 0.12 * Math.sin(l * 9 + f.ph);
                 var gr = ctx.createRadialGradient(px, py, 0, px, py, sz * 1.15); gr.addColorStop(0, 'rgba(255,170,60,' + (0.55 * al * fl).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,120,30,0)');
                 ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = gr; ctx.fillRect(px - sz * 1.2, py - sz * 1.2, sz * 2.4, sz * 2.4); ctx.restore();
-                pintarFoto(ctx, fotoDe(imgs, f.idx), px, py, sz, Math.sin(l * 0.8 + f.ph) * 0.07, al, 30, 0.2);
+                pintarFoto(ctx, fotoDe(imgs, f.idx), px, py, sz, Math.sin(l * 0.8 + f.ph) * 0.07, al, 30, 0.2, zonas, f.idx);
                 ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = al * fl;
                 var fg = ctx.createRadialGradient(px, py + sz * 0.62, 0, px, py + sz * 0.62, sz * 0.2); fg.addColorStop(0, 'rgba(255,240,170,0.95)'); fg.addColorStop(1, 'rgba(255,140,40,0)');
                 ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(px, py + sz * 0.62, sz * 0.07, sz * 0.14, 0, 0, TAU); ctx.fill(); ctx.restore();
             }
-            var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'magico' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'magico', zonas: zonas };
     }
 
     /* ======================================================================
@@ -819,28 +826,32 @@
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), INT = 1.35, j, conf = [];
         var fo = [], maxVida = 0;
         for (j = 0; j < N; j++) { var vida = 8.5 + rnd() * 3; maxVida = Math.max(maxVida, vida); fo.push({ T: 1 + j * INT, x: 0.12 + rnd() * 0.76, vida: vida, prof: 0.75 + rnd() * 0.5, ph: rnd() * TAU, fr: 0.7 + rnd() * 0.8, rot: (rnd() - 0.5) * 1.2, idx: orden[j], hue: Math.floor(rnd() * 360) }); }
-        var duracion = 1 + (N - 1) * INT + 12.5;
+        var duracion = fo.reduce(function (m, f) { return Math.max(m, f.T + f.vida); }, 0) + 4.5, zonas = [];
         for (j = 0; j < 90; j++) conf.push({ x: rnd(), v: 0.08 + rnd() * 0.12, ph: rnd(), w: 3 + rnd() * 6, hue: Math.floor(rnd() * 360), sp: 1 + rnd() * 3 });
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             fondoNoche(ctx, w, h, '#0a0620', '#1c0e3a');
             var s;
             for (s = 0; s < conf.length; s++) {
                 var c = conf[s], y = (((c.ph + t * c.v) % 1) * (h + 40)) - 20, x = (c.x + Math.sin(t * 0.8 + c.ph * 9) * 0.03) * w, e = Math.abs(Math.cos(t * c.sp + c.ph * 7));
                 ctx.fillStyle = 'hsla(' + c.hue + ',90%,62%,0.8)'; ctx.save(); ctx.translate(x, y); ctx.rotate(t * c.sp); ctx.fillRect(-c.w / 2, -c.w * e / 2, c.w, Math.max(1, c.w * e)); ctx.restore();
             }
-            var Sb = Math.min(w * 0.34, h * 0.19);
+            var Sb = Math.min(w * 0.34, h * 0.19), cols = Math.max(2, Math.floor(w / (Sb * 0.8))), filas = Math.ceil(N / cols);
+            var paso = Math.min(Sb * 0.62, (h * 0.78 - Sb) / Math.max(1, filas - 1));
             for (j = 0; j < N; j++) {
-                var f = fo[j], l = t - f.T; if (l < 0 || l > f.vida) continue;
-                var u = l / f.vida, sz = Sb * f.prof, py = lerp(-sz * 0.9, h + sz * 0.9, u), px = (f.x + Math.sin(l * f.fr + f.ph) * 0.07) * w;
-                var al = Math.min(clamp(l / 0.6, 0, 1), clamp((f.vida - l) / 0.6, 0, 1));
-                var giro = Math.cos(l * f.fr * 1.3 + f.ph), esc = 0.55 + 0.45 * Math.abs(giro);       // aleteo: la foto "gira" al caer
+                var f = fo[j], l = t - f.T; if (l < 0) continue;
+                var sz = Sb * f.prof, rc = j % cols, rf = Math.floor(j / cols);
+                var rx = (rc + 0.5 + (f.x - 0.5) * 0.25) / cols * w, ry = h - sz * 0.55 - rf * paso;      // reposo: montón en el fondo
+                var u = clamp(l / f.vida, 0, 1), sw = Math.sin(l * f.fr + f.ph) * 0.07 * w * (1 - u);
+                var px = lerp(f.x * w + sw, rx, suave(u)), py = lerp(-sz * 0.9, ry, u);
+                var al = clamp(l / 0.6, 0, 1), giro = Math.cos(l * f.fr * 1.3 + f.ph), esc = lerp(0.55 + 0.45 * Math.abs(giro), 1, suave((u - 0.8) / 0.2));
+                var rot = lerp(f.rot + Math.sin(l * f.fr + f.ph) * 0.25, f.rot * 0.6, suave(u));
                 ctx.save(); ctx.translate(px, py); ctx.scale(esc, 1); ctx.translate(-px, -py);
-                pintarFoto(ctx, fotoDe(imgs, f.idx), px, py, sz, f.rot + Math.sin(l * f.fr + f.ph) * 0.25, al, f.hue, 0.16);
+                pintarFoto(ctx, fotoDe(imgs, f.idx), px, py, sz, rot, al, f.hue, 0.16, zonas, f.idx);
                 ctx.restore();
             }
-            var ff = clamp(1 - (duracion - t) / 1.2, 0, 1); if (ff > 0) { ctx.fillStyle = 'rgba(0,0,0,' + ff.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'fiesta' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'fiesta', zonas: zonas };
     }
 
     /* ======================================================================
@@ -862,6 +873,8 @@
             }
             ev.push({ t: 1 + k * RONDA + 0.5 + DUR[2], tipo: 'premio', v: 1 });
         }
+        var zonas = [];
+        function idxDe(rr, c) { var q = 3 * ((((c - 1) % R) + R) % R) + rr; return q < N ? orden[q] : -1; }
         function pos(r, t) {                                                     // posición (en casillas) del rodillo r
             var kk = Math.floor((t - 1) / RONDA); if (kk < 0) return 0;
             kk = Math.min(kk, R - 1);
@@ -876,6 +889,7 @@
             ctx.fillStyle = '#5a3406'; ctx.font = 'bold ' + Math.round(s * 0.42) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('40', x, y + 2);
         }
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             fondoNoche(ctx, w, h, '#14041f', '#33081c');
             var cs = Math.min(w * 0.27, h * 0.2), anchoMaq = cs * 3.34, altoVent = cs * 1.0, cx = w / 2, cy = h * 0.5, b;
             var ma = ctx.createLinearGradient(0, cy - cs * 1.4, 0, cy + cs * 1.4); ma.addColorStop(0, '#ffd966'); ma.addColorStop(0.5, '#c8860f'); ma.addColorStop(1, '#8a5206');
@@ -901,6 +915,7 @@
                     if (!im) { fichaDorada(ctx, rxr + cs / 2, y, cs); continue; }
                     var cb = cajaFoto(im, cs * 0.88, cs * 0.88);
                     ctx.drawImage(im, rxr + (cs - cb.w) / 2, y - cb.h / 2, cb.w, cb.h);
+                    if (vel < 0.05 && c === Math.round(p)) zonas.push({ i: idxDe(rr, c), x: rxr + cs / 2, y: y, w: cb.w, h: cb.h, rot: 0 });
                     if (vel > 6) { ctx.globalAlpha = 0.3; ctx.drawImage(im, rxr + (cs - cb.w) / 2, y - cb.h / 2 + vel * 0.9, cb.w, cb.h); }
                 }
                 ctx.restore();
@@ -916,9 +931,8 @@
                 ctx.restore();
                 var fl = Math.max(0, 1 - (l - fin) / 0.45); if (fl > 0) { ctx.save(); ctx.globalAlpha = fl * 0.4; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.restore(); }
             }
-            var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: null };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: null, zonas: zonas };
     }
 
     /* ======================================================================
@@ -928,7 +942,7 @@
        ====================================================================== */
     function crearPasteleria(imgs, seed) {
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), j;
-        var INT = 4.4, T0 = 1.2, DROP = 0.9, SHOW = 3.0, FLY = 0.9, VUELO_TOTAL = DROP + SHOW + FLY;
+        var INT = 5.0, T0 = 1.2, DROP = 0.9, SHOW = 3.0, FLY = 0.9, VUELO_TOTAL = DROP + SHOW + FLY;
         var tFin = T0 + (N - 1) * INT + VUELO_TOTAL, tVelas = tFin + 0.6, duracion = tVelas + 9.5;
         var pasteles = ['#ff8fab', '#ffd166', '#8ecae6', '#b8f2e6', '#cdb4db', '#ffafcc'];
         var fotos = [], sprinkles = [], confeti = [], bokeh = [], ev = [];
@@ -940,7 +954,7 @@
         for (j = 0; j < 170; j++) sprinkles.push({ x: rnd(), y: rnd(), r: rnd() * TAU, c: pasteles[Math.floor(rnd() * pasteles.length)], tier: Math.floor(rnd() * 3) });
         for (j = 0; j < 110; j++) confeti.push({ x: rnd(), v: 0.12 + rnd() * 0.18, ph: rnd(), w: 4 + rnd() * 6, c: pasteles[Math.floor(rnd() * pasteles.length)], sp: 1 + rnd() * 3 });
         for (j = 0; j < 16; j++) bokeh.push({ x: rnd(), y: rnd(), r: 0.03 + rnd() * 0.07, c: pasteles[Math.floor(rnd() * pasteles.length)], v: 0.01 + rnd() * 0.02, ph: rnd() * TAU });
-        var permSlots = barajar(400, rngDe(seed + 11)), cacheLay = {};
+        var permSlots = barajar(400, rngDe(seed + 11)), cacheLay = {}, zonas = [];
 
         // Disposición: tarta de tres pisos y casillas para las fotos (empaquetado hexagonal en las caras)
         function disposicion(w, h) {
@@ -954,9 +968,9 @@
             for (i = 0; i < 3; i++) { var th = L.Wc * hh[i], tw = L.Wc * ws[i]; y -= th; L.tiers.push({ x: L.cx - tw / 2, y: y, w: tw, h: th, ry: tw * 0.07 }); }
             var r = Math.min(L.Wc * 0.085, w * 0.07), slots, guard = 0;
             do {
-                slots = []; var d = r * 2.1;
+                slots = []; var d = r * 2.25;
                 L.tiers.forEach(function (t, ti) {
-                    var yTop = t.y + r * 1.7, yBot = t.y + t.h - r * 0.9, rows = yBot < yTop ? 1 : Math.floor((yBot - yTop) / (d * 0.9)) + 1, k, q;
+                    var yTop = t.y + t.ry + t.h * 0.1 + r * 1.15, yBot = t.y + t.h - r * 1.1, rows = yBot < yTop ? 1 : Math.floor((yBot - yTop) / (d * 0.9)) + 1, k, q;
                     for (k = 0; k < rows; k++) {
                         var yy = rows > 1 ? yTop + k * (yBot - yTop) / (rows - 1) : (yTop + yBot) / 2;
                         var cols = Math.max(1, Math.floor((t.w - 2 * r) / d) + 1), n = (k % 2 && cols > 1) ? cols - 1 : cols;
@@ -1053,6 +1067,7 @@
             }
         }
         function dibujar(ctx, w, h, t) {
+            zonas.length = 0;
             var L = disposicion(w, h), j2, i;
             var fondo = ctx.createLinearGradient(0, 0, 0, h); fondo.addColorStop(0, '#fff6ee'); fondo.addColorStop(1, '#ffdce6'); ctx.fillStyle = fondo; ctx.fillRect(0, 0, w, h);
             bokeh.forEach(function (b) { ctx.globalAlpha = 0.22; ctx.fillStyle = b.c; ctx.beginPath(); ctx.arc((b.x + Math.sin(t * b.v + b.ph) * 0.03) * w, ((b.y + t * b.v * 0.3) % 1.1) * h, b.r * Math.min(w, h), 0, TAU); ctx.fill(); }); ctx.globalAlpha = 1;
@@ -1072,8 +1087,9 @@
                 var f = fotos[j2], l = t - f.T; if (l < 0) break;
                 var sl = slotDe(L, j2), img = fotoDe(imgs, f.idx);
                 if (l >= VUELO_TOTAL) {
-                    var pop = 1 + 0.3 * Math.max(0, 1 - (l - VUELO_TOTAL) / 0.35) * Math.sin((l - VUELO_TOTAL) * 14 + 1.2);
+                    var pop = 1 + 0.08 * Math.max(0, 1 - (l - VUELO_TOTAL) / 0.35) * Math.abs(Math.sin((l - VUELO_TOTAL) * 14));
                     decoracion(ctx, img, sl.x, sl.y, L.r * pop, 1);
+                    zonas.push({ i: f.idx, x: sl.x, y: sl.y, r: L.r + 6 });
                     if (l - VUELO_TOTAL < 0.6) {                                                   // chispitas al aterrizar
                         var a = (l - VUELO_TOTAL) / 0.6; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(255,225,140,' + ((1 - a) * 0.9).toFixed(3) + ')'; ctx.lineWidth = 2;
                         for (i = 0; i < 8; i++) { var an = i / 8 * TAU, r1 = L.r * (1 + a * 1.6), r2 = L.r * (1.3 + a * 2.4); ctx.beginPath(); ctx.moveTo(sl.x + Math.cos(an) * r1, sl.y + Math.sin(an) * r1); ctx.lineTo(sl.x + Math.cos(an) * r2, sl.y + Math.sin(an) * r2); ctx.stroke(); }
@@ -1088,6 +1104,7 @@
                 else if (l2 < DROP + SHOW) { var q = l2 - DROP; x = L.hx; y = L.hy + Math.sin(q * 2 + f2.ph) * heroS * 0.012; S = heroS * (1 + 0.018 * Math.sin(q * 3 + f2.ph)); rot = f2.rot + Math.sin(q * 1.3 + f2.ph) * 0.03; }
                 else { var v = suave((l2 - DROP - SHOW) / FLY); x = lerp(L.hx, s2.x, v); y = lerp(L.hy, s2.y, v) - Math.sin(v * Math.PI) * heroS * 0.18; S = lerp(heroS, L.r * 2, v); rot = lerp(f2.rot, 0, v); al = 1 - clamp((v - 0.55) / 0.45, 0, 1); decoracion(ctx, im2, x, y, S / 2 * 0.98, clamp((v - 0.45) / 0.55, 0, 1)); }
                 placa(ctx, im2, x, y, S, rot, al);
+                if (al > 0.5) zonas.push({ i: f2.idx, x: x, y: y, w: S, h: S, rot: rot });
             }
             if (t >= tVelas - 0.5) {
                 velas(ctx, L, t);
@@ -1103,9 +1120,8 @@
                     ctx.fillStyle = c.c; ctx.save(); ctx.translate(cxx, cy); ctx.rotate(t * c.sp); ctx.fillRect(-c.w / 2, -c.w * ee / 2, c.w, Math.max(1, c.w * ee)); ctx.restore();
                 }
             }
-            var fo = clamp(1 - (duracion - t) / 1.2, 0, 1); if (fo > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fo.toFixed(3) + ')'; ctx.fillRect(0, 0, w, h); }
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'pasteleria' };
+        return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'pasteleria', zonas: zonas, layout: disposicion };
     }
 
     var CATALOGO = {
@@ -1132,7 +1148,7 @@
         var D = (Number(opc.duracion) >= 10) ? Math.min(Number(opc.duracion), 3600) : D0, k = D0 / D;
         if (Math.abs(k - 1) < 1e-6) { base.natural = D0; base.velocidad = 1; return base; }
         return {
-            duracion: D, natural: D0, velocidad: k, muro: base.muro, musica: base.musica,
+            duracion: D, natural: D0, velocidad: k, muro: base.muro, musica: base.musica, zonas: base.zonas, layout: base.layout,
             dibujar: function (ctx, w, h, t) { base.dibujar(ctx, w, h, t * k); },
             sonidos: base.sonidos.map(function (e) { return { t: e.t / k, tipo: e.tipo, v: e.v }; })
         };
@@ -1362,6 +1378,21 @@
             raf = global.requestAnimationFrame(bucle);
         }
 
+        // Zonas pulsables: cada efecto deja en efecto.zonas las fotos visibles en el último fotograma
+        function enMuro() { return !!(efecto && efecto.muro && opts.vista && opts.vista()); }
+        function zonaEn(x, y) {
+            var zs = efecto && efecto.zonas;
+            if (!zs || enMuro()) return null;
+            for (var i = zs.length - 1; i >= 0; i--) {                    // la última dibujada es la que está encima
+                var z = zs[i], dx = x - z.x, dy = y - z.y;
+                if (z.r != null) { if (dx * dx + dy * dy <= z.r * z.r) return z; }
+                else {
+                    var c = Math.cos(-z.rot), sn = Math.sin(-z.rot), lx = dx * c - dy * sn, ly = dx * sn + dy * c;
+                    if (Math.abs(lx) <= z.w / 2 + 4 && Math.abs(ly) <= z.h / 2 + 4) return z;
+                }
+            }
+            return null;
+        }
         var props = {
             currentTime: { configurable: true, get: tiempo, set: function (v) {
                 v = Number(v); if (!isFinite(v)) return;
@@ -1386,6 +1417,9 @@
             controls: { configurable: true, writable: true, value: false },
             preload: { configurable: true, writable: true, value: 'auto' },
             esEfecto: { configurable: true, value: true },
+            tieneZonas: { configurable: true, get: function () { return !!(efecto && efecto.zonas); } },
+            efectoActual: { configurable: true, get: function () { return efecto; } },
+            zonaEn: { configurable: true, value: function (x, y) { return zonaEn(x, y); } },
             play: { configurable: true, value: function () {
                 if (!efecto) return Promise.resolve();
                 if (fin) { base = 0; fin = false; ultimoT = 0; }
@@ -1412,6 +1446,16 @@
             destruir: { configurable: true, value: function () { destruido = true; jugando = false; if (musica) musica.detener(); if (raf) global.cancelAnimationFrame(raf); raf = 0; } }
         };
         Object.keys(props).forEach(function (k) { Object.defineProperty(canvas, k, props[k]); });
+        function puntero(ev) { var r = canvas.getBoundingClientRect(); return zonaEn(ev.clientX - r.left, ev.clientY - r.top); }
+        if (canvas.addEventListener) {
+            if (canvas.style) canvas.style.touchAction = 'manipulation';
+            canvas.addEventListener('click', function (ev) {
+                var z = puntero(ev);
+                if (z) emitirDetalle('fotoclick', { idx: z.i, img: fotoDe(imgs, z.i) });
+            });
+            canvas.addEventListener('pointermove', function (ev) { if (canvas.style) canvas.style.cursor = puntero(ev) ? 'pointer' : ''; });
+        }
+        function emitirDetalle(nombre, detalle) { try { canvas.dispatchEvent(new global.CustomEvent(nombre, { detail: detalle })); } catch (e) { /* ignorar */ } }
         raf = global.requestAnimationFrame(bucle);
         return canvas;
     }

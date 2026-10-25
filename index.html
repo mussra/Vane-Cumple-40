@@ -1535,7 +1535,7 @@
             if (p && !p.paused) return null;
             return { key: 'local', icon: 'fa-play', title: 'Reproducción local', detail: 'Sin sincronización con la sala: este dispositivo reproduce por su cuenta.', btn: { texto: 'Reproducir aquí', fn: reproducirLocal } };
         }
-        if (p && p.ended) return { key: 'fin', icon: 'fa-flag-checkered', title: 'Fin del recuerdo', detail: isAdmin ? 'Cierra esta ventana para volver a la galería.' : '', soft: true };
+        if (p && p.ended && !p.esEfecto) return { key: 'fin', icon: 'fa-flag-checkered', title: 'Fin del recuerdo', detail: isAdmin ? 'Cierra esta ventana para volver a la galería.' : '', soft: true };
         if (isAdmin) {
             if (inicioAdminMs) { const ms = inicioAdminMs - ahoraServidor(); if (ms > 0) return cuentaAtras(ms); }
             return null;
@@ -1599,6 +1599,7 @@
         if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) { /* ignorar */ } }
         const p = $('player');
         if (p && p.destruir) p.destruir();
+        cerrarFotoGrande();
         efectoReset();
         if (p) { try { p.pause(); p.removeAttribute('src'); p.load(); } catch (e) { /* ignorar */ } }
         liberarBlobUrl();
@@ -2071,6 +2072,8 @@
         VaneEfectos.crearPlayer(p, tipo, { seed: VaneEfectos.hash(activeId + ':' + tipo), vista: vistaMuro, duracion: () => duracionDe(activeId) });
         p.muted = silenciado;
         aplicarVolumenesGuardados(p);
+        p.addEventListener('fotoclick', (ev) => abrirFotoGrande(ev.detail.idx, ev.detail.img, efectoCtx && efectoCtx.urls ? efectoCtx.urls[ev.detail.idx] : null));
+        p.addEventListener('ended', () => { if (p.tieneZonas) mostrarToast('Toca cualquier foto para verla en grande.'); });
         if (VaneEfectos.MURO.tipos.indexOf(tipo) >= 0) prepararChipMuro();
         enlazarEventosPlayer(p);
         actualizarBarraAudio();
@@ -2316,6 +2319,46 @@
         if (id === clientId) mostrarIdentificacion(ahoraServidor() + 3000);
     };
 
+
+    /* ---- Foto ampliada: al tocar una foto de un efecto se ve en grande, con botón de cierre ---- */
+    let fotoGrandeUrl = null;
+    window.cerrarFotoGrande = function () {
+        const ov = $('foto-grande'); if (ov) ov.remove();
+        if (fotoGrandeUrl) { try { URL.revokeObjectURL(fotoGrandeUrl); } catch (e) { /* ignorar */ } fotoGrandeUrl = null; }
+    };
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('foto-grande')) { cerrarFotoGrande(); ev.stopPropagation(); } }, true);
+    async function abrirFotoGrande(idx, drawable, urlOriginal) {
+        cerrarFotoGrande();
+        const ov = document.createElement('div');
+        ov.id = 'foto-grande';
+        ov.className = 'fixed inset-0 z-[140] flex items-center justify-center p-3';
+        ov.style.background = 'rgba(0,0,0,0.92)';
+        ov.innerHTML = `
+            <button type="button" id="foto-grande-cerrar" aria-label="Cerrar la foto" class="absolute right-3 w-12 h-12 rounded-full bg-white/15 hover:bg-white/30 border border-white/30 text-white text-2xl leading-none flex items-center justify-center" style="top:max(0.75rem, env(safe-area-inset-top))"><i class="fa-solid fa-xmark"></i></button>
+            <div id="foto-grande-marco" class="max-w-full max-h-full flex items-center justify-center"></div>`;
+        ov.addEventListener('click', (ev) => { if (ev.target === ov || ev.target.closest('#foto-grande-cerrar')) cerrarFotoGrande(); });
+        document.body.appendChild(ov);
+        const marco = $('foto-grande-marco');
+        const estilo = 'max-width:94vw;max-height:86vh;width:auto;height:auto;border-radius:14px;box-shadow:0 10px 50px rgba(0,0,0,.7);border:6px solid #fff;background:#fff;';
+        if (drawable && drawable.width) {                              // primero la copia ya en memoria (instantánea)
+            const cv = document.createElement('canvas');
+            cv.width = drawable.width; cv.height = drawable.height; cv.style.cssText = estilo;
+            try { const cx = cv.getContext('2d'); if (cx) cx.drawImage(drawable, 0, 0); } catch (e) { /* ignorar */ }
+            marco.appendChild(cv);
+        }
+        if (urlOriginal) {                                             // después la original, desde la caché si está
+            try {
+                const cf = await abrirCacheFotos();
+                const hit = cf ? await cf.match(urlOriginal) : null;
+                const src = hit ? (fotoGrandeUrl = URL.createObjectURL(await hit.blob())) : urlOriginal;
+                const im = new Image();
+                im.style.cssText = estilo; im.alt = 'Foto ampliada';
+                im.onload = () => { if ($('foto-grande-marco') === marco) marco.replaceChildren(im); };
+                im.src = src;
+            } catch (e) { /* se queda la copia en memoria */ }
+        }
+    }
+
     /* ---- Previsualización en el panel de administración (local, sin sincronizar) ---- */
     window.mostrarAyudaTipo = function (id) {
         const sel = $('adm-tipo-' + id), w = $('prev-wrap-' + id);
@@ -2326,6 +2369,7 @@
         if (previewAbort) { try { previewAbort.abort(); } catch (e) { /* ignorar */ } previewAbort = null; }
         if (previewPlayer && previewPlayer.destruir) previewPlayer.destruir();
         previewPlayer = null;
+        cerrarFotoGrande();
         const ov = $('efecto-preview'); if (ov) ov.remove();
     };
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('efecto-preview')) cerrarPrevisualizacion(); });
@@ -2369,6 +2413,8 @@
             const urls = await VaneEfectos.resolverLista(recurso, cacheF, ctrl.signal);
             if (previewAbort !== ctrl) return;
             const slots = new Array(urls.length).fill(null);
+            cv.addEventListener('fotoclick', (ev) => abrirFotoGrande(ev.detail.idx, ev.detail.img, urls[ev.detail.idx]));
+            cv.addEventListener('ended', () => { if (cv.tieneZonas) mostrarToast('Toca cualquier foto para verla en grande.'); });
             let arrancado = false;
             const arrancar = () => {
                 if (arrancado || previewAbort !== ctrl) return;

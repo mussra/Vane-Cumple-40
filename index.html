@@ -567,6 +567,41 @@
     }
     const duracionDe = (id) => { const d = casosConfig[id] && casosConfig[id].duracion; return d >= 10 ? d : null; };
 
+    /* ---- Ajustes editables de cada efecto (esquema en VaneEfectos.AJUSTES; se guardan en estado_juego/<caso>.ajustes) ---- */
+    const ajustesDe = (id) => (casosConfig[id] && casosConfig[id].ajustes) || {};
+    function htmlAjustes(id, tipo, valores) {
+        const esq = (window.VaneEfectos && VaneEfectos.AJUSTES) ? VaneEfectos.AJUSTES(tipo) : [];
+        if (!esq.length) return '';
+        const campos = esq.map((a) => {
+            const v = valores && valores[a.k] != null ? valores[a.k] : '';
+            const rango = a.tipo === 'num' ? ` (${a.min}–${a.max})` : '';
+            const ph = a.def != null ? a.def : 'auto';
+            const ayuda = a.ayuda ? `<span class="block text-[9px] text-slate-500 leading-snug">${esc(a.ayuda)}</span>` : '';
+            const inp = a.tipo === 'num'
+                ? `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" id="adm-aj-${id}-${a.k}" data-aj="${a.k}" value="${esc(v)}" placeholder="${esc(ph)}" class="w-20 h-9 text-center bg-slate-950 border border-slate-600 rounded-lg text-amber-300 font-mono text-sm">`
+                : `<input type="text" maxlength="${a.max}" id="adm-aj-${id}-${a.k}" data-aj="${a.k}" value="${esc(v)}" placeholder="${esc(ph)}" class="w-full h-9 px-2 bg-slate-950 border border-slate-600 rounded-lg text-amber-300 text-[12px]">`;
+            return `<div class="${a.tipo === 'txt' ? 'col-span-2' : ''}"><label for="adm-aj-${id}-${a.k}" class="block text-slate-400 text-[10px] mb-0.5">${esc(a.et)}${rango}</label>${inp}${ayuda}</div>`;
+        }).join('');
+        return `<p class="text-[10px] text-amber-400 font-bold"><i class="fa-solid fa-sliders mr-1"></i>Ajustes de este efecto</p>
+            <p class="text-[10px] text-slate-500 leading-snug">Campo vacío = valor por defecto (se muestra en gris). Se aplican a todos los móviles al guardar.</p>
+            <div class="grid grid-cols-2 gap-2">${campos}</div>`;
+    }
+    // Lee los ajustes del formulario: { ok, error, valores: {clave: valor | null} }
+    function leerAjustes(id, tipo) {
+        const esq = (window.VaneEfectos && VaneEfectos.AJUSTES) ? VaneEfectos.AJUSTES(tipo) : [];
+        const valores = {}; let error = null;
+        esq.forEach((a) => {
+            const el = $(`adm-aj-${id}-${a.k}`); if (!el) return;
+            const txt = String(el.value || '').trim();
+            if (!txt) { valores[a.k] = null; return; }
+            if (a.tipo === 'txt') { valores[a.k] = txt.slice(0, a.max); return; }
+            const n = Number(txt);
+            if (!isFinite(n) || n < a.min || n > a.max) { error = error || `«${a.et}» debe estar entre ${a.min} y ${a.max}.`; valores[a.k] = null; return; }
+            valores[a.k] = Math.round(n);
+        });
+        return { ok: !error, error, valores };
+    }
+
     /* ---- Selector de duración tipo temporizador: solo cifras, los «:» se ponen solos ---- */
     window.durMascara = function (el) {
         const d = el.value.replace(/\D/g, '').slice(-4);
@@ -1193,6 +1228,7 @@
                             </div>
                             <p id="adm-dur-info-${e}" class="text-[10px] text-slate-500 leading-snug">Escribe solo cifras, como en un microondas: <span class="font-mono text-slate-400">230</span> → 2:30. Mínimo 0:10, máximo 60:00. «Auto» = según el número de fotos.</p>
                         </div>
+                        <div id="adm-ajs-${e}" class="space-y-1.5 pt-2 border-t border-slate-800">${htmlAjustes(e, tipoActual, c.ajustes)}</div>
                     </div>
                 </div>
             </div>`;
@@ -1232,7 +1268,7 @@
         if (!db) return;
         const batch = db.batch();
         let docs = 0;
-        let durInvalida = false;
+        let durInvalida = false, ajError = null;
         Object.keys(casosConfig).forEach((id) => {
             const actual = casosConfig[id];
             const cambios = {};
@@ -1241,6 +1277,16 @@
                 const r = parseDur(durEl.value);
                 if (!r.ok) durInvalida = true;
                 else { const previo = duracionDe(id); if (r.v !== previo) cambios.duracion = r.v; }
+            }
+            if ($(`adm-ajs-${id}`)) {
+                const tipoSel = ($(`adm-tipo-${id}`) || {}).value || actual.tipo;
+                const ra = leerAjustes(id, tipoSel);
+                if (!ra.ok) ajError = ajError || `Caso ${id}: ${ra.error}`;
+                else {
+                    const previo = actual.ajustes || {}, dif = {};
+                    Object.keys(ra.valores).forEach((k) => { const a = (previo[k] == null || previo[k] === '') ? null : previo[k]; if (ra.valores[k] !== a) dif[k] = ra.valores[k]; });
+                    if (Object.keys(dif).length) cambios.ajustes = dif;
+                }
             }
             Object.keys(CAMPOS_EDITOR).forEach((campo) => {
                 const el = $(`${CAMPOS_EDITOR[campo]}-${id}`);
@@ -1258,6 +1304,7 @@
             if (Object.keys(cambios).length) { batch.set(db.collection('estado_juego').doc(id), cambios, { merge: true }); docs++; }
         });
         if (durInvalida) { mostrarToast('La duración debe estar entre 0:10 y 60:00 (o vacía para automática).', 'error'); return; }
+        if (ajError) { mostrarToast(ajError, 'error'); return; }
         if (!docs) { mostrarToast('No hay cambios que guardar.'); return; }
         contarEscrituraAdmin(docs);
         batch.commit().then(() => {
@@ -1330,7 +1377,7 @@
         const casos = {};
         Object.keys(casosConfig).sort(ordenCaso).forEach((id) => {
             const c = casosConfig[id];
-            casos[id] = { titulo: c.titulo || '', descripcion: c.descripcion || '', tipo: c.tipo || 'video', recursoId: c.recursoId || '', imagenUrl: c.imagenUrl || '', resuelto: !!c.resuelto, duracion: duracionDe(id) };
+            casos[id] = { titulo: c.titulo || '', descripcion: c.descripcion || '', tipo: c.tipo || 'video', recursoId: c.recursoId || '', imagenUrl: c.imagenUrl || '', resuelto: !!c.resuelto, duracion: duracionDe(id), ajustes: c.ajustes || {} };
         });
         const blob = new Blob([JSON.stringify({ version: 1, exportado: new Date().toISOString(), casos }, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
@@ -1358,7 +1405,8 @@
                 batch.set(db.collection('estado_juego').doc(id), {
                     titulo: String(c.titulo || ''), descripcion: String(c.descripcion || ''), tipo: (c.tipo === 'texto' || esFotos(c.tipo)) ? c.tipo : 'video',
                     recursoId: String(c.recursoId || ''), imagenUrl: String(c.imagenUrl || ''), resuelto: !!c.resuelto,
-                    duracion: Number(c.duracion) >= 10 ? Math.min(3600, Math.round(Number(c.duracion))) : null
+                    duracion: Number(c.duracion) >= 10 ? Math.min(3600, Math.round(Number(c.duracion))) : null,
+                    ajustes: (c.ajustes && typeof c.ajustes === 'object') ? c.ajustes : {}
                 }, { merge: true });
             });
             contarEscrituraAdmin(ids.length);
@@ -2245,7 +2293,7 @@
         const silenciado = !(esAdminOMaster() || local);
         wrapper.innerHTML = '<canvas id="player" class="block h-full w-full bg-black"></canvas>';
         const p = $('player');
-        VaneEfectos.crearPlayer(p, tipo, { seed: VaneEfectos.hash(activeId + ':' + tipo), vista: vistaMuro, duracion: () => duracionDe(activeId) });
+        VaneEfectos.crearPlayer(p, tipo, { seed: VaneEfectos.hash(activeId + ':' + tipo), vista: vistaMuro, duracion: () => duracionDe(activeId), ajustes: () => ajustesDe(activeId) });
         p.muted = silenciado;
         aplicarVolumenesGuardados(p);
         p.addEventListener('fotoclick', (ev) => abrirFotoGrande(ev.detail.idx, ev.detail.img, efectoCtx && efectoCtx.urls ? efectoCtx.urls[ev.detail.idx] : null));
@@ -2539,6 +2587,8 @@
     window.mostrarAyudaTipo = function (id) {
         const sel = $('adm-tipo-' + id), w = $('prev-wrap-' + id);
         if (sel && w) w.classList.toggle('hidden', !esFotos(sel.value));
+        const aj = $('adm-ajs-' + id);
+        if (sel && aj) aj.innerHTML = htmlAjustes(id, sel.value, ajustesDe(id));
     };
     let previewAbort = null, previewPlayer = null;
     window.cerrarPrevisualizacion = function () {
@@ -2578,7 +2628,7 @@
         const cv = $('prev-canvas'), info = $('prev-info');
         const ctrl = new AbortController();
         previewAbort = ctrl;
-        previewPlayer = VaneEfectos.crearPlayer(cv, tipo, { seed: VaneEfectos.hash('previsualizacion:' + tipo), vista: () => null, duracion: () => { const r = parseDur(($('adm-dur-' + id) || {}).value); return r.ok ? r.v : null; } });
+        previewPlayer = VaneEfectos.crearPlayer(cv, tipo, { seed: VaneEfectos.hash('previsualizacion:' + tipo), vista: () => null, duracion: () => { const r = parseDur(($('adm-dur-' + id) || {}).value); return r.ok ? r.v : null; }, ajustes: () => leerAjustes(id, tipo).valores });
         cv.muted = false;
         aplicarVolumenesGuardados(cv);
         const replay = $('prev-replay');

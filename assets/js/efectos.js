@@ -45,6 +45,17 @@
         for (i = n - 1; i > 0; i--) { j = Math.floor(rnd() * (i + 1)); x = a[i]; a[i] = a[j]; a[j] = x; }
         return a;
     }
+    /* Ajustes editables por efecto (llegan en opc.ajustes; vacío = valor por defecto) */
+    function ajNum(A, k, def, min, max) {
+        var v = A && A[k]; if (v == null || v === '') return def;
+        v = Number(v); if (!isFinite(v)) return def;
+        return clamp(Math.round(v), min, max);
+    }
+    function ajTxt(A, k, def, max) {
+        var v = A && A[k]; if (typeof v !== 'string') return def;
+        v = v.trim(); return v ? v.slice(0, max || 40) : def;
+    }
+    var FOTO_K = 1;                                   // escala global de las polaroids (ajuste «Tamaño de las fotos»)
     function ahoraMs() { return (global.performance && global.performance.now) ? global.performance.now() : Date.now(); }
 
     /* Foto de la lista; si aún no se ha decodificado, se usa otra ya disponible (arranque parcial) */
@@ -58,6 +69,7 @@
     /* Marco tipo polaroid con halo de color. La foto se muestra COMPLETA (sin recortar). */
     function pintarFoto(ctx, img, x, y, S, rot, alpha, hue, brillo, zs, idx) {
         if (alpha <= 0.003) return;
+        S *= FOTO_K;
         var iw = img ? img.width : 4, ih = img ? img.height : 3;
         var k = Math.min(S / iw, S / ih), dw = iw * k, dh = ih * k;
         var b = S * 0.05, base = S * 0.07;
@@ -601,7 +613,8 @@
     /* ======================================================================
        EFECTO 6: ENFOQUE DE MISTERIO — cada foto aparece borrosa y se va descubriendo
        ====================================================================== */
-    function crearEnfoque(imgs, seed) {
+    function crearEnfoque(imgs, seed, opc) {
+        var txtPregunta = ajTxt(opc && opc.ajustes, 'eTexto', '¿Quién será?', 30);
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), TF = 8.6, duracion = 1 + (N - 1) * TF + 7.8, zonas = [];
         var niveles = [6, 10, 16, 26, 42, 70, 120, 220, 9999];
         var fases = []; for (var i = 0; i < N; i++) fases.push({ a: rnd() * TAU, b: rnd() * TAU, f1: 0.6 + rnd() * 0.5, f2: 0.8 + rnd() * 0.5 });
@@ -629,7 +642,7 @@
             } else ctx.drawImage(img || A, -fw / 2, -fh / 2, fw, fh);
             var ff = (l - 5.6) / 0.7; if (ff > 0 && ff < 1) { ctx.fillStyle = 'rgba(255,255,255,' + ((1 - ff) * 0.8).toFixed(3) + ')'; ctx.fillRect(-fw / 2, -fh / 2, fw, fh); }
             ctx.restore();
-            if (prog < 1) { ctx.save(); ctx.globalAlpha = alfa * (1 - prog); ctx.font = 'bold ' + Math.round(Math.min(w * 0.08, 34)) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fde9a8'; ctx.fillText('¿Quién será?', w / 2, h * 0.07); ctx.restore(); }
+            if (prog < 1) { ctx.save(); ctx.globalAlpha = alfa * (1 - prog); ctx.font = 'bold ' + Math.round(Math.min(w * 0.08, 34)) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fde9a8'; ctx.fillText(txtPregunta, w / 2, h * 0.07); ctx.restore(); }
         }
         var ev = []; for (var q0 = 0; q0 < N; q0++) { ev.push({ t: 1 + q0 * TF + 0.1, tipo: 'whoosh', v: 0.4 }, { t: 1 + q0 * TF + 5.6, tipo: 'ding', v: 1 }); }
         return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia', zonas: zonas };
@@ -858,7 +871,8 @@
     /* ======================================================================
        EFECTO 12: TRAGAPERRAS DE RECUERDOS — tres rodillos giran y se paran en tres fotos
        ====================================================================== */
-    function crearTragaperras(imgs, seed) {
+    function crearTragaperras(imgs, seed, opc) {
+        var txtFicha = ajTxt(opc && opc.ajustes, 'rFicha', '40', 4);
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), RONDA = 8.4, R = Math.ceil(N / 3);
         var duracion = 1 + (R - 1) * RONDA + 7.6;
         var D = [0, 1, 2].map(function (r) { return R * Math.ceil((16 + 5 * r) / R); }), DUR = [2.4, 3.3, 4.2], bombillas = 22, chisp = [], ev = [], i, r, k, m;
@@ -887,7 +901,7 @@
         function fichaDorada(ctx, x, y, s) {
             var g = ctx.createLinearGradient(x, y - s / 2, x, y + s / 2); g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, '#f5b82e'); g.addColorStop(1, '#b8731a');
             ctx.fillStyle = g; ctx.fillRect(x - s * 0.44, y - s * 0.44, s * 0.88, s * 0.88);
-            ctx.fillStyle = '#5a3406'; ctx.font = 'bold ' + Math.round(s * 0.42) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('40', x, y + 2);
+            ctx.fillStyle = '#5a3406'; ctx.font = 'bold ' + Math.round(s * 0.42) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txtFicha, x, y + 2);
         }
         function dibujar(ctx, w, h, t) {
             zonas.length = 0;
@@ -941,7 +955,8 @@
        Cada foto cae sobre una placa de fondant, se queda un rato para admirarla y
        vuela a decorar la tarta. Al final se encienden las velas del «40».
        ====================================================================== */
-    function crearPasteleria(imgs, seed) {
+    function crearPasteleria(imgs, seed, opc) {
+        var txtTarta = ajTxt(opc && opc.ajustes, 'tTexto', '¡Felices 40!', 24);
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), j;
         var INT = 5.0, T0 = 1.2, DROP = 0.9, SHOW = 3.0, FLY = 0.9, VUELO_TOTAL = DROP + SHOW + FLY;
         var tFin = T0 + (N - 1) * INT + VUELO_TOTAL, tVelas = tFin + 0.6, duracion = tVelas + 9.5;
@@ -1113,7 +1128,7 @@
                 if (bt > 0) {
                     var sz = Math.min(w * 0.13, 60) * (0.7 + 0.3 * rebote(bt));
                     ctx.save(); ctx.globalAlpha = bt; ctx.font = 'bold ' + Math.round(sz) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.lineWidth = sz * 0.14; ctx.strokeStyle = '#fff'; ctx.strokeText('¡Felices 40!', L.bx, L.by + sz * 0.6); ctx.fillStyle = '#d6336c'; ctx.fillText('¡Felices 40!', L.bx, L.by + sz * 0.6); ctx.restore();
+                    ctx.lineWidth = sz * 0.14; ctx.strokeStyle = '#fff'; ctx.strokeText(txtTarta, L.bx, L.by + sz * 0.6); ctx.fillStyle = '#d6336c'; ctx.fillText(txtTarta, L.bx, L.by + sz * 0.6); ctx.restore();
                 }
                 for (i = 0; i < confeti.length; i++) {
                     var c = confeti[i], cy = (((c.ph + (t - tVelas) * c.v) % 1) * (h + 40)) - 20, cxx = (c.x + Math.sin(t * 0.9 + c.ph * 9) * 0.03) * w, ee = Math.abs(Math.cos(t * c.sp + c.ph * 7));
@@ -1223,9 +1238,12 @@
         c.fillStyle = '#030106';
         for (i = 0; i < nf * 3; i++) { x = (i + 0.5) * (w / (nf * 3)); c.beginPath(); c.arc(x, h * 0.995, h * (0.026 + (i % 2) * 0.007), Math.PI, 0); c.fill(); }
     }
-    function crearCastillo(imgs, seed) {
+    function crearCastillo(imgs, seed, opc) {
+        var A = opc && opc.ajustes;
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd);
-        var P = 3, INT = 6.0, VIDA = 4.8, VUELO = 1.0, SAL = 0.8;
+        var P = ajNum(A, 'cFotos', 3, 1, 3), INT = ajNum(A, 'cSeg', 6, 6, 30), VIDA = INT * 0.8, VUELO = 1.0, SAL = 0.8;
+        var tTit = ajTxt(A, 'cTitulo', '40 AÑOS DE VANE', 36), tSub = ajTxt(A, 'cSub', 'Una función de recuerdos', 40);
+        var tFinT = ajTxt(A, 'cFinTit', 'Fin de la función', 36), tFinS = ajTxt(A, 'cFinSub', 'Gracias por tanta magia', 40);
         var T_ABRE = 2.8, D_ABRE = 4.2, T_F = T_ABRE + D_ABRE + 0.6, D_CIERRA = 3.6;
         var K = Math.max(1, Math.ceil(N / P)), T_CIERRA = T_F + K * INT + 0.3, duracion = T_CIERRA + D_CIERRA + 1.8;
         var estrellas = crearEstrellas(rnd, 90), grupos = [], bursts = [], sonidos = [], capas = {}, zonas = [], k, j, i;
@@ -1265,12 +1283,16 @@
             ctx.drawImage(c.cv, 0, 0, w, h);
         }
         function tamFoto(w, h) { return (w <= h * 1.15) ? Math.min(w * 0.46, h * 0.25) : Math.min(h * 0.40, w * 0.21); }
-        function slot(flip, s, w, h) {
-            var V = [[0.30, 0.30], [0.70, 0.46], [0.33, 0.64]], H = [[0.18, 0.46], [0.82, 0.46], [0.5, 0.68]];
-            var p = (w <= h * 1.15) ? V[s] : H[s], fx = flip ? 1 - p[0] : p[0];
-            if (w > h * 1.15 && s === 2 && flip) fx = 0.5;
+        function slot(flip, s, w, h, cnt) {
+            var vert = w <= h * 1.15, V, H;
+            if (cnt >= 3) { V = [[0.30, 0.30], [0.70, 0.46], [0.33, 0.64]]; H = [[0.18, 0.46], [0.82, 0.46], [0.5, 0.68]]; }
+            else if (cnt === 2) { V = [[0.34, 0.33], [0.66, 0.61]]; H = [[0.27, 0.46], [0.73, 0.46]]; }
+            else { V = [[0.5, 0.46]]; H = [[0.5, 0.46]]; }
+            var p = vert ? V[s] : H[s], fx = flip ? 1 - p[0] : p[0];
+            if (cnt >= 3 && !vert && s === 2 && flip) fx = 0.5;
             return { x: w * fx, y: h * p[1] };
         }
+        function facFotos(cnt) { return cnt >= 3 ? 1 : (cnt === 2 ? 1.12 : 1.3); }
         function telon(ctx, w, h, uAbre, t) {
             var hb = h * 0.93, F = 12, e = suave(uAbre);
             var xt0 = lerp(w * 0.5, w * 0.075, e), xb0 = lerp(w * 0.5, w * 0.04, Math.min(1, e * 1.12));
@@ -1362,13 +1384,14 @@
                 }
                 ctx.restore();
             }
-            var S = tamFoto(w, h), kmin = Math.max(0, Math.floor((t - T_F - VIDA - 1.5) / INT)), kmax = Math.min(K - 1, Math.floor((t - T_F) / INT));
+            var S0 = tamFoto(w, h), S = S0, kmin = Math.max(0, Math.floor((t - T_F - VIDA - 1.5) / INT)), kmax = Math.min(K - 1, Math.floor((t - T_F) / INT));
             for (var kk = kmin; kk <= kmax; kk++) {
                 var gp = grupos[kk];
+                S = Math.min(S0 * facFotos(gp.fotos.length), h * 0.5, w * 0.8);
                 for (j = 0; j < gp.fotos.length; j++) {
                     var f = gp.fotos[j], age = t - (gp.t0 + f.d);
                     if (age < 0 || age > VIDA) continue;
-                    var p = slot(gp.flip, f.slot, w, h), ee = clamp(age / VUELO, 0, 1), ez = salidaCubica(ee);
+                    var p = slot(gp.flip, f.slot, w, h, gp.fotos.length), ee = clamp(age / VUELO, 0, 1), ez = salidaCubica(ee);
                     var cxp = (punta.x + p.x) / 2, cyp = Math.min(punta.y, p.y) - h * 0.12, mz = 1 - ez;
                     var px = mz * mz * punta.x + 2 * mz * ez * cxp + ez * ez * p.x, py = mz * mz * punta.y + 2 * mz * ez * cyp + ez * ez * p.y;
                     var sc = ee < 1 ? 0.15 + 0.85 * salidaAtras(ee) : 1, alpha = suave(ee * 3), fo = 1;
@@ -1402,8 +1425,8 @@
             if (t > T_CIERRA + D_CIERRA * 0.7) ta = suave((t - T_CIERRA - D_CIERRA * 0.7) / 1.0);
             if (ta > 0.01) {
                 var fin = t > T_CIERRA;
-                titulo(ctx, fin ? 'Fin de la función' : '40 AÑOS DE VANE', w / 2, h * 0.44, Math.min(w * 0.09, h * 0.075), w * 0.8, ta);
-                titulo(ctx, fin ? 'Gracias por tanta magia' : 'Una función de recuerdos', w / 2, h * 0.52, Math.min(w * 0.045, h * 0.04), w * 0.7, ta * 0.9);
+                titulo(ctx, fin ? tFinT : tTit, w / 2, h * 0.44, Math.min(w * 0.09, h * 0.075), w * 0.8, ta);
+                titulo(ctx, fin ? tFinS : tSub, w / 2, h * 0.52, Math.min(w * 0.045, h * 0.04), w * 0.7, ta * 0.9);
                 ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#fff2b8';
                 for (i2 = 0; i2 < 7; i2++) estrella4(ctx, w * (0.2 + 0.6 * ((i2 * 0.37 + t * 0.05) % 1)), h * (0.4 + 0.16 * Math.sin(t * 1.5 + i2 * 2.1)), Math.min(w, h) * 0.018, ta * (0.4 + 0.5 * Math.sin(t * 4 + i2)));
                 ctx.restore(); ctx.globalAlpha = 1;
@@ -1496,13 +1519,17 @@
     function crearBingo(imgs, seed, opc) {
         var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), posSalida = [], i;
         for (i = 0; i < N; i++) posSalida[orden[i]] = i;
-        var T0 = 6, PAUSA = 5, FINAL = 14, INT = 5, D = Number(opc && opc.duracion);
-        if (D >= 10) INT = clamp((D - T0 - PAUSA - FINAL) / N, 3, 14);
+        var A = opc && opc.ajustes;
+        var T0 = ajNum(A, 'bCuenta', 6, 3, 30), PAUSA = 5, FINAL = 14, INT = 5, D = Number(opc && opc.duracion), segF = ajNum(A, 'bSeg', null, 3, 14);
+        if (segF) INT = segF;                                              // si se indica, manda sobre la duración total
+        else if (D >= 10) INT = clamp((D - T0 - PAUSA - FINAL) / N, 3, 14);
+        var tTit = ajTxt(A, 'bTitulo', 'BINGO DE RECUERDOS', 30), tPrep = ajTxt(A, 'bPrepara', '¡Prepara tu cartón!', 30), tLinea = ajTxt(A, 'bLinea', '¡LÍNEA!', 14), tBingo = ajTxt(A, 'bBingo', '¡BINGO!', 14), tFin = ajTxt(A, 'bFin', '¡Se acabaron las fotos!', 30);
         var duracion = T0 + N * INT + PAUSA + FINAL;
         var clave = String(seed), S = estadoBingo(clave);
         S.id = idDispositivo(); S.alias = 'Cartón nº ' + (10 + hash(S.id) % 90);
         abrirCanal(S, clave);
-        var n = Math.min(15, N), cols = Math.min(5, n), filas = Math.ceil(n / cols);
+        var cCols = ajNum(A, 'bCols', 5, 1, 5), cFilas = ajNum(A, 'bFilas', 3, 1, 5);
+        var n = Math.min(cCols * cFilas, N), cols = Math.min(cCols, n), filas = Math.ceil(n / cols);
         var carton = barajar(N, rngDe(hash(S.id + ':' + clave))).slice(0, n);
         var celdas = [], zonas = [], canvasAct = null, rc = rngDe((seed ^ 0x5bd1e995) >>> 0), conf = [], estrellas = crearEstrellas(rc, 60);
         for (i = 0; i < 90; i++) conf.push({ x: rc(), y0: -0.35 * rc(), v: 0.16 + rc() * 0.3, s: 1 + rc() * 3, ph: rc() * TAU, hue: Math.floor(rc() * 360), w: 5 + rc() * 6 });
@@ -1575,8 +1602,10 @@
                 if (ok && t - B.t < 3) { sonar('bingo', volSala(cv), 1); hablar('¡Bingo!'); }
             }
         }
-        function texto(ctx, txt, x, y, px, color, align, serif) {
-            ctx.font = (serif ? 'bold ' : '600 ') + Math.round(px) + 'px ' + (serif ? 'Lora, Georgia, serif' : 'Montserrat, system-ui, sans-serif');
+        function texto(ctx, txt, x, y, px, color, align, serif, maxW) {
+            var fam = serif ? 'Lora, Georgia, serif' : 'Montserrat, system-ui, sans-serif';
+            ctx.font = (serif ? 'bold ' : '600 ') + Math.round(px) + 'px ' + fam;
+            if (maxW) { var mw = ctx.measureText(txt).width; if (mw > maxW) { px = px * maxW / mw; ctx.font = (serif ? 'bold ' : '600 ') + Math.max(8, Math.round(px)) + 'px ' + fam; } }
             ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = color; ctx.fillText(txt, x, y);
         }
         function miniatura(ctx, img, x, y, s) {
@@ -1622,6 +1651,7 @@
             }
             var px2 = Math.min(w * 0.19, h * 0.17) * (1 + 0.05 * Math.sin(age * 8)) * salidaAtras(Math.min(1, age / 0.45));
             ctx.save(); ctx.font = 'bold ' + Math.round(px2) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            var mw2 = ctx.measureText(txt).width; if (mw2 > w * 0.9) { px2 *= w * 0.9 / mw2; ctx.font = 'bold ' + Math.round(px2) + 'px Lora, Georgia, serif'; }
             var gr = ctx.createLinearGradient(cx - px2 * 2, 0, cx + px2 * 2, 0); gr.addColorStop(0, '#fff3b0'); gr.addColorStop(0.5, '#f2c14b'); gr.addColorStop(1, '#ff7ab8');
             ctx.lineWidth = px2 * 0.09; ctx.strokeStyle = 'rgba(40,10,60,0.9)'; ctx.lineJoin = 'round'; ctx.strokeText(txt, cx, cy);
             ctx.fillStyle = gr; ctx.shadowColor = 'rgba(255,200,80,0.8)'; ctx.shadowBlur = px2 * 0.25; ctx.fillText(txt, cx, cy); ctx.restore();
@@ -1653,14 +1683,14 @@
             }
             var hp = Math.max(11, h * 0.042);
             if (bi <= 0 && !fin) texto(ctx, 'Mantén pulsada una foto para verla en grande', cx, h * 0.108, Math.min(Math.max(10, h * 0.024), (port ? w : w * 0.43) * 0.03), '#c4b5fd', 'center', false);
-            texto(ctx, 'BINGO DE RECUERDOS', port ? w / 2 : w * 0.5, h * 0.062, Math.min(hp, w * 0.058), '#fde68a', 'center', true);
+            texto(ctx, tTit, port ? w / 2 : w * 0.5, h * 0.062, Math.min(hp, w * 0.058), '#fde68a', 'center', true, w * 0.8);
             if (bi >= 0) texto(ctx, (bi + 1) + ' / ' + N, w - w * 0.03, h * 0.062, Math.max(10, h * 0.026), '#c4b5fd', 'right', false);
             if (g < T0) {
                 var qa = salidaCubica(Math.min(1, t / 0.8));
                 pintarFoto(ctx, null, cx, cy, S0 * (0.8 + 0.2 * qa), -0.04, qa, 45, 0.3, null, -1);
                 texto(ctx, '?', cx, cy - S0 * 0.04, S0 * 0.5, 'rgba(253,230,138,0.9)', 'center', true);
                 texto(ctx, Math.ceil(T0 - g) + '', cx, cy + S0 * 0.38, S0 * 0.2, '#fff', 'center', true);
-                texto(ctx, '¡Prepara tu cartón!', cx, cy + S0 * 0.72, Math.max(11, S0 * 0.11), '#fde68a', 'center', false);
+                texto(ctx, tPrep, cx, cy + S0 * 0.72, Math.max(11, S0 * 0.11), '#fde68a', 'center', false, S0 * 1.6);
             } else {
                 var ido = orden[bi], fase = g - (T0 + bi * INT), e = clamp(fase / 0.6, 0, 1), sc = 0.35 + 0.65 * salidaAtras(e);
                 pintarFoto(ctx, fotoDe(imgs, ido), cx, cy, S0 * sc, lerp(0.35, -0.04, salidaCubica(e)), 1, 45, 0.3, zonas, ido);
@@ -1694,9 +1724,9 @@
             else if (S.nMarcas === 0 && bi >= 0 && !fin) msg = 'Toca en tu cartón la foto que salga';
             else msg = S.alias + ' · ' + S.nMarcas + '/' + n + (L ? '  ·  ★ Línea: ' + (L.dev === S.id ? 'tú' : String(L.por).replace('Cartón ', '')) : '');
             texto(ctx, msg, stX, stY, sp, col, 'center', false);
-            if (!B && bi >= N - 1 && g >= T0 + N * INT) texto(ctx, '¡Se acabaron las fotos!', cx, cy, Math.max(14, S0 * 0.12), '#fde68a', 'center', true);
-            if (L && t >= L.t && t < L.t + PAUSA + 0.6 && !fin) cantar(ctx, w, h, t - L.t, '¡LÍNEA!', L.dev === S.id ? '¡Has sido tú!' : L.por, false);
-            if (fin) cantar(ctx, w, h, t - B.t, '¡BINGO!', B.dev === S.id ? '¡Has sido tú!' : B.por, true);
+            if (!B && bi >= N - 1 && g >= T0 + N * INT) texto(ctx, tFin, cx, cy, Math.max(14, S0 * 0.12), '#fde68a', 'center', true, S0 * 1.8);
+            if (L && t >= L.t && t < L.t + PAUSA + 0.6 && !fin) cantar(ctx, w, h, t - L.t, tLinea, L.dev === S.id ? '¡Has sido tú!' : L.por, false);
+            if (fin) cantar(ctx, w, h, t - B.t, tBingo, B.dev === S.id ? '¡Has sido tú!' : B.por, true);
         }
         return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'fiesta', pulsar: pulsar, pulsarLargo: pulsarLargo, zonas: zonas, fijo: true };
     }
@@ -1718,11 +1748,55 @@
         'fotos-castillo':    { nombre: 'Fotos · Teatro del castillo de cuento', crear: crearCastillo },
         'fotos-bingo':       { nombre: 'Fotos · Bingo de recuerdos (juego, un cartón por móvil)', crear: crearBingo }
     };
+    /* Esquema de ajustes editables (el panel de administración lo dibuja y lo guarda en estado_juego/<caso>.ajustes) */
+    var AJ_ESPECIFICOS = {
+        'fotos-bingo': [
+            { k: 'bCols', et: 'Columnas del cartón', tipo: 'num', min: 1, max: 5, def: 5, ayuda: 'Menos casillas = fotos más grandes. 3 columnas × 3 filas = cartón de 9 fotos.' },
+            { k: 'bFilas', et: 'Filas del cartón', tipo: 'num', min: 1, max: 5, def: 3 },
+            { k: 'bSeg', et: 'Segundos por foto', tipo: 'num', min: 3, max: 14, def: null, ayuda: 'Vacío = según la duración total. Si lo rellenas, manda sobre la duración.' },
+            { k: 'bCuenta', et: 'Cuenta atrás inicial (s)', tipo: 'num', min: 3, max: 30, def: 6 },
+            { k: 'bTitulo', et: 'Título', tipo: 'txt', max: 30, def: 'BINGO DE RECUERDOS' },
+            { k: 'bPrepara', et: 'Texto de la cuenta atrás', tipo: 'txt', max: 30, def: '¡Prepara tu cartón!' },
+            { k: 'bLinea', et: 'Texto al cantar línea', tipo: 'txt', max: 14, def: '¡LÍNEA!' },
+            { k: 'bBingo', et: 'Texto al cantar bingo', tipo: 'txt', max: 14, def: '¡BINGO!' },
+            { k: 'bFin', et: 'Texto al acabarse las fotos', tipo: 'txt', max: 30, def: '¡Se acabaron las fotos!' }
+        ],
+        'fotos-castillo': [
+            { k: 'cFotos', et: 'Fotos por escena', tipo: 'num', min: 1, max: 3, def: 3, ayuda: 'Menos fotos por escena = fotos más grandes.' },
+            { k: 'cSeg', et: 'Segundos por escena', tipo: 'num', min: 6, max: 30, def: 6, ayuda: 'Más segundos = las fotos se quedan más tiempo en pantalla.' },
+            { k: 'cTitulo', et: 'Título de apertura', tipo: 'txt', max: 36, def: '40 AÑOS DE VANE' },
+            { k: 'cSub', et: 'Subtítulo de apertura', tipo: 'txt', max: 40, def: 'Una función de recuerdos' },
+            { k: 'cFinTit', et: 'Título final', tipo: 'txt', max: 36, def: 'Fin de la función' },
+            { k: 'cFinSub', et: 'Subtítulo final', tipo: 'txt', max: 40, def: 'Gracias por tanta magia' }
+        ],
+        'fotos-enfoque': [{ k: 'eTexto', et: 'Texto de misterio', tipo: 'txt', max: 30, def: '¿Quién será?' }],
+        'fotos-tragaperras': [{ k: 'rFicha', et: 'Texto de la ficha dorada', tipo: 'txt', max: 4, def: '40' }],
+        'fotos-pasteleria': [{ k: 'tTexto', et: 'Texto de la tarta', tipo: 'txt', max: 24, def: '¡Felices 40!' }]
+    };
+    function ajustesDe(tipo) {
+        var l = [];
+        if (FT_TIPOS.indexOf(tipo) >= 0) l.push({ k: 'fotoTam', et: 'Tamaño de las fotos (%)', tipo: 'num', min: 50, max: 150, def: 100, ayuda: 'Escala las polaroids del efecto: 100 = normal.' });
+        (AJ_ESPECIFICOS[tipo] || []).forEach(function (a) { l.push(a); });
+        if (CATALOGO[tipo]) l.push({ k: 'orden', et: 'Variante del orden', tipo: 'num', min: 0, max: 99, def: 0, ayuda: '0 = orden original. Otro número baraja las fotos de otra forma (en el bingo, reinicia el juego).' });
+        return l;
+    }
     var MURO = { LW: 480, LH: 1000, tipos: ['fotos-muro', 'fotos-ola'] };   // celda lógica de referencia (móvil vertical)
 
     // Crea el efecto. opc.duracion (s): duración total deseada; el efecto se estira o comprime a ese tiempo (velocidad = natural / deseada)
+    var FT_TIPOS = ['fotos-fuegos', 'fotos-nave', 'fotos-polaroid', 'fotos-farolillos', 'fotos-lluvia', 'fotos-castillo', 'fotos-bingo'];   // efectos que dibujan polaroids con pintarFoto
     function crearEfecto(tipo, imgs, seed, opc) {
         opc = opc || {};
+        var A = opc.ajustes || null, ord = ajNum(A, 'orden', 0, 0, 99);
+        if (ord > 0) seed = (seed + Math.imul(ord, 0x9E3779B1)) >>> 0;
+        var ft = (FT_TIPOS.indexOf(tipo) >= 0) ? ajNum(A, 'fotoTam', 100, 50, 150) / 100 : 1;
+        var r = armarEfecto(tipo, imgs, seed, opc);
+        if (ft !== 1) {
+            var d0 = r.dibujar;
+            r.dibujar = function (ctx, w, h, t) { var prev = FOTO_K; FOTO_K = ft; try { d0(ctx, w, h, t); } finally { FOTO_K = prev; } };
+        }
+        return r;
+    }
+    function armarEfecto(tipo, imgs, seed, opc) {
         var d = CATALOGO[tipo] || CATALOGO['fotos-fuegos'], base = d.crear(imgs, seed, opc), D0 = base.duracion;
         if (base.fijo) { base.natural = D0; base.velocidad = 1; return base; }
         var D = (Number(opc.duracion) >= 10) ? Math.min(Number(opc.duracion), 3600) : D0, k = D0 / D;
@@ -2037,7 +2111,7 @@
             } },
             establecerImagenes: { configurable: true, value: function (arr) {
                 imgs = arr;
-                efecto = crearEfecto(tipo, imgs, seed, { duracion: (typeof opts.duracion === 'function') ? opts.duracion() : opts.duracion });
+                efecto = crearEfecto(tipo, imgs, seed, { duracion: (typeof opts.duracion === 'function') ? opts.duracion() : opts.duracion, ajustes: (typeof opts.ajustes === 'function') ? opts.ajustes() : opts.ajustes });
                 if (!listo) { listo = true; emitir('loadedmetadata'); emitir('canplay'); }
             } },
             destruir: { configurable: true, value: function () { destruido = true; jugando = false; if (musica) musica.detener(); if (raf) global.cancelAnimationFrame(raf); raf = 0; } }
@@ -2202,7 +2276,7 @@
     }
 
     global.VaneEfectos = {
-        TIPOS: Object.keys(CATALOGO), NOMBRES: Object.keys(CATALOGO).reduce(function (m, k) { m[k] = CATALOGO[k].nombre; return m; }, {}), MURO: MURO,
+        AJUSTES: ajustesDe, TIPOS: Object.keys(CATALOGO), NOMBRES: Object.keys(CATALOGO).reduce(function (m, k) { m[k] = CATALOGO[k].nombre; return m; }, {}), MURO: MURO,
         crearEfecto: crearEfecto, crearPlayer: crearPlayer, hash: hash,
         analizarRecurso: analizarRecurso, resolverLista: resolverLista, leerSetDeCache: leerSetDeCache,
         descargarSet: descargarSet, decodificarSet: decodificarSet,

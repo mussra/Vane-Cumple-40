@@ -1582,8 +1582,8 @@
             var bi = bolaActual(tJuego(t));
             if (bi < 0 || posSalida[c.idx] > bi) {
                 S.sacudida[c.idx] = t; S.aviso = { txt: '¡Esa foto aún no ha salido!', t: t };
-                sonar('broma', volLocal(cv), 1);
-                enviarBroma();                                              // los demás móviles también oyen la metedura de pata
+                if (audible(cv)) sonar('broma', volSala(cv), 1);            // el sonido solo en el dispositivo con el sonido activado (admin o visor principal)
+                enviarBroma();                                              // pero todos ven el aviso de quién se ha equivocado
                 return;
             }
             S.marcas[c.idx] = t; S.nMarcas++;
@@ -1599,10 +1599,10 @@
         }
         function audioJuego(cv, t, g, bi, L, B) {
             var ok = audible(cv);
-            var M = S.doc && S.doc.broma;                                   // la broma suena en TODOS los móviles aunque estén silenciados (música y bolas, solo en admin/visor)
+            var M = S.doc && S.doc.broma;                                   // aviso visible en todos; el sonido solo en el dispositivo que no esté silenciado (evita ecos)
             if (M && typeof M.serv === 'number' && M.dev !== S.id && !S.sonado['M' + M.serv] && Math.abs(servAhora() - M.serv) < 6000) {
                 S.sonado['M' + M.serv] = 1;
-                sonar('broma', volLocal(cv), 1);
+                if (ok) sonar('broma', volSala(cv), 1);
                 S.aviso = { txt: String(M.por || 'Alguien').slice(0, 20) + ' se ha equivocado 😅', t: t };
             }
             if (g < T0) { var cu = Math.ceil(T0 - g); if (cu <= 3 && cu !== S.cuenta) { S.cuenta = cu; if (ok) sonar('click', volSala(cv), 1); } }

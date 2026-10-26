@@ -253,6 +253,29 @@
             </details>
 
             <!-- Herramientas avanzadas -->
+            <!-- Desenfoque de los casos bloqueados -->
+            <details class="mb-5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-chevron-right chevron text-[10px] text-amber-500"></i>
+                    <i class="fa-solid fa-eye-slash text-amber-400"></i> Casos bloqueados: desenfoque
+                </summary>
+                <div class="px-4 pb-4 text-xs space-y-3">
+                    <p class="text-[11px] text-slate-500 leading-snug">Controla cuánto se ve de la foto en las tarjetas aún sin resolver. Se previsualiza al mover los controles y se aplica a todos los móviles al guardar.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <label class="block text-slate-300">Desenfoque del velo: <b id="bq-velo-v" class="text-amber-300"></b>
+                            <input type="range" id="bq-velo" min="0" max="80" step="1" oninput="bloqueoPrevia()" class="w-full accent-amber-500"></label>
+                        <label class="block text-slate-300">Desenfoque de la foto: <b id="bq-foto-v" class="text-amber-300"></b>
+                            <input type="range" id="bq-foto" min="0" max="40" step="1" oninput="bloqueoPrevia()" class="w-full accent-amber-500"></label>
+                        <label class="block text-slate-300">Oscurecimiento: <b id="bq-oscuro-v" class="text-amber-300"></b>
+                            <input type="range" id="bq-oscuro" min="0" max="95" step="5" oninput="bloqueoPrevia()" class="w-full accent-amber-500"></label>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="guardarBloqueo()" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar para todos</button>
+                        <button onclick="restablecerBloqueo()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"><i class="fa-solid fa-rotate-left mr-1 text-amber-400"></i> Valores por defecto</button>
+                    </div>
+                </div>
+            </details>
+
             <details class="mb-5 bg-slate-950/60 border border-slate-800 rounded-xl">
                 <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
                     <i class="fa-solid fa-chevron-right chevron text-[10px] text-amber-500"></i>
@@ -1079,8 +1102,8 @@
         return `
         <article id="card-${e}" data-id="${e}" class="polaroid-card bg-[#1f2937] rounded-xl p-4 pb-5 border border-slate-700/60 flex flex-col justify-between">
             <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
-                <img id="img-${e}" src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain filter blur-sm opacity-40 transition-all duration-300">
-                <div id="lock-${e}" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 lock-blur">
+                <img id="img-${e}" src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain lock-img transition-all duration-300">
+                <div id="lock-${e}" class="absolute inset-0 flex flex-col items-center justify-center lock-blur">
                     <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
                     <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
                 </div>
@@ -1138,10 +1161,10 @@
             if (lock) lock.style.display = 'none';
             if (btn) { btn.disabled = false; btn.className = 'rounded bg-amber-500 px-3 py-1.5 text-xs text-slate-950 font-medium hover:bg-amber-400 shadow-md'; }
             if (status) status.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Resuelto';
-            if (img) img.classList.remove('filter', 'blur-sm', 'opacity-40');
+            if (img) img.classList.remove('lock-img');
         } else {
             card.classList.remove('resuelta');
-            if (img) img.classList.add('filter', 'blur-sm', 'opacity-40');
+            if (img) img.classList.add('lock-img');
             if (lock) lock.style.display = 'flex';
             if (btn) { btn.disabled = true; btn.className = 'rounded bg-slate-800 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed'; }
             if (status) status.textContent = 'Pendiente';
@@ -3051,6 +3074,58 @@
         });
     }
 
+    /* ---- Desenfoque de los casos bloqueados (config_sistema/bloqueados; se guarda también en este dispositivo para pintarlo al instante) ---- */
+    const BLOQ_DEF = { velo: 50, foto: 4, oscuro: 60 };
+    const BLOQ_RANGO = { velo: [0, 80], foto: [0, 40], oscuro: [0, 95] };
+    let bloqueoActual = Object.assign({}, BLOQ_DEF), bloqueoSucio = false;
+    function normBloqueo(d) {
+        const r = {};
+        Object.keys(BLOQ_DEF).forEach((k) => {
+            const v = d && d[k] != null && d[k] !== '' ? Number(d[k]) : NaN;
+            r[k] = isFinite(v) ? Math.min(BLOQ_RANGO[k][1], Math.max(BLOQ_RANGO[k][0], Math.round(v))) : BLOQ_DEF[k];
+        });
+        return r;
+    }
+    function aplicarBloqueo(v) {
+        const st = document.documentElement.style;
+        st.setProperty('--lock-velo', v.velo + 'px');
+        st.setProperty('--lock-foto', v.foto + 'px');
+        st.setProperty('--lock-oscuro', String(v.oscuro / 100));
+    }
+    function pintarControlesBloqueo(v) {
+        Object.keys(BLOQ_DEF).forEach((k) => {
+            const el = $('bq-' + k), lb = $('bq-' + k + '-v');
+            if (el) el.value = v[k];
+            if (lb) lb.textContent = v[k] + (k === 'oscuro' ? ' %' : ' px');
+        });
+    }
+    function leerControlesBloqueo() {
+        const d = {}; Object.keys(BLOQ_DEF).forEach((k) => { const el = $('bq-' + k); if (el) d[k] = el.value; });
+        return normBloqueo(d);
+    }
+    try { bloqueoActual = normBloqueo(JSON.parse(lsGet('vane_bloqueo', '{}'))); aplicarBloqueo(bloqueoActual); } catch (e) { /* valores por defecto */ }
+    window.bloqueoPrevia = function () { bloqueoSucio = true; const v = leerControlesBloqueo(); pintarControlesBloqueo(v); aplicarBloqueo(v); };
+    window.restablecerBloqueo = function () { bloqueoSucio = true; pintarControlesBloqueo(BLOQ_DEF); aplicarBloqueo(BLOQ_DEF); };
+    window.guardarBloqueo = function () {
+        const v = leerControlesBloqueo();
+        bloqueoActual = v; aplicarBloqueo(v); lsSet('vane_bloqueo', JSON.stringify(v));
+        if (!db || modoLocal()) { bloqueoSucio = false; mostrarToast('Guardado solo en este dispositivo (sin conexión o modo emergencia).', 'error'); return; }
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('bloqueados').set({ velo: v.velo, foto: v.foto, oscuro: v.oscuro, updatedAt: ST() }, { merge: true })
+            .then(() => { bloqueoSucio = false; mostrarToast('Desenfoque guardado para todos los dispositivos.'); })
+            .catch((e) => manejarErrorFirestore(e, 'bloqueados'));
+    };
+    function suscribirBloqueoConfig() {
+        pintarControlesBloqueo(bloqueoActual);
+        db.collection('config_sistema').doc('bloqueados').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            if (!doc.exists) return;                                    // sin configuración guardada: valores por defecto
+            bloqueoActual = normBloqueo(doc.data());
+            lsSet('vane_bloqueo', JSON.stringify(bloqueoActual));
+            if (!bloqueoSucio) { aplicarBloqueo(bloqueoActual); pintarControlesBloqueo(bloqueoActual); }
+        }, (e) => manejarErrorFirestore(e, 'bloqueados'));
+    }
+
     // El administrador puede pausar/reanudar la descarga en segundo plano en todos los dispositivos
     function suscribirPrecargaConfig() {
         db.collection('config_sistema').doc('precarga').onSnapshot((doc) => {
@@ -3487,6 +3562,7 @@
             try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) { /* ignorar */ }
             suscribirMaster();
             suscribirPrecargaConfig();
+            suscribirBloqueoConfig();
             suscribirMuroConfig();
             suscribirEstadoJuego();
         } catch (e) {

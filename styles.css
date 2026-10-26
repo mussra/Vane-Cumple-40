@@ -4,8 +4,10 @@
 @font-face{font-family:'Lora';font-style:italic;font-weight:400 700;font-display:swap;src:url('assets/vendor/fonts/lora-latin-wght-italic.woff2') format('woff2');}
 /* Iconos: si FontAwesome no cargase, no se pintan letras ni cuadros raros */
 .fa-solid,.fa-regular,.fa-brands{font-display:block;-webkit-font-smoothing:antialiased;text-rendering:auto}
-/* Casos ocultos: desenfoque fuerte (privacidad) */
-.lock-blur{-webkit-backdrop-filter:blur(50px);backdrop-filter:blur(50px)}
+/* Casos ocultos: desenfoque fuerte (privacidad). Valores ajustables desde el panel de administración (variables CSS) */
+:root{--lock-velo:50px;--lock-foto:4px;--lock-oscuro:.6}
+.lock-blur{-webkit-backdrop-filter:blur(var(--lock-velo));backdrop-filter:blur(var(--lock-velo));background:rgba(0,0,0,var(--lock-oscuro))}
+.lock-img{filter:blur(var(--lock-foto));opacity:.4}
 
 /* ============================================================
    40 Años de Vane · El Juego de su Memoria  (v5.0)

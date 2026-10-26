@@ -614,9 +614,16 @@
        EFECTO 6: ENFOQUE DE MISTERIO — cada foto aparece borrosa y se va descubriendo
        ====================================================================== */
     function crearEnfoque(imgs, seed, opc) {
-        var txtPregunta = ajTxt(opc && opc.ajustes, 'eTexto', '¿Quién será?', 30);
-        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), TF = 8.6, duracion = 1 + (N - 1) * TF + 7.8, zonas = [];
-        var niveles = [6, 10, 16, 26, 42, 70, 120, 220, 9999];
+        var A = opc && opc.ajustes, txtPregunta = ajTxt(A, 'eTexto', '¿Quién será?', 30);
+        var REV = ajNum(A, 'eDescubre', 5, 2, 20), VISTA = ajNum(A, 'eVista', 3, 1, 15), TF = 0.6 + REV + VISTA;          // por defecto TF = 8,6 s
+        var focoK = ajNum(A, 'eFoco', 100, 0, 250) / 100, tamK = ajNum(A, 'eTam', 100, 40, 100) / 100;
+        var N = Math.max(1, imgs.length), rnd = rngDe(seed), orden = barajar(N, rnd), duracion = 1 + (N - 1) * TF + TF - 0.8, zonas = [];
+        var niveles = [6, 10, 16, 26, 42, 70, 120, 220, 9999];                    // resolución (px de ancho) de cada paso del desenfoque
+        if (A && A.eBlur != null && A.eBlur !== '') {                              // intensidad 1 (leve) – 10 (casi irreconocible)
+            var ini = 3 * Math.pow(40, (10 - ajNum(A, 'eBlur', 8, 1, 10)) / 9); niveles = [];
+            for (var q = 0; q < 8; q++) niveles.push(Math.round(ini * Math.pow(220 / ini, q / 7)));
+            niveles.push(9999);
+        }
         var fases = []; for (var i = 0; i < N; i++) fases.push({ a: rnd() * TAU, b: rnd() * TAU, f1: 0.6 + rnd() * 0.5, f2: 0.8 + rnd() * 0.5 });
         function dibujar(ctx, w, h, t) {
             zonas.length = 0;
@@ -624,9 +631,9 @@
             var k = Math.floor((t - 1) / TF); if (k < 0) { var rr = rngDe(seed + 1); chispas(ctx, w, h, t, 60, rr); return; }
             var l = t - 1 - k * TF; if (k >= N) { k = N - 1; l = TF; }
             var img = fotoDe(imgs, orden[k % N]), fz = fases[k], ultima = (k === N - 1);
-            var caja = cajaFoto(img, w * 0.9, h * 0.78), x = w / 2, y = h * 0.5, fw = caja.w, fh = caja.h;
+            var caja = cajaFoto(img, w * 0.9 * tamK, h * 0.78 * tamK), x = w / 2, y = h * 0.5, fw = caja.w, fh = caja.h;
             var alfa = Math.min(clamp(l / 0.6, 0, 1), ultima ? 1 : clamp((TF - l) / 0.5, 0, 1));
-            var prog = clamp((l - 0.6) / 5.0, 0, 1), nivel = prog * (niveles.length - 2), n0 = Math.floor(nivel), fr = nivel - n0;
+            var prog = clamp((l - 0.6) / REV, 0, 1), nivel = prog * (niveles.length - 2), n0 = Math.floor(nivel), fr = nivel - n0;
             ctx.save(); ctx.globalAlpha = alfa; ctx.translate(x, y);
             var b = Math.min(fw, fh) * 0.035; ctx.fillStyle = '#f7f7f7'; ctx.shadowColor = 'rgba(255,230,160,0.55)'; ctx.shadowBlur = Math.min(w, h) * 0.05;
             ctx.fillRect(-fw / 2 - b, -fh / 2 - b, fw + 2 * b, fh + 2 * b); ctx.shadowBlur = 0;
@@ -636,15 +643,15 @@
             var A = copiaEscalada(img, niveles[n0]), B = copiaEscalada(img, niveles[n0 + 1]);
             ctx.drawImage(A, -fw / 2, -fh / 2, fw, fh); ctx.globalAlpha = alfa * fr; ctx.drawImage(B, -fw / 2, -fh / 2, fw, fh); ctx.globalAlpha = alfa;
             if (prog < 1) {                                                    // foco que recorre la foto y la deja nítida
-                var rad = Math.min(fw, fh) * (0.2 + 0.14 * prog), lx = Math.sin(t * fz.f1 + fz.a) * fw * 0.32, ly = Math.cos(t * fz.f2 + fz.b) * fh * 0.32;
+                var rad = Math.min(fw, fh) * (0.2 + 0.14 * prog) * focoK, lx = Math.sin(t * fz.f1 + fz.a) * fw * 0.32, ly = Math.cos(t * fz.f2 + fz.b) * fh * 0.32;
                 ctx.save(); ctx.beginPath(); ctx.arc(lx, ly, rad, 0, TAU); ctx.clip(); ctx.drawImage(img, -fw / 2, -fh / 2, fw, fh); ctx.restore();
                 ctx.strokeStyle = 'rgba(255,240,190,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(lx, ly, rad, 0, TAU); ctx.stroke();
             } else ctx.drawImage(img || A, -fw / 2, -fh / 2, fw, fh);
-            var ff = (l - 5.6) / 0.7; if (ff > 0 && ff < 1) { ctx.fillStyle = 'rgba(255,255,255,' + ((1 - ff) * 0.8).toFixed(3) + ')'; ctx.fillRect(-fw / 2, -fh / 2, fw, fh); }
+            var ff = (l - 0.6 - REV) / 0.7; if (ff > 0 && ff < 1) { ctx.fillStyle = 'rgba(255,255,255,' + ((1 - ff) * 0.8).toFixed(3) + ')'; ctx.fillRect(-fw / 2, -fh / 2, fw, fh); }
             ctx.restore();
             if (prog < 1) { ctx.save(); ctx.globalAlpha = alfa * (1 - prog); ctx.font = 'bold ' + Math.round(Math.min(w * 0.08, 34)) + 'px Lora, Georgia, serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fde9a8'; ctx.fillText(txtPregunta, w / 2, h * 0.07); ctx.restore(); }
         }
-        var ev = []; for (var q0 = 0; q0 < N; q0++) { ev.push({ t: 1 + q0 * TF + 0.1, tipo: 'whoosh', v: 0.4 }, { t: 1 + q0 * TF + 5.6, tipo: 'ding', v: 1 }); }
+        var ev = []; for (var q0 = 0; q0 < N; q0++) { ev.push({ t: 1 + q0 * TF + 0.1, tipo: 'whoosh', v: 0.4 }, { t: 1 + q0 * TF + 0.6 + REV, tipo: 'ding', v: 1 }); }
         return { duracion: duracion, dibujar: dibujar, sonidos: ev, musica: 'nostalgia', zonas: zonas };
     }
 
@@ -1783,7 +1790,14 @@
             { k: 'cFinTit', et: 'Título final', tipo: 'txt', max: 36, def: 'Fin de la función' },
             { k: 'cFinSub', et: 'Subtítulo final', tipo: 'txt', max: 40, def: 'Gracias por tanta magia' }
         ],
-        'fotos-enfoque': [{ k: 'eTexto', et: 'Texto de misterio', tipo: 'txt', max: 30, def: '¿Quién será?' }],
+        'fotos-enfoque': [
+            { k: 'eBlur', et: 'Intensidad del desenfoque', tipo: 'num', min: 1, max: 10, def: 8, ayuda: '1 = foto casi reconocible, 10 = casi irreconocible.' },
+            { k: 'eDescubre', et: 'Segundos que tarda en descubrirse', tipo: 'num', min: 2, max: 20, def: 5 },
+            { k: 'eVista', et: 'Segundos con la foto ya nítida', tipo: 'num', min: 1, max: 15, def: 3, ayuda: 'Incluye el destello final y la salida de la foto.' },
+            { k: 'eFoco', et: 'Tamaño del foco que descubre (%)', tipo: 'num', min: 0, max: 250, def: 100, ayuda: '0 = sin foco: la foto se aclara solo poco a poco.' },
+            { k: 'eTam', et: 'Tamaño de la foto (%)', tipo: 'num', min: 40, max: 100, def: 100 },
+            { k: 'eTexto', et: 'Texto de misterio', tipo: 'txt', max: 30, def: '¿Quién será?' }
+        ],
         'fotos-tragaperras': [{ k: 'rFicha', et: 'Texto de la ficha dorada', tipo: 'txt', max: 4, def: '40' }],
         'fotos-pasteleria': [{ k: 'tTexto', et: 'Texto de la tarta', tipo: 'txt', max: 24, def: '¡Felices 40!' }]
     };

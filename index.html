@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es" class="dark gate-locked">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -26,8 +26,35 @@
     <!-- Firebase SDKs (versión compat global) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <style>
+        html.gate-locked body > *:not(#gate-privado) { display: none !important; }
+        #gate-privado { position: fixed; inset: 0; z-index: 2147483647; display: flex; align-items: center; justify-content: center; padding: 1rem; background: #0b0f19; color: #e2e8f0; font-family: Montserrat, system-ui, sans-serif; overflow-y: auto; }
+        #gate-privado form { width: 100%; max-width: 24rem; margin: auto; padding: 1.75rem 1.5rem; text-align: center; background: #111827; border: 1px solid rgba(212,175,55,.4); border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,.6); }
+        #gate-privado .gate-ico { font-size: 2rem; margin-bottom: .5rem; }
+        #gate-privado h1 { margin: 0 0 .5rem; font-family: Lora, Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #fde68a; }
+        #gate-privado p { margin: 0 0 1rem; font-size: .8rem; line-height: 1.5; color: #cbd5e1; }
+        #gate-privado input { display: block; width: 100%; box-sizing: border-box; margin-bottom: .6rem; padding: .7rem; text-align: center; font: inherit; font-size: .9rem; color: #fbbf24; background: #020617; border: 1px solid #334155; border-radius: .6rem; }
+        #gate-privado input:disabled, #gate-privado button:disabled { opacity: .5; cursor: not-allowed; }
+        #gate-privado button { width: 100%; margin-top: .25rem; padding: .75rem; font: inherit; font-size: .9rem; font-weight: 600; color: #0f172a; background: #f59e0b; border: 0; border-radius: .6rem; cursor: pointer; }
+        #gate-privado #gate-msg { min-height: 1.2rem; margin: .9rem 0 0; font-size: .75rem; color: #94a3b8; }
+        #gate-privado #gate-msg.err { color: #fb7185; }
+    </style>
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col justify-between pb-safe">
+
+    <!-- ===================== ACCESO PRIVADO ===================== -->
+    <div id="gate-privado" role="dialog" aria-modal="true" aria-labelledby="gate-titulo">
+        <form id="gate-form" novalidate>
+            <div class="gate-ico" aria-hidden="true">🔒</div>
+            <h1 id="gate-titulo">Página privada</h1>
+            <p>Esta página es privada. Para entrar necesitas la contraseña de acceso.</p>
+            <input id="gate-pass" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña" disabled>
+            <button id="gate-btn" type="submit" disabled>Entrar</button>
+            <p id="gate-msg" role="status" aria-live="polite">Comprobando acceso…</p>
+            <noscript><p>Hace falta activar JavaScript para entrar.</p></noscript>
+        </form>
+    </div>
 
     <!-- ===================== MODAL DE BIENVENIDA ===================== -->
     <div id="welcomeModal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
@@ -121,6 +148,9 @@
                 </button>
                 <button onclick="intentarActivarAdmin()" class="px-3 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900 text-amber-300 font-medium transition-colors border border-amber-500/40">
                     <i class="fa-solid fa-crown mr-1 text-amber-400"></i> Administrador
+                </button>
+                <button onclick="cerrarSesion()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium transition-colors border border-slate-700">
+                    <i class="fa-solid fa-right-from-bracket mr-1 text-slate-400"></i> Cerrar sesión
                 </button>
             </div>
         </div>
@@ -362,8 +392,8 @@
                 <i class="fa-solid fa-shield-halved text-xl"></i>
             </div>
             <h3 id="qrModalTitle" class="font-serif text-lg font-bold text-white mb-2">Acceso de administrador</h3>
-            <p class="text-xs text-slate-300 mb-4">Introduce la contraseña de control para continuar.</p>
-            <input type="password" id="qr-secret-input" autocomplete="off" placeholder="Contraseña de administrador" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-center text-amber-400 font-mono mb-4 text-sm focus:outline-none focus:border-amber-500">
+            <p class="text-xs text-slate-300 mb-4">Introduce la contraseña de administrador para continuar.</p>
+            <input type="password" id="qr-secret-input" autocomplete="current-password" placeholder="Contraseña de administrador" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-center text-amber-400 font-mono mb-4 text-sm focus:outline-none focus:border-amber-500">
             <div class="flex gap-2">
                 <button onclick="cancelarActivacionQR()" class="flex-1 rounded-lg bg-slate-800 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors">Cancelar</button>
                 <button onclick="verificarYDesbloquearAdminPanel()" class="flex-1 rounded-lg bg-amber-500 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400 transition-colors shadow-md">Verificar</button>
@@ -380,23 +410,103 @@
     </footer>
 
     <!-- ===================== LÓGICA ===================== -->
-    <script src="assets/js/efectos.js"></script>
     <script>
+    (function () {
+        window.FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
+            authDomain: "vane-cumple-40.firebaseapp.com",
+            projectId: "vane-cumple-40",
+            storageBucket: "vane-cumple-40.firebasestorage.app",
+            messagingSenderId: "757919275158",
+            appId: "1:757919275158:web:40e74e06e96d8125948ab7"
+        };
+        const EMAIL_ACCESO = 'invitados@vane40.app', EMAIL_ADMIN = 'admin@vane40.app';
+        const g = (i) => document.getElementById(i);
+        const msg = (t, err) => { const m = g('gate-msg'); m.textContent = t; m.className = err ? 'err' : ''; };
+        const bloquear = (b) => ['gate-pass', 'gate-btn'].forEach((i) => { g(i).disabled = b; });
+        const ERRORES = {
+            'auth/invalid-credential': 'Contraseña incorrecta.',
+            'auth/wrong-password': 'Contraseña incorrecta.',
+            'auth/user-not-found': 'Acceso no configurado en Firebase.',
+            'auth/user-disabled': 'Este usuario está desactivado.',
+            'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
+            'auth/network-request-failed': 'Sin conexión. Revisa el wifi e inténtalo de nuevo.'
+        };
+        let entrado = false, auth = null, admin = false;
+
+        function mostrarFormulario(texto, esError) {
+            bloquear(false);
+            msg(texto || '', esError);
+            g('gate-pass').focus();
+        }
+        function sondearAdmin() {
+            return firebase.firestore().collection('admin_check').doc('probe').get().then(() => true, () => false);
+        }
+        function cargarApp() {
+            if (entrado) return;
+            entrado = true;
+            bloquear(true);
+            msg('Acceso verificado. Cargando…');
+            const s = document.createElement('script');
+            s.src = 'assets/js/efectos.js';
+            s.onload = () => {
+                const m = document.createElement('script');
+                m.textContent = g('app-main').textContent;
+                document.body.appendChild(m);
+                document.documentElement.classList.remove('gate-locked');
+                g('gate-privado').remove();
+            };
+            s.onerror = () => { entrado = false; mostrarFormulario('No se pudo cargar la aplicación. Recarga la página.', true); };
+            document.head.appendChild(s);
+        }
+        function verificarSesion(u) {
+            u.getIdToken(true).then(sondearAdmin).then((a) => { admin = a; cargarApp(); }).catch((e) => {
+                if (e && e.code === 'auth/network-request-failed') { mostrarFormulario(ERRORES['auth/network-request-failed'], true); return; }
+                auth.signOut().finally(() => mostrarFormulario('La sesión ya no es válida. Vuelve a entrar.', true));
+            });
+        }
+
+        try {
+            if (typeof firebase === 'undefined' || !firebase.auth) throw new Error('SDK');
+            firebase.initializeApp(window.FIREBASE_CONFIG);
+            auth = firebase.auth();
+        } catch (e) {
+            msg('No se pudo contactar con el sistema de acceso. Revisa la conexión y recarga.', true);
+            return;
+        }
+
+        window.VaneAcceso = {
+            esAdmin: () => admin,
+            elevarAdmin: (clave) => auth.signInWithEmailAndPassword(EMAIL_ADMIN, clave)
+                .then(sondearAdmin).then((a) => { admin = a; return a; }).catch(() => false),
+            cerrarSesion: () => { const fin = () => location.reload(); auth.signOut().then(fin, fin); }
+        };
+        window.cerrarSesion = () => window.VaneAcceso.cerrarSesion();
+
+        auth.onAuthStateChanged((u) => {
+            if (entrado) return;
+            if (u) verificarSesion(u); else mostrarFormulario('');
+        });
+        g('gate-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const p = g('gate-pass').value;
+            if (!p) { msg('Introduce la contraseña.', true); return; }
+            bloquear(true);
+            msg('Comprobando credenciales…');
+            auth.signInWithEmailAndPassword(EMAIL_ACCESO, p).catch((err) => {
+                g('gate-pass').value = '';
+                mostrarFormulario(ERRORES[err && err.code] || 'No se pudo verificar el acceso.', true);
+            });
+        });
+    })();
+    </script>
+    <script type="text/plain" id="app-main">
     /* ============================================================
        CONFIGURACIÓN  (todo lo ajustable está aquí arriba)
        ============================================================ */
     const APP_VERSION = 'v5.2';
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyDimhJjegiFomNd2p-QL--fpqdrk6pcarI",
-        authDomain: "vane-cumple-40.firebaseapp.com",
-        projectId: "vane-cumple-40",
-        storageBucket: "vane-cumple-40.firebasestorage.app",
-        messagingSenderId: "757919275158",
-        appId: "1:757919275158:web:40e74e06e96d8125948ab7"
-    };
-
-    const PASSWORD_ADMIN = "vane40";
+    const firebaseConfig = window.FIREBASE_CONFIG;
 
     const DISPOSITIVOS_ESPERADOS_DEFECTO = 16;   // también editable en el panel
     const CUENTA_ATRAS_MS = 3000;                // cuenta atrás al lanzar un vídeo
@@ -510,7 +620,7 @@
     const rawCaso = urlParams.get('caso');
     const qrCasoNum = (rawCaso && rawCaso.trim() !== '') ? rawCaso.trim() : null;
 
-    let isAdmin = urlParams.get('admin') === PASSWORD_ADMIN || lsGet('vane_admin') === '1';
+    let isAdmin = !!(window.VaneAcceso && window.VaneAcceso.esAdmin()) && lsGet('vane_admin') !== '0';
     let currentRole = isAdmin ? 'admin' : (lsGet('vane_role') === 'master' ? 'master' : 'guest');
 
     let clientId = lsGet('vane_client_id');
@@ -803,6 +913,7 @@
 
     window.intentarActivarAdmin = function () {
         if (isAdmin) { mostrarToast('Ya estás en modo Administrador.'); return; }
+        if (window.VaneAcceso.esAdmin()) { activarAdmin(); return; }
         $('qrModalTitle').textContent = 'Acceso de administrador';
         abrirModalPassword();
     };
@@ -811,23 +922,25 @@
         setTimeout(() => { const i = $('qr-secret-input'); if (i) i.focus(); }, 50);
     }
     window.cancelarActivacionQR = function () { show($('qrPasswordModal'), false); };
+    function activarAdmin() {
+        const eraMaster = currentRole === 'master' && !isAdmin;
+        isAdmin = true;
+        currentRole = 'admin';
+        if (eraMaster) liberarMasterGlobal();
+        show($('qrPasswordModal'), false);
+        actualizarInterfazRol();
+        show($('role-options'), false);
+        mostrarToast('Acceso de administrador concedido.');
+        if (qrCasoNum) { desbloquearCasoQR(qrCasoNum); limpiarURL(); }
+    }
     window.verificarYDesbloquearAdminPanel = function () {
         const pass = $('qr-secret-input').value;
-        if (pass === PASSWORD_ADMIN) {
-            const eraMaster = currentRole === 'master' && !isAdmin;
-            isAdmin = true;
-            currentRole = 'admin';
-            if (eraMaster) liberarMasterGlobal();
-            show($('qrPasswordModal'), false);
+        if (!pass) { mostrarToast('Introduce la contraseña de administrador.', 'error'); return; }
+        window.VaneAcceso.elevarAdmin(pass).then((ok) => {
             $('qr-secret-input').value = '';
-            actualizarInterfazRol();
-            show($('role-options'), false);
-            mostrarToast('Acceso de administrador concedido.');
-            if (qrCasoNum) { desbloquearCasoQR(qrCasoNum); limpiarURL(); }
-        } else {
-            mostrarToast('Contraseña incorrecta.', 'error');
-            $('qr-secret-input').value = '';
-        }
+            if (ok) activarAdmin();
+            else mostrarToast('Contraseña de administrador incorrecta.', 'error');
+        });
     };
     $('qr-secret-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') verificarYDesbloquearAdminPanel(); });
 
@@ -3272,7 +3385,7 @@
     function iniciarFirebase() {
         try {
             if (typeof firebase === 'undefined') throw new Error('No se cargó el SDK de Firebase');
-            firebase.initializeApp(firebaseConfig);
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
             // En wifis con proxies o filtros, detecta solo si hay que usar long-polling
             try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) { /* ignorar */ }

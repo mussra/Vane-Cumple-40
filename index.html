@@ -170,7 +170,7 @@
                 <div class="flex gap-2 flex-wrap items-center">
                     <div class="flex items-center gap-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 text-xs shadow-inner">
                         <label for="input-total-casos" class="text-slate-400">Casos totales:</label>
-                        <input type="number" id="input-total-casos" value="13" min="1" max="50" class="w-12 bg-slate-900 text-amber-400 font-bold text-center rounded border border-slate-700 p-1">
+                        <input type="number" id="input-total-casos" value="" min="1" max="50" class="w-14 bg-slate-900 text-amber-400 font-bold text-center rounded border border-slate-700 p-1">
                     </div>
                     <button onclick="guardarCambios()" class="rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-colors shadow-lg flex items-center gap-1.5">
                         <i class="fa-solid fa-cloud-arrow-up"></i> Guardar cambios
@@ -1305,11 +1305,31 @@
         });
         if (durInvalida) { mostrarToast('La duración debe estar entre 0:10 y 60:00 (o vacía para automática).', 'error'); return; }
         if (ajError) { mostrarToast(ajError, 'error'); return; }
-        if (!docs) { mostrarToast('No hay cambios que guardar.'); return; }
+        // «Casos totales» modificado: crear los casos que falten hasta ese número
+        const inpTotal = $('input-total-casos');
+        let nuevos = 0, aviso = '';
+        if (inpTotal && inpTotal.dataset.sucio === '1') {
+            const total = totalCasosPanel();
+            for (let i = 1; i <= total; i++) {
+                const id = `caso-${i}`;
+                if (!casosConfig[id]) { batch.set(db.collection('estado_juego').doc(id), casoPorDefecto(i)); nuevos++; docs++; }
+            }
+            if (total < totalCasosReal()) aviso = ` Los casos por encima del ${total} no se borran aquí (usa «Inicializar todo» si de verdad quieres quitarlos).`;
+        }
+        if (!docs) {
+            if (inpTotal) { delete inpTotal.dataset.sucio; sincronizarTotalCasos(); }
+            mostrarToast('No hay cambios que guardar.' + aviso);
+            return;
+        }
         contarEscrituraAdmin(docs);
         batch.commit().then(() => {
             document.querySelectorAll('#admin-cases-editor [data-sucio]').forEach((el) => delete el.dataset.sucio);
-            mostrarToast(`Guardado: ${docs} caso${docs === 1 ? '' : 's'} actualizado${docs === 1 ? '' : 's'}.`);
+            if (inpTotal) { delete inpTotal.dataset.sucio; sincronizarTotalCasos(); }
+            const edit = docs - nuevos;
+            const partes = [];
+            if (nuevos) partes.push(`${nuevos} caso${nuevos === 1 ? '' : 's'} creado${nuevos === 1 ? '' : 's'}`);
+            if (edit) partes.push(`${edit} caso${edit === 1 ? '' : 's'} actualizado${edit === 1 ? '' : 's'}`);
+            mostrarToast(`Guardado: ${partes.join(' y ')}.${aviso}`);
         }).catch((err) => { manejarErrorFirestore(err, 'guardar'); mostrarToast('Error al guardar: ' + (err.message || err.code), 'error'); });
     };
 
@@ -1330,7 +1350,24 @@
             sesionId: null
         };
     }
-    function totalCasosPanel() { return Math.max(1, Math.min(50, parseInt($('input-total-casos').value, 10) || 13)); }
+    // Nº real de casos: el mayor número de «caso-N» existente (o cuántos hay, si es mayor)
+    function totalCasosReal() {
+        const ids = Object.keys(casosConfig);
+        const mayor = ids.reduce((m, id) => Math.max(m, parseInt(id.replace('caso-', ''), 10) || 0), 0);
+        return Math.max(mayor, ids.length);
+    }
+    function totalCasosPanel() {
+        const v = parseInt($('input-total-casos').value, 10);
+        return Math.max(1, Math.min(50, Number.isFinite(v) && v > 0 ? v : (totalCasosReal() || 13)));
+    }
+    // Refleja en «Casos totales» los casos que hay de verdad, salvo que el administrador lo esté editando
+    function sincronizarTotalCasos() {
+        const inp = $('input-total-casos');
+        if (!inp || inp.dataset.sucio === '1' || document.activeElement === inp) return;
+        const n = totalCasosReal();
+        if (n > 0) inp.value = String(n);
+    }
+    $('input-total-casos').addEventListener('input', (e) => { e.target.dataset.sucio = '1'; });
 
     window.crearCasosFaltantes = function () {
         if (!db) return;
@@ -1343,7 +1380,7 @@
         }
         if (!n) { mostrarToast('Ya existen todos los casos.'); return; }
         contarEscrituraAdmin(n);
-        batch.commit().then(() => mostrarToast(`Creados ${n} casos nuevos.`)).catch((e) => { manejarErrorFirestore(e, 'crear'); mostrarToast('Error: ' + (e.message || e.code), 'error'); });
+        batch.commit().then(() => { const it = $('input-total-casos'); if (it) { delete it.dataset.sucio; sincronizarTotalCasos(); } mostrarToast(`Creados ${n} casos nuevos.`); }).catch((e) => { manejarErrorFirestore(e, 'crear'); mostrarToast('Error: ' + (e.message || e.code), 'error'); });
     };
 
     window.reiniciarProgreso = function () {
@@ -1370,7 +1407,7 @@
             if ((parseInt(id.replace('caso-', ''), 10) || 0) > total) { batch.delete(db.collection('estado_juego').doc(id)); n++; }
         });
         contarEscrituraAdmin(n);
-        batch.commit().then(() => mostrarToast(`¡${total} casos inicializados!`)).catch((e) => { manejarErrorFirestore(e, 'inicializar'); mostrarToast('Error: ' + (e.message || e.code), 'error'); });
+        batch.commit().then(() => { const it = $('input-total-casos'); if (it) { delete it.dataset.sucio; sincronizarTotalCasos(); } mostrarToast(`¡${total} casos inicializados!`); }).catch((e) => { manejarErrorFirestore(e, 'inicializar'); mostrarToast('Error: ' + (e.message || e.code), 'error'); });
     };
 
     window.exportarCopia = function () {
@@ -1677,6 +1714,7 @@
         renderGridSiHaceFalta();
         if (isAdmin) renderAdminSiHaceFalta();
         tocados.forEach(({ id }) => { actualizarUI(id); if (isAdmin) sincronizarAdminDesdeServidor(id); });
+        sincronizarTotalCasos();
         guardarCacheCasos();
         sincronizarListaCache();
 

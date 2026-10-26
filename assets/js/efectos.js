@@ -1504,7 +1504,7 @@
         abrirCanal(S, clave);
         var n = Math.min(15, N), cols = Math.min(5, n), filas = Math.ceil(n / cols);
         var carton = barajar(N, rngDe(hash(S.id + ':' + clave))).slice(0, n);
-        var celdas = [], canvasAct = null, rc = rngDe((seed ^ 0x5bd1e995) >>> 0), conf = [], estrellas = crearEstrellas(rc, 60);
+        var celdas = [], zonas = [], canvasAct = null, rc = rngDe((seed ^ 0x5bd1e995) >>> 0), conf = [], estrellas = crearEstrellas(rc, 60);
         for (i = 0; i < 90; i++) conf.push({ x: rc(), y0: -0.35 * rc(), v: 0.16 + rc() * 0.3, s: 1 + rc() * 3, ph: rc() * TAU, hue: Math.floor(rc() * 360), w: 5 + rc() * 6 });
 
         function bolaActual(g) { return Math.max(-1, Math.min(N - 1, Math.floor((g - T0) / INT))); }
@@ -1530,15 +1530,28 @@
             if (todo) reclamar(S, 'bingo', t);
             else if (linea && !S.ev.linea) reclamar(S, 'linea', t);
         }
+        // Abre la foto en grande (el visor de la web escucha el evento «fotoclick» del canvas)
+        function ampliar(idx) {
+            var cv = canvasAct; if (!cv || idx == null || idx < 0) return;
+            try { cv.dispatchEvent(new global.CustomEvent('fotoclick', { detail: { idx: idx, img: fotoDe(imgs, idx) } })); } catch (e) { /* ignorar */ }
+        }
+        function celdaEn(x, y) {
+            for (var i2 = 0; i2 < celdas.length; i2++) { var q = celdas[i2]; if (x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h) return q; }
+            return null;
+        }
+        // Pulsación larga sobre una casilla del cartón: ver la foto en grande sin marcarla
+        function pulsarLargo(x, y) {
+            var c = celdaEn(x, y);
+            if (!c) return false;
+            ampliar(c.idx);
+            return true;
+        }
         function pulsar(x, y) {
-            var cv = canvasAct, t = S.ultimoT, c = null, i2;
-            if (!cv || cv.paused) return;
-            for (i2 = 0; i2 < celdas.length; i2++) { var q = celdas[i2]; if (x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h) { c = q; break; } }
-            if (!c) return;
+            var cv = canvasAct, t = S.ultimoT, c = celdaEn(x, y);
+            if (!cv || !c) return;
             var B = S.ev.bingo, L = S.ev.linea;
-            if (B && t >= B.t) return;
-            if (L && t >= L.t && t < L.t + PAUSA) return;
-            if (typeof S.marcas[c.idx] === 'number') return;
+            // Casilla ya marcada, juego en pausa o cantando línea/bingo: el toque amplía la foto
+            if (cv.paused || (B && t >= B.t) || (L && t >= L.t && t < L.t + PAUSA) || typeof S.marcas[c.idx] === 'number') { ampliar(c.idx); return; }
             var bi = bolaActual(tJuego(t));
             if (bi < 0 || posSalida[c.idx] > bi) {
                 S.sacudida[c.idx] = t; S.aviso = { txt: '¡Esa foto aún no ha salido!', t: t };
@@ -1615,7 +1628,7 @@
             if (sub) texto(ctx, sub, cx, cy + px2 * 0.85, Math.min(w * 0.06, px2 * 0.3), '#fde68a', 'center', true);
         }
         function dibujar(ctx, w, h, t) {
-            var cv = ctx.canvas; canvasAct = cv;
+            var cv = ctx.canvas; canvasAct = cv; zonas.length = 0;
             if (t < T0 + 1 && S.ultimoT > T0 + 6) reiniciarBingo(S);
             S.ultimoT = t; actualizarEventos(S, t);
             var L = S.ev.linea, B = S.ev.bingo, g = tJuego(t), bi = bolaActual(g), fin = !!(B && t >= B.t), i2, r, c;
@@ -1639,6 +1652,7 @@
                 cardX = w * 0.42 + (w * 0.575 - cs * cols) / 2; cardY = h * 0.12 + (h * 0.76 - cs * filas) / 2; histY = h * 0.85; stX = cardX + cs * cols / 2; stY = cardY + cs * filas + h * 0.05;
             }
             var hp = Math.max(11, h * 0.042);
+            if (bi <= 0 && !fin) texto(ctx, 'Mantén pulsada una foto para verla en grande', cx, h * 0.108, Math.min(Math.max(10, h * 0.024), (port ? w : w * 0.43) * 0.03), '#c4b5fd', 'center', false);
             texto(ctx, 'BINGO DE RECUERDOS', port ? w / 2 : w * 0.5, h * 0.062, Math.min(hp, w * 0.058), '#fde68a', 'center', true);
             if (bi >= 0) texto(ctx, (bi + 1) + ' / ' + N, w - w * 0.03, h * 0.062, Math.max(10, h * 0.026), '#c4b5fd', 'right', false);
             if (g < T0) {
@@ -1649,7 +1663,7 @@
                 texto(ctx, '¡Prepara tu cartón!', cx, cy + S0 * 0.72, Math.max(11, S0 * 0.11), '#fde68a', 'center', false);
             } else {
                 var ido = orden[bi], fase = g - (T0 + bi * INT), e = clamp(fase / 0.6, 0, 1), sc = 0.35 + 0.65 * salidaAtras(e);
-                pintarFoto(ctx, fotoDe(imgs, ido), cx, cy, S0 * sc, lerp(0.35, -0.04, salidaCubica(e)), 1, 45, 0.3, null, -1);
+                pintarFoto(ctx, fotoDe(imgs, ido), cx, cy, S0 * sc, lerp(0.35, -0.04, salidaCubica(e)), 1, 45, 0.3, zonas, ido);
                 if (fase < 0.9) {
                     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ffe9a0';
                     for (i2 = 0; i2 < 12; i2++) { var an = i2 * TAU / 12 + bi, rr = S0 * 0.8 * salidaCubica(fase / 0.9); estrella4(ctx, cx + Math.cos(an) * rr, cy + Math.sin(an) * rr, S0 * 0.06, 1 - fase / 0.9); }
@@ -1659,7 +1673,11 @@
                 ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(cx - bw2 / 2, cy + S0 * 0.585, bw2, 3);
                 ctx.fillStyle = '#f59e0b'; ctx.fillRect(cx - bw2 / 2, cy + S0 * 0.585, bw2 * bpr, 3);
                 var nh = Math.min(bi, 6), hs = Math.min(S0 / 6.5, h * 0.075), hx = cx - (nh * (hs + 4) - 4) / 2;
-                for (i2 = 1; i2 <= nh; i2++) miniatura(ctx, fotoDe(imgs, orden[bi - i2]), hx + (i2 - 1) * (hs + 4), histY, hs);
+                for (i2 = 1; i2 <= nh; i2++) {
+                    var mx = hx + (i2 - 1) * (hs + 4);
+                    miniatura(ctx, fotoDe(imgs, orden[bi - i2]), mx, histY, hs);
+                    zonas.push({ i: orden[bi - i2], x: mx + hs / 2, y: histY + hs / 2, w: hs, h: hs, rot: 0 });
+                }
             }
             celdas.length = 0;
             for (r = 0; r < filas; r++) for (c = 0; c < cols; c++) {
@@ -1680,7 +1698,7 @@
             if (L && t >= L.t && t < L.t + PAUSA + 0.6 && !fin) cantar(ctx, w, h, t - L.t, '¡LÍNEA!', L.dev === S.id ? '¡Has sido tú!' : L.por, false);
             if (fin) cantar(ctx, w, h, t - B.t, '¡BINGO!', B.dev === S.id ? '¡Has sido tú!' : B.por, true);
         }
-        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'fiesta', pulsar: pulsar, fijo: true };
+        return { duracion: duracion, dibujar: dibujar, sonidos: [], musica: 'fiesta', pulsar: pulsar, pulsarLargo: pulsarLargo, zonas: zonas, fijo: true };
     }
 
     var CATALOGO = {
@@ -2028,7 +2046,23 @@
         function puntero(ev) { var r = canvas.getBoundingClientRect(); return zonaEn(ev.clientX - r.left, ev.clientY - r.top); }
         if (canvas.addEventListener) {
             if (canvas.style) canvas.style.touchAction = 'manipulation';
+            var lp = null, suprimir = false;
+            function cancelarLP() { if (lp) { clearTimeout(lp.id); lp = null; } }
+            canvas.addEventListener('pointerdown', function (ev) {
+                suprimir = false; cancelarLP();
+                if (!efecto || !efecto.pulsarLargo || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+                var rb = canvas.getBoundingClientRect(), px = ev.clientX - rb.left, py = ev.clientY - rb.top;
+                if (zonaEn(px, py)) return;                                   // sobre una foto suelta basta el toque normal
+                lp = { x: ev.clientX, y: ev.clientY, id: setTimeout(function () {
+                    lp = null;
+                    if (efecto && efecto.pulsarLargo && efecto.pulsarLargo(px, py)) suprimir = true;   // el «click» que siga se ignora
+                }, 480) };
+            });
+            canvas.addEventListener('pointermove', function (ev) { if (lp && (Math.abs(ev.clientX - lp.x) > 10 || Math.abs(ev.clientY - lp.y) > 10)) cancelarLP(); });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) { canvas.addEventListener(n, cancelarLP); });
+            canvas.addEventListener('contextmenu', function (ev) { if (efecto && efecto.pulsarLargo) ev.preventDefault(); });
             canvas.addEventListener('click', function (ev) {
+                if (suprimir) { suprimir = false; return; }
                 var z = puntero(ev);
                 if (z) emitirDetalle('fotoclick', { idx: z.i, img: fotoDe(imgs, z.i) });
                 else if (efecto && efecto.pulsar) { var rb = canvas.getBoundingClientRect(); efecto.pulsar(ev.clientX - rb.left, ev.clientY - rb.top); }

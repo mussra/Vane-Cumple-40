@@ -1583,14 +1583,28 @@
             if (bi < 0 || posSalida[c.idx] > bi) {
                 S.sacudida[c.idx] = t; S.aviso = { txt: '¡Esa foto aún no ha salido!', t: t };
                 sonar('broma', volLocal(cv), 1);
+                enviarBroma();                                              // los demás móviles también oyen la metedura de pata
                 return;
             }
             S.marcas[c.idx] = t; S.nMarcas++;
             sonar('pop', volLocal(cv), 1.4);
             comprobar(t);
         }
+        // Aviso a todos: quien se equivoca lo anuncia por Firestore (como mucho una vez cada 2,5 s)
+        function enviarBroma() {
+            var ahora = Date.now(); if (ahora - (S.ultBroma || 0) < 2500) return;
+            S.ultBroma = ahora;
+            var ref = S.canal && S.canal.ref; if (!ref) return;
+            try { ref.set({ broma: { serv: servAhora(), por: S.alias, dev: S.id } }, { merge: true }).catch(function () { /* se queda en local */ }); } catch (x) { /* ignorar */ }
+        }
         function audioJuego(cv, t, g, bi, L, B) {
             var ok = audible(cv);
+            var M = S.doc && S.doc.broma;                                   // la broma suena en TODOS los móviles aunque estén silenciados (música y bolas, solo en admin/visor)
+            if (M && typeof M.serv === 'number' && M.dev !== S.id && !S.sonado['M' + M.serv] && Math.abs(servAhora() - M.serv) < 6000) {
+                S.sonado['M' + M.serv] = 1;
+                sonar('broma', volLocal(cv), 1);
+                S.aviso = { txt: String(M.por || 'Alguien').slice(0, 20) + ' se ha equivocado 😅', t: t };
+            }
             if (g < T0) { var cu = Math.ceil(T0 - g); if (cu <= 3 && cu !== S.cuenta) { S.cuenta = cu; if (ok) sonar('click', volSala(cv), 1); } }
             if (bi > S.bolaSonada) { if (bi === S.bolaSonada + 1 && ok) sonar('bola', volSala(cv), 1); S.bolaSonada = bi; }
             if (L && !S.sonado['L' + L.serv]) {
@@ -1723,7 +1737,7 @@
             if (S.aviso && t - S.aviso.t < 2.4 && t >= S.aviso.t) { msg = S.aviso.txt; col = '#fb7185'; }
             else if (S.nMarcas === 0 && bi >= 0 && !fin) msg = 'Toca en tu cartón la foto que salga';
             else msg = S.alias + ' · ' + S.nMarcas + '/' + n + (L ? '  ·  ★ Línea: ' + (L.dev === S.id ? 'tú' : String(L.por).replace('Cartón ', '')) : '');
-            texto(ctx, msg, stX, stY, sp, col, 'center', false);
+            texto(ctx, msg, stX, stY, sp, col, 'center', false, w * 0.96);
             if (!B && bi >= N - 1 && g >= T0 + N * INT) texto(ctx, tFin, cx, cy, Math.max(14, S0 * 0.12), '#fde68a', 'center', true, S0 * 1.8);
             if (L && t >= L.t && t < L.t + PAUSA + 0.6 && !fin) cantar(ctx, w, h, t - L.t, tLinea, L.dev === S.id ? '¡Has sido tú!' : L.por, false);
             if (fin) cantar(ctx, w, h, t - B.t, tBingo, B.dev === S.id ? '¡Has sido tú!' : B.por, true);

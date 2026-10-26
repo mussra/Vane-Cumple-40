@@ -2555,13 +2555,15 @@
         cerrarFotoGrande();
         const ov = document.createElement('div');
         ov.id = 'foto-grande';
-        ov.className = 'fixed inset-0 z-[140] flex items-center justify-center p-3';
+        // En pantalla completa solo se ve lo que cuelga del elemento a pantalla completa: ahí se monta el visor
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+        ov.className = (fsEl ? 'absolute' : 'fixed') + ' inset-0 z-[140] flex items-center justify-center p-3';
         ov.style.background = 'rgba(0,0,0,0.92)';
         ov.innerHTML = `
             <button type="button" id="foto-grande-cerrar" aria-label="Cerrar la foto" class="absolute right-3 w-12 h-12 rounded-full bg-white/15 hover:bg-white/30 border border-white/30 text-white text-2xl leading-none flex items-center justify-center" style="top:max(0.75rem, env(safe-area-inset-top))"><i class="fa-solid fa-xmark"></i></button>
             <div id="foto-grande-marco" class="max-w-full max-h-full flex items-center justify-center"></div>`;
         ov.addEventListener('click', (ev) => { if (ev.target === ov || ev.target.closest('#foto-grande-cerrar')) cerrarFotoGrande(); });
-        document.body.appendChild(ov);
+        (fsEl || document.body).appendChild(ov);
         const marco = $('foto-grande-marco');
         const estilo = 'max-width:94vw;max-height:86vh;width:auto;height:auto;border-radius:14px;box-shadow:0 10px 50px rgba(0,0,0,.7);border:6px solid #fff;background:#fff;';
         if (drawable && drawable.width) {                              // primero la copia ya en memoria (instantánea)
@@ -3395,6 +3397,12 @@
             lab.innerHTML = '<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-lg text-xs transition-colors border border-emerald-500/40"><i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Silenciar</span></button>';
         }
     }
+
+    // Los avisos (toasts) también deben verse a pantalla completa: se mueven al elemento a pantalla completa y vuelven al salir
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach((nombre) => document.addEventListener(nombre, () => {
+        const tc = $('toast-container'); if (!tc) return;
+        (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(tc);
+    }));
 
     window.toggleFullScreen = function () {
         const cont = $('modalContentContainer');

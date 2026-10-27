@@ -11,14 +11,16 @@
         { id: 'betis',   nombre: 'Forever Green', sub: 'Verde y blanco',       emo: '💚', sw: 'linear-gradient(90deg,#0a8a4c 0 33%,#fff 33% 50%,#0a8a4c 50% 66%,#fff 66% 83%,#0a8a4c 83%)', meta: '#002c18' },
         { id: 'sevilla', nombre: 'Live in Red',   sub: 'Rojo y blanco',        emo: '❤️', sw: 'linear-gradient(135deg,#0e0406,#b00a22 55%,#ffffff)', meta: '#0e0406' },
         { id: 'cookie',  nombre: 'Nice Cookie',   sub: 'Repostería dulce',     emo: '🍪', sw: 'linear-gradient(135deg,#fde7cf,#f9a8d4 55%,#92400e)', meta: '#fef7ed' },
+        { id: 'magic',   nombre: 'Magic Castle', sub: 'Castillo y orejas',    emo: '🏰', sw: 'linear-gradient(135deg,#0a0f32,#2f43a8 60%,#facc15)', meta: '#0a0f32' },
         { id: 'kids',    nombre: 'Peques',        sub: '5 a 10 años',          emo: '🦄', sw: 'linear-gradient(135deg,#ffb3d1,#ffd88a 35%,#a6f0be 68%,#a5d8ff)', meta: '#fff7d6' }
     ];
-    var LEMAS = { betis: 'Forever Green', sevilla: 'Live in Red', cookie: '🍪 Nice Cookie 🧁', kids: '🎈 ¡A jugar! 🎈' };
+    var LEMAS = { magic: '✨ Magic Castle ✨', betis: 'Forever Green', sevilla: 'Live in Red', cookie: '🍪 Nice Cookie 🧁', kids: '🎈 ¡A jugar! 🎈' };
     var CLUB = { betis: 'betis', sevilla: 'sevilla' };
     var DECO = {
         cloud:  { tipo: 'nube', e: ['☁️'], n: 6 },
         green:  { tipo: 'flota', e: ['🍃', '🌿', '🍀'], n: 12 },
         cookie: { tipo: 'flota', e: ['🍪', '🧁', '🍰', '🍩', '🍓', '🍒'], n: 14 },
+        magic:  { tipo: 'brilla', e: ['✨', '⭐', '🌟', '✨'], n: 26 },
         kids:   { tipo: 'flota', e: ['⭐', '🎈', '🦄', '🌈', '🚀', '🍭', '🦖', '🎨'], n: 16 }
     };
     var uid = 0;
@@ -49,6 +51,27 @@
             '<text x="50" y="84" text-anchor="middle" font-family="Lora,Georgia,serif" font-weight="800" font-size="25" letter-spacing="-1" fill="#d4021d" stroke="#d4021d" stroke-width=".8">SFC</text>' +
             '<path d="M30 92 Q50 100 70 92" fill="none" stroke="#d4021d" stroke-width="1.6" stroke-linecap="round"/></svg>';
     }
+    /* Castillo de cuento y orejas de ratón: dibujos genéricos propios (no son logos oficiales) */
+    function svgCastillo() {
+        var torre = function (x, w, y, h, ry, col) {
+            return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + (130 - y) + '" fill="#e6ebff" stroke="#8fa5e8" stroke-width="1"/>' +
+                '<polygon points="' + (x - 4) + ',' + y + ' ' + (x + w + 4) + ',' + y + ' ' + (x + w / 2) + ',' + ry + '" fill="' + col + '" stroke="#1e3a8a" stroke-width="1"/>' +
+                '<path d="M' + (x + w / 2 - 3) + ' ' + (y + 22) + 'v8a3 3 0 0 0 6 0v-8a3 3 0 0 0 -6 0z" fill="#facc15"/>';
+        };
+        return '<svg viewBox="0 -6 200 140" role="img" aria-label="Castillo de cuento" xmlns="http://www.w3.org/2000/svg">' +
+            '<rect x="20" y="100" width="160" height="30" fill="#e6ebff" stroke="#8fa5e8"/>' +
+            torre(12, 22, 84, 0, 62, '#3b6fe0') + torre(166, 22, 84, 0, 62, '#3b6fe0') +
+            torre(38, 28, 66, 0, 34, '#2f5bd0') + torre(134, 28, 66, 0, 34, '#2f5bd0') +
+            torre(80, 40, 50, 0, 8, '#1d4ed8') +
+            '<path d="M100 8V-2" stroke="#8a6a00" stroke-width="1.5"/><polygon points="100,-2 112,2 100,6" fill="#facc15" transform="translate(0 2)"/>' +
+            '<path d="M92 130V114a8 8 0 0 1 16 0V130Z" fill="#1e2a6b" stroke="#facc15" stroke-width="1"/>' +
+            '<g fill="#facc15"><circle cx="100" cy="30" r="1.5"/><circle cx="53" cy="55" r="1.2"/><circle cx="147" cy="55" r="1.2"/></g></svg>';
+    }
+    function svgOrejas() {
+        return '<svg viewBox="0 0 120 92" role="img" aria-label="Orejas de ratón" xmlns="http://www.w3.org/2000/svg">' +
+            '<g fill="#111" stroke="#facc15" stroke-width="2.5"><circle cx="26" cy="26" r="21"/><circle cx="94" cy="26" r="21"/><circle cx="60" cy="58" r="30"/></g>' +
+            '<ellipse cx="50" cy="45" rx="9" ry="5" fill="#fff" opacity=".12" transform="rotate(-30 50 45)"/></svg>';
+    }
     function escudo(club) { return club === 'betis' ? svgBetis() : svgSevilla(); }
     /* Si existe assets/escudos/<club>.svg|png (oficial puesto por ti) se usa en lugar del dibujo */
     var oficial = {};
@@ -73,16 +96,16 @@
         var cab = document.querySelector('header .relative.mx-auto');
         if (cab) {
             lema = document.createElement('div'); lema.className = 'tema-lema';
-            var s = document.createElement('div'); s.className = 'tema-escudo tema-escudo--hero';
+            var s = document.createElement('div'); s.className = 'tema-escudo tema-escudo--hero'; s.dataset.slot = 'hero';
             cab.insertBefore(lema, cab.firstChild); cab.insertBefore(s, cab.firstChild); slots.push(s);
         }
         var tit = document.getElementById('welcomeTitle');
         if (tit && tit.parentElement) {
-            var w = document.createElement('div'); w.className = 'tema-escudo tema-escudo--bienvenida';
+            var w = document.createElement('div'); w.className = 'tema-escudo tema-escudo--bienvenida'; w.dataset.slot = 'bienvenida';
             tit.parentElement.insertBefore(w, tit.parentElement.firstChild); slots.push(w);
         }
         var pie = document.querySelector('footer');
-        if (pie) { var f = document.createElement('div'); f.className = 'tema-escudo tema-escudo--pie'; pie.insertBefore(f, pie.firstChild); slots.push(f); }
+        if (pie) { var f = document.createElement('div'); f.className = 'tema-escudo tema-escudo--pie'; f.dataset.slot = 'pie'; pie.insertBefore(f, pie.firstChild); slots.push(f); }
         deco = document.createElement('div'); deco.id = 'tema-deco'; deco.setAttribute('aria-hidden', 'true'); document.body.appendChild(deco);
     }
     function pintarDeco(id) {
@@ -90,11 +113,15 @@
         deco.innerHTML = '';
         var club = CLUB[id], cfg = DECO[id];
         if (club) { var m = document.createElement('div'); m.className = 'marca'; m.innerHTML = htmlEscudo(club); deco.appendChild(m); }
+        if (id === 'magic') { var cs = document.createElement('div'); cs.className = 'marca marca--castillo'; cs.innerHTML = svgCastillo(); deco.appendChild(cs); }
         if (!cfg) return;
         for (var i = 0; i < cfg.n; i++) {
             var el = document.createElement('span'), e = cfg.e[i % cfg.e.length];
             el.textContent = e;
-            if (cfg.tipo === 'nube') {
+            if (cfg.tipo === 'brilla') {
+                el.className = 'brilla'; el.style.left = (Math.random() * 96) + '%'; el.style.top = (Math.random() * 80) + '%'; el.style.fontSize = (.7 + Math.random() * 1.1) + 'rem';
+                el.style.animationDuration = (2.5 + Math.random() * 4) + 's'; el.style.animationDelay = (-Math.random() * 6) + 's';
+            } else if (cfg.tipo === 'nube') {
                 el.className = 'nube'; el.style.top = (4 + Math.random() * 55) + '%'; el.style.fontSize = (3 + Math.random() * 4) + 'rem';
                 el.style.animationDuration = (70 + Math.random() * 70) + 's'; el.style.animationDelay = (-Math.random() * 120) + 's';
             } else {
@@ -107,7 +134,9 @@
     }
     function pintarEscudos(id) {
         var club = CLUB[id];
-        slots.forEach(function (s) { s.innerHTML = club ? htmlEscudo(club) : ''; });
+        slots.forEach(function (s) {
+            s.innerHTML = club ? htmlEscudo(club) : (id === 'magic' ? (s.dataset.slot === 'hero' ? svgCastillo() : svgOrejas()) : '');
+        });
         if (lema) lema.textContent = LEMAS[id] || '';
     }
     function aplicar(id, guardar) {

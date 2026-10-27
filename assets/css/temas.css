@@ -7,6 +7,7 @@ html[data-theme="betis"]{--n100:255 255 255;--n200:232 246 238;--n300:205 235 21
 html[data-theme="sevilla"]{--n100:255 250 250;--n200:242 226 228;--n300:228 200 204;--n400:205 160 166;--n500:170 110 118;--n600:120 36 48;--n700:82 22 32;--n800:48 14 20;--n900:28 8 12;--n950:12 4 6;--a100:255 225 228;--a300:255 140 150;--a400:248 80 96;--a500:220 20 40;--a600:190 10 30;--a900:110 10 24;--a950:70 6 16;--on-ac:255 255 255;--tx-strong:255 255 255;--pg:14 4 6;--pg2:34 8 14;--pg3:20 6 10;--g1:#ffffff;--g2:#fecaca;--g3:#ef4444;--ring:#ff6b7a;--track:#0e0406;--thumb:#52161f;color-scheme:dark}
 html[data-theme="cookie"]{--n100:46 26 14;--n200:67 40 24;--n300:87 58 40;--n400:110 80 58;--n500:140 105 80;--n600:190 155 120;--n700:226 200 170;--n800:247 233 215;--n900:255 251 244;--n950:250 234 214;--a100:80 20 50;--a300:157 23 77;--a400:190 24 93;--a500:219 39 119;--a600:190 24 93;--a900:252 207 232;--a950:253 232 243;--on-ac:255 255 255;--tx-strong:46 26 14;--pg:254 247 237;--pg2:253 236 214;--pg3:255 244 230;--g1:#be185d;--g2:#db2777;--g3:#92400e;--ring:#db2777;--track:#fdf0dc;--thumb:#e0b98f;color-scheme:light}
 html[data-theme="kids"]{--n100:46 16 101;--n200:59 30 120;--n300:76 45 140;--n400:91 70 150;--n500:109 90 160;--n600:167 139 250;--n700:196 181 253;--n800:237 233 254;--n900:255 255 255;--n950:224 242 254;--a100:88 28 135;--a300:126 34 206;--a400:194 65 12;--a500:249 115 22;--a600:234 88 12;--a900:254 215 170;--a950:255 237 213;--on-ac:59 7 100;--tx-strong:46 16 101;--pg:255 247 214;--pg2:255 236 179;--pg3:255 241 200;--g1:#ec4899;--g2:#f97316;--g3:#8b5cf6;--ring:#8b5cf6;--track:#ffefc2;--thumb:#c4b5fd;color-scheme:light}
+html[data-theme="magic"]{--n100:245 247 255;--n200:226 232 248;--n300:205 215 240;--n400:170 185 225;--n500:130 148 200;--n600:80 98 165;--n700:50 66 130;--n800:28 40 96;--n900:16 24 64;--n950:8 12 40;--a100:254 249 195;--a300:253 224 71;--a400:250 204 21;--a500:234 179 8;--a600:202 138 4;--a900:113 63 18;--a950:66 32 6;--on-ac:8 12 40;--tx-strong:255 255 255;--pg:10 15 50;--pg2:20 30 80;--pg3:14 20 60;--g1:#fff7ae;--g2:#facc15;--g3:#f59e0b;--ring:#facc15;--track:#0a0f32;--thumb:#32428a;color-scheme:dark}
 html[data-theme]:not([data-theme="luxury"]) .accent-amber-500{accent-color:rgb(var(--a500))}
 html[data-theme]:not([data-theme="luxury"]) .bg-amber-400{background-color:rgb(var(--a400))}
 html[data-theme]:not([data-theme="luxury"]) .bg-amber-500\/10{background-color:rgb(var(--a500) / 0.1)}
@@ -215,3 +216,21 @@ html[data-theme="kids"] .polaroid-card:nth-child(4n+3){rotate:-.8deg;border-colo
 html[data-theme="kids"] .polaroid-card:nth-child(4n){rotate:1.6deg;border-color:#60a5fa}
 html[data-theme="kids"] .tema-lema,html[data-theme="kids"] .tema-lema:not(:empty){color:#7e22ce;letter-spacing:.2em;font-size:.9rem}
 html[data-theme="kids"] #tema-btn{background:linear-gradient(135deg,#f472b6,#fbbf24,#34d399,#60a5fa);color:#3b0764}
+
+/* ===================== MAGIC CASTLE (castillo de cuento y orejas de ratón) ===================== */
+html[data-theme="magic"] body{background-image:radial-gradient(1.5px 1.5px at 30px 40px,#fff,transparent),radial-gradient(1px 1px at 120px 90px,#fff8c4,transparent),radial-gradient(1.5px 1.5px at 190px 20px,#fff,transparent),radial-gradient(1px 1px at 70px 150px,#fff,transparent),linear-gradient(180deg,#0a0f32 0,#16226b 60%,#2f43a8 100%);background-size:220px 200px,220px 200px,220px 200px,220px 200px,100% 100%;background-attachment:fixed}
+html[data-theme="magic"] header{background-image:linear-gradient(180deg,rgba(30,45,130,.75),rgba(10,15,50,.9))!important;border-bottom:3px solid #facc15}
+html[data-theme="magic"] footer{border-top:3px solid #facc15}
+html[data-theme="magic"] .polaroid-card{border-width:2px;box-shadow:0 10px 28px -8px rgba(250,204,21,.25)}
+html[data-theme="magic"] .tema-lema{color:#fde047;text-shadow:0 0 16px rgba(250,204,21,.7)}
+html[data-theme="magic"] .tema-escudo--hero{width:min(250px,70vw)}
+html[data-theme="magic"] .tema-escudo--bienvenida{width:70px}
+html[data-theme="magic"] .tema-escudo--pie{width:52px}
+#tema-deco .marca--castillo{top:auto;bottom:0;transform:translateX(-50%);width:min(120vw,900px);opacity:.2}
+#tema-deco .brilla{position:absolute;line-height:1;opacity:0;animation:tema-brilla ease-in-out infinite}
+@keyframes tema-brilla{0%,100%{opacity:0;transform:scale(.5)}50%{opacity:.85;transform:scale(1.15)}}
+@media(prefers-reduced-motion:reduce){#tema-deco .brilla{display:none}}
+html[data-theme="magic"] #tema-btn{background:#111;color:#facc15;border:2px solid #facc15;overflow:visible}
+html[data-theme="magic"] #tema-btn::before,html[data-theme="magic"] #tema-btn::after{content:"";position:absolute;top:-.7rem;width:1.5rem;height:1.5rem;border-radius:9999px;background:#111;border:2px solid #facc15;z-index:-1}
+html[data-theme="magic"] #tema-btn::before{left:-.5rem}
+html[data-theme="magic"] #tema-btn::after{right:-.5rem}

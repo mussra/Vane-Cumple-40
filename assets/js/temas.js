@@ -53,6 +53,7 @@
     }
     /* Castillo de cuento y orejas de ratón: dibujos genéricos propios (no son logos oficiales) */
     function svgCastillo() {
+        if (oficial.castillo) return '<img src="' + oficial.castillo + '" alt="Castillo">';
         var torre = function (x, w, y, h, ry, col) {
             return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + (130 - y) + '" fill="#e6ebff" stroke="#8fa5e8" stroke-width="1"/>' +
                 '<polygon points="' + (x - 4) + ',' + y + ' ' + (x + w + 4) + ',' + y + ' ' + (x + w / 2) + ',' + ry + '" fill="' + col + '" stroke="#1e3a8a" stroke-width="1"/>' +
@@ -68,6 +69,7 @@
             '<g fill="#facc15"><circle cx="100" cy="30" r="1.5"/><circle cx="53" cy="55" r="1.2"/><circle cx="147" cy="55" r="1.2"/></g></svg>';
     }
     function svgOrejas() {
+        if (oficial.orejas) return '<img src="' + oficial.orejas + '" alt="Orejas">';
         return '<svg viewBox="0 0 120 92" role="img" aria-label="Orejas de ratón" xmlns="http://www.w3.org/2000/svg">' +
             '<g fill="#111" stroke="#facc15" stroke-width="2.5"><circle cx="26" cy="26" r="21"/><circle cx="94" cy="26" r="21"/><circle cx="60" cy="58" r="30"/></g>' +
             '<ellipse cx="50" cy="45" rx="9" ry="5" fill="#fff" opacity=".12" transform="rotate(-30 50 45)"/></svg>';
@@ -146,7 +148,10 @@
         var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', t.meta);
         if (guardar) { try { localStorage.setItem(CLAVE, id); } catch (e) { /* sin almacenamiento */ } }
         pintarEscudos(id); pintarDeco(id);
-        if (CLUB[id] && !(CLUB[id] in oficial)) sondear(CLUB[id], function () { if (document.documentElement.getAttribute('data-theme') === id) { pintarEscudos(id); pintarDeco(id); } });
+        var claves = CLUB[id] ? [CLUB[id]] : (id === 'magic' ? ['castillo', 'orejas'] : []);
+        claves.forEach(function (k) {
+            if (!(k in oficial)) sondear(k, function () { if (document.documentElement.getAttribute('data-theme') === id) { pintarEscudos(id); pintarDeco(id); } });
+        });
         if (panel) panel.querySelectorAll('.op').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.id === id ? 'true' : 'false'); });
     }
     function crearSelector() {

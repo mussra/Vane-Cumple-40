@@ -1,0 +1,115 @@
+
+/* ===================== BASE COMUN A TODOS LOS TEMAS (menos luxury) ===================== */
+html[data-theme]:not([data-theme="luxury"]) ::-webkit-scrollbar-track{background:var(--track)}
+html[data-theme]:not([data-theme="luxury"]) ::-webkit-scrollbar-thumb{background:var(--thumb)}
+html[data-theme]:not([data-theme="luxury"]) :focus-visible{outline-color:var(--ring)}
+html[data-theme]:not([data-theme="luxury"]) .gold-gradient-text{background-image:linear-gradient(135deg,var(--g1) 0%,var(--g2) 50%,var(--g3) 100%)}
+html[data-theme]:not([data-theme="luxury"]) .polaroid-card.resuelta{border-color:rgb(var(--a500)/.5)}
+html[data-theme]:not([data-theme="luxury"]) .ov-count{color:rgb(var(--a400))}
+html[data-theme]:not([data-theme="luxury"]) .barra-fondo{background:rgb(var(--n950));border-color:rgb(var(--n800))}
+html[data-theme]:not([data-theme="luxury"]) .barra-relleno{background:rgb(var(--a500))}
+html[data-theme]:not([data-theme="luxury"]) [data-sucio="1"]{border-color:rgb(var(--a500))!important}
+html[data-theme]:not([data-theme="luxury"]) header>.absolute.inset-0{background-image:radial-gradient(rgb(var(--a400)) 1px,transparent 1px)}
+html[data-theme]:not([data-theme="luxury"]) body{color:rgb(var(--n100))}
+
+/* Pantalla de acceso (antes de entrar) */
+html[data-theme]:not([data-theme="luxury"]) #gate-privado{background:rgb(var(--pg));color:rgb(var(--n200))}
+html[data-theme]:not([data-theme="luxury"]) #gate-privado form{background:rgb(var(--n900));border-color:rgb(var(--a500)/.45)}
+html[data-theme]:not([data-theme="luxury"]) #gate-privado h1{color:rgb(var(--a100))}
+html[data-theme]:not([data-theme="luxury"]) #gate-privado p{color:rgb(var(--n300))}
+html[data-theme]:not([data-theme="luxury"]) #gate-privado input{color:rgb(var(--a400));background:rgb(var(--n950));border-color:rgb(var(--n700))}
+html[data-theme]:not([data-theme="luxury"]) #gate-privado button{color:rgb(var(--on-ac));background:rgb(var(--a500))}
+html[data-theme]:not([data-theme="luxury"]) #gate-privado #gate-msg{color:rgb(var(--n400))}
+
+/* ===================== ESCUDOS, LEMAS, DECORACION ===================== */
+.tema-escudo{display:none;line-height:0}
+.tema-escudo:not(:empty){display:block}
+.tema-escudo svg,.tema-escudo img{display:block;width:100%;height:auto;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+.tema-escudo--hero{width:92px;margin:0 auto .9rem}
+.tema-escudo--bienvenida{width:64px;margin:0 auto .6rem}
+.tema-escudo--pie{width:38px;margin:0 auto .6rem}
+@media(min-width:640px){.tema-escudo--hero{width:116px}}
+.tema-lema{display:none;margin:0 auto .75rem;font-size:.72rem;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:rgb(var(--a400))}
+.tema-lema:not(:empty){display:block;text-align:center}
+#tema-deco{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+#tema-deco .marca{position:absolute;left:50%;top:50%;width:min(78vmin,560px);transform:translate(-50%,-50%);opacity:.075}
+#tema-deco .marca svg{width:100%;height:auto;filter:none}
+#tema-deco .flota{position:absolute;bottom:-12%;line-height:1;opacity:0;animation:tema-sube linear infinite;will-change:transform,opacity}
+@keyframes tema-sube{0%{transform:translate3d(0,0,0) rotate(-8deg);opacity:0}12%{opacity:.5}85%{opacity:.5}100%{transform:translate3d(var(--dx,20px),-118vh,0) rotate(10deg);opacity:0}}
+#tema-deco .nube{position:absolute;line-height:1;opacity:.55;animation:tema-nube linear infinite;will-change:transform}
+@keyframes tema-nube{from{transform:translateX(-30vw)}to{transform:translateX(130vw)}}
+@media(prefers-reduced-motion:reduce){#tema-deco .flota,#tema-deco .nube{display:none}}
+
+/* ===================== SELECTOR DE ESTILO ===================== */
+#tema-btn{position:fixed;left:1rem;bottom:calc(1.25rem + env(safe-area-inset-bottom,0px));z-index:45;width:3rem;height:3rem;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;cursor:pointer;color:rgb(var(--on-ac));background:rgb(var(--a500));border:2px solid rgb(var(--n900));box-shadow:0 8px 20px rgba(0,0,0,.4);transition:transform .2s ease}
+#tema-btn:hover{transform:scale(1.08) rotate(-8deg)}
+#tema-panel{position:fixed;left:.75rem;right:.75rem;bottom:calc(5rem + env(safe-area-inset-bottom,0px));z-index:46;max-width:30rem;max-height:min(72vh,34rem);overflow-y:auto;padding:1rem;border-radius:1.25rem;background:rgb(var(--n900));color:rgb(var(--n200));border:1px solid rgb(var(--n700));box-shadow:0 25px 50px -12px rgba(0,0,0,.6)}
+#tema-panel[hidden]{display:none}
+#tema-panel .cab{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.75rem}
+#tema-panel h2{margin:0;font-size:1.05rem;font-weight:700;color:rgb(var(--a300))}
+#tema-panel .cerrar{border:0;background:rgb(var(--n800));color:rgb(var(--n300));width:2rem;height:2rem;border-radius:9999px;cursor:pointer;font-size:1rem}
+#tema-panel .rejilla{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+@media(min-width:480px){#tema-panel .rejilla{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#tema-panel .op{position:relative;display:flex;flex-direction:column;gap:.35rem;text-align:left;padding:.55rem;border-radius:.9rem;cursor:pointer;color:inherit;font:inherit;background:rgb(var(--n800));border:2px solid transparent;transition:transform .15s ease,border-color .15s ease}
+#tema-panel .op:hover{transform:translateY(-2px)}
+#tema-panel .op[aria-pressed="true"]{border-color:rgb(var(--a500))}
+#tema-panel .muestra{height:2.6rem;border-radius:.6rem;display:flex;align-items:center;justify-content:center;font-size:1.35rem;border:1px solid rgba(128,128,128,.35)}
+#tema-panel .nom{font-size:.8rem;font-weight:700;color:rgb(var(--n100));line-height:1.1}
+#tema-panel .sub{font-size:.65rem;color:rgb(var(--n400));line-height:1.1}
+#tema-panel .op[aria-pressed="true"]::after{content:"\2713";position:absolute;top:.35rem;right:.45rem;font-size:.8rem;font-weight:800;color:rgb(var(--a400))}
+
+/* ===================== LUXURY (original): solo el selector usa las variables por defecto ===================== */
+
+/* ===================== CLOUD ===================== */
+html[data-theme="cloud"] body{background-image:radial-gradient(ellipse at 15% 8%,rgba(255,255,255,.95) 0,transparent 38%),radial-gradient(ellipse at 85% 18%,rgba(255,255,255,.9) 0,transparent 34%),linear-gradient(180deg,#cfe8ff 0,#f2f8ff 55%,#eaf4ff 100%);background-attachment:fixed}
+html[data-theme="cloud"] header{background-image:linear-gradient(180deg,rgba(255,255,255,.75),rgba(224,238,252,.6))!important}
+html[data-theme="cloud"] .polaroid-card{box-shadow:0 10px 25px -8px rgba(30,90,160,.28)}
+html[data-theme="cloud"] footer{background:rgba(255,255,255,.6)!important}
+
+/* ===================== DARK ===================== */
+html[data-theme="dark"] .polaroid-card{box-shadow:0 10px 30px -8px rgba(0,0,0,.8)}
+
+/* ===================== GREEN ===================== */
+html[data-theme="green"] body{background-image:radial-gradient(ellipse at 80% 0,rgba(16,185,129,.18) 0,transparent 45%),radial-gradient(ellipse at 0 100%,rgba(52,211,153,.12) 0,transparent 45%);background-attachment:fixed}
+
+/* ===================== FOREVER GREEN (inspirado en el Real Betis Balompie) ===================== */
+html[data-theme="betis"] body{background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0,rgba(255,255,255,.045) 44px,transparent 44px,transparent 88px);background-attachment:fixed}
+html[data-theme="betis"] header{background-image:linear-gradient(180deg,rgba(0,84,46,.9),rgba(0,44,24,.95))!important;border-bottom:4px solid #fff}
+html[data-theme="betis"] footer{border-top:4px solid #fff}
+html[data-theme="betis"] .polaroid-card{border-width:2px}
+html[data-theme="betis"] .tema-lema{color:#fff;text-shadow:0 0 18px rgba(255,255,255,.45)}
+html[data-theme="betis"] #tema-btn{color:#005c32;background:#fff}
+
+/* ===================== LIVE IN RED (inspirado en el Sevilla FC) ===================== */
+html[data-theme="sevilla"] body{background-image:radial-gradient(ellipse at 85% -10%,rgba(220,20,40,.38) 0,transparent 50%),radial-gradient(ellipse at 0 105%,rgba(220,20,40,.25) 0,transparent 45%),repeating-linear-gradient(115deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 2px,transparent 2px,transparent 26px);background-attachment:fixed}
+html[data-theme="sevilla"] header{background-image:linear-gradient(180deg,rgba(150,8,26,.85),rgba(14,4,6,.95))!important;border-bottom:4px solid #fff}
+html[data-theme="sevilla"] footer{border-top:4px solid rgb(var(--a500))}
+html[data-theme="sevilla"] .polaroid-card{border-width:2px}
+html[data-theme="sevilla"] .tema-lema{color:#fff;text-shadow:0 0 18px rgba(255,60,80,.7)}
+
+/* ===================== NICE COOKIE (reposteria y pasteleria) ===================== */
+html[data-theme="cookie"] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cg opacity='.32'%3E%3Crect x='12' y='20' width='16' height='5' rx='2.5' fill='%23ec4899' transform='rotate(25 20 22)'/%3E%3Crect x='110' y='14' width='16' height='5' rx='2.5' fill='%2392400e' transform='rotate(-35 118 16)'/%3E%3Crect x='70' y='60' width='16' height='5' rx='2.5' fill='%23f59e0b' transform='rotate(70 78 62)'/%3E%3Crect x='150' y='80' width='16' height='5' rx='2.5' fill='%23ec4899' transform='rotate(-10 158 82)'/%3E%3Crect x='28' y='110' width='16' height='5' rx='2.5' fill='%2392400e' transform='rotate(50 36 112)'/%3E%3Crect x='96' y='128' width='16' height='5' rx='2.5' fill='%2314b8a6' transform='rotate(-60 104 130)'/%3E%3Crect x='146' y='154' width='16' height='5' rx='2.5' fill='%23f59e0b' transform='rotate(30 154 156)'/%3E%3Crect x='50' y='160' width='16' height='5' rx='2.5' fill='%23ec4899' transform='rotate(-25 58 162)'/%3E%3C/g%3E%3C/svg%3E");background-attachment:fixed}
+html[data-theme="cookie"] header{background-image:linear-gradient(180deg,#fde7cf,#fff4e6)!important;border-bottom:3px dashed #db2777}
+html[data-theme="cookie"] footer{border-top:3px dashed #db2777;background:#fdeed9!important}
+html[data-theme="cookie"] .polaroid-card{border-radius:1.5rem;border-width:2px;box-shadow:0 10px 22px -10px rgba(120,60,20,.45)}
+html[data-theme="cookie"] .polaroid-card:nth-child(odd){rotate:-.8deg}
+html[data-theme="cookie"] .polaroid-card:nth-child(even){rotate:.8deg}
+html[data-theme="cookie"] .tema-lema,html[data-theme="cookie"] .tema-lema:not(:empty){color:#be185d}
+html[data-theme="cookie"] :is(h1,h2,h3){letter-spacing:.01em}
+
+/* ===================== PEQUES (5-10 anos) ===================== */
+html[data-theme="kids"]{font-size:112.5%}
+html[data-theme="kids"] :is(body,h1,h2,h3,h4,button,input,select,textarea,.font-serif,.font-sans){font-family:"Baloo 2","Fredoka","Comic Sans MS","Chalkboard SE","Marker Felt","Trebuchet MS",system-ui,sans-serif}
+html[data-theme="kids"] body{font-weight:600;background-image:radial-gradient(circle at 12% 18%,rgba(255,154,193,.35) 0,transparent 18%),radial-gradient(circle at 88% 12%,rgba(124,199,255,.4) 0,transparent 20%),radial-gradient(circle at 78% 82%,rgba(139,233,168,.4) 0,transparent 22%),radial-gradient(circle at 10% 90%,rgba(255,209,102,.5) 0,transparent 20%);background-attachment:fixed}
+html[data-theme="kids"] header{background-image:linear-gradient(135deg,#ffb3d1 0,#ffd88a 35%,#a6f0be 68%,#a5d8ff 100%)!important;border-bottom:6px dotted #8b5cf6}
+html[data-theme="kids"] footer{border-top:6px dotted #8b5cf6;background:#ffe9a8!important}
+html[data-theme="kids"] :is(.rounded-lg,.rounded-xl,.rounded-2xl){border-radius:1.5rem}
+html[data-theme="kids"] button{min-height:2.75rem}
+html[data-theme="kids"] button:active{transform:scale(.94)}
+html[data-theme="kids"] .polaroid-card{border-width:3px;border-radius:1.75rem;box-shadow:0 10px 0 -2px rgba(139,92,246,.35)}
+html[data-theme="kids"] .polaroid-card:nth-child(4n+1){rotate:-1.5deg;border-color:#f472b6}
+html[data-theme="kids"] .polaroid-card:nth-child(4n+2){rotate:1.2deg;border-color:#fbbf24}
+html[data-theme="kids"] .polaroid-card:nth-child(4n+3){rotate:-.8deg;border-color:#34d399}
+html[data-theme="kids"] .polaroid-card:nth-child(4n){rotate:1.6deg;border-color:#60a5fa}
+html[data-theme="kids"] .tema-lema,html[data-theme="kids"] .tema-lema:not(:empty){color:#7e22ce;letter-spacing:.2em;font-size:.9rem}
+html[data-theme="kids"] #tema-btn{background:linear-gradient(135deg,#f472b6,#fbbf24,#34d399,#60a5fa);color:#3b0764}

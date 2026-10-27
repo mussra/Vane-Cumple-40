@@ -1,0 +1,6 @@
+Los escudos de "Forever Green" y "Live in Red" son dibujos estilizados propios (no oficiales).
+Para usar los oficiales, copia aqui estos ficheros (se detectan solos, sin tocar codigo):
+  betis.svg  (o betis.png)
+  sevilla.svg  (o sevilla.png)
+Recomendado: fondo transparente, proporcion ~ 4:5 (alto mayor que ancho).
+Son marcas registradas de sus clubes: uso privado/domestico.

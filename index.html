@@ -22,6 +22,18 @@
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <!-- Estilos propios (antes NO estaba enlazado) -->
     <link rel="stylesheet" href="styles.css">
+    <!-- Estilos personalizables (generado con tools/generar_temas.py); el tema guardado se aplica antes de pintar -->
+    <link rel="stylesheet" href="assets/css/temas.css">
+    <script>
+        (function () {
+            try {
+                var q = new URLSearchParams(location.search).get('tema'), t = q || localStorage.getItem('vane_tema');
+                if (q) localStorage.setItem('vane_tema', q);
+                if (t && /^[a-z]{3,10}$/.test(t)) document.documentElement.setAttribute('data-theme', t);
+            } catch (e) { /* sin almacenamiento */ }
+        })();
+    </script>
+    <script src="assets/js/temas.js" defer></script>
 
     <!-- Firebase SDKs (versión compat global) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>

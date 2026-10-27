@@ -1703,7 +1703,7 @@
             ultimoFromCache = snap.metadata.fromCache;
             if (snap.metadata.fromCache && !initialLoadDone) { actualizarChipConexion(); return; }   // esperamos datos del servidor
             if (!snap.metadata.fromCache && (estadoErrores.cuota || estadoErrores.permisos)) limpiarErroresFirestore();
-            procesarSnapshot(snap);
+            try { procesarSnapshot(snap); } catch (e) { console.error('[Firestore] error al procesar los casos', e); }
             actualizarChipConexion();
         }, (err) => {
             manejarErrorFirestore(err, 'listener');
@@ -1713,24 +1713,45 @@
         });
     }
 
+    // ¿Mismo valor? (compara también Timestamps y objetos anidados)
+    function mismoValor(a, b) {
+        if (a === b) return true;
+        try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; }
+    }
+
     function procesarSnapshot(snap) {
         const primera = !initialLoadDone;
-        if (primera) {
-            // Primer dato real del servidor: descartamos lo que solo estaba en la caché local
-            const idsServidor = new Set(snap.docs.map((d) => d.id));
-            Object.keys(casosConfig).forEach((k) => { if (!idsServidor.has(k)) delete casosConfig[k]; });
-        }
+        const delServidor = !snap.metadata.fromCache;
 
-        const tocados = [];
+        // Estimación de cuota: solo cuentan los cambios que llegan del servidor
+        // (docChanges NO se usa para construir el estado, solo para contar y para los borrados inmediatos)
         snap.docChanges().forEach((ch) => {
-            const id = ch.doc.id;
             if (!ch.doc.metadata.hasPendingWrites) contarLectura(1);
-            if (ch.type === 'removed') { delete casosConfig[id]; return; }
-            const data = ch.doc.data({ serverTimestamps: 'estimate' });
-            const antes = casosConfig[id] || {};
-            casosConfig[id] = Object.assign({}, antes, data);
-            tocados.push({ id, antes, data });
+            if (ch.type === 'removed') delete casosConfig[ch.doc.id];
         });
+
+        // El estado se reconstruye SIEMPRE desde la lista COMPLETA de documentos del snapshot.
+        // Así da igual cómo reparta el SDK los cambios incrementales (p. ej. un primer snapshot desde caché
+        // que descartamos): el siguiente snapshot siempre trae todos los casos.
+        const tocados = [];
+        const idsSnap = new Set();
+        snap.docs.forEach((d) => {
+            const id = d.id;
+            idsSnap.add(id);
+            try {
+                const data = d.data({ serverTimestamps: 'estimate' });
+                const existia = !!casosConfig[id];
+                const antes = casosConfig[id] || {};
+                if (!existia || Object.keys(data).some((k) => !mismoValor(antes[k], data[k]))) {
+                    casosConfig[id] = Object.assign({}, antes, data);
+                    tocados.push({ id, antes, data });
+                }
+            } catch (e) { console.warn('[Firestore] caso ilegible:', id, e); }   // un caso roto no impide cargar los demás
+        });
+        // Con datos del servidor, lo que no venga en la lista ya no existe (borrado por el admin).
+        // Con datos de caché no se borra nada: pueden estar incompletos.
+        if (delServidor) Object.keys(casosConfig).forEach((k) => { if (!idsSnap.has(k)) delete casosConfig[k]; });
+        if (delServidor && Object.keys(casosConfig).length !== snap.size) console.warn('[Firestore] descuadre de casos', Object.keys(casosConfig).length, snap.size);
         if (primera) initialLoadDone = true;
 
         // Se renderiza UNA sola vez por snapshot (antes se re-renderizaba la galería por cada documento)
@@ -3061,10 +3082,9 @@
         cacheDispUnsub = db.collection('cache_dispositivos').onSnapshot((snap) => {
             const n = snap.docChanges().filter((ch) => !ch.doc.metadata.hasPendingWrites).length;
             if (n) contarLecturaExtra(n);
-            snap.docChanges().forEach((ch) => {
-                if (ch.type === 'removed') delete dispositivosCache[ch.doc.id];
-                else dispositivosCache[ch.doc.id] = ch.doc.data({ serverTimestamps: 'estimate' });
-            });
+            snap.docChanges().forEach((ch) => { if (ch.type === 'removed') delete dispositivosCache[ch.doc.id]; });
+            snap.docs.forEach((d) => { dispositivosCache[d.id] = d.data({ serverTimestamps: 'estimate' }); });
+            if (!snap.metadata.fromCache) { const vivos = new Set(snap.docs.map((d) => d.id)); Object.keys(dispositivosCache).forEach((k) => { if (!vivos.has(k)) delete dispositivosCache[k]; }); }
             programarRenderCacheUI();
             if (activeId) actualizarBarraListos();
         }, (e) => {

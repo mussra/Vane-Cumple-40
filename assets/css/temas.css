@@ -234,3 +234,11 @@ html[data-theme="magic"] #tema-btn{background:#111;color:#facc15;border:2px soli
 html[data-theme="magic"] #tema-btn::before,html[data-theme="magic"] #tema-btn::after{content:"";position:absolute;top:-.7rem;width:1.5rem;height:1.5rem;border-radius:9999px;background:#111;border:2px solid #facc15;z-index:-1}
 html[data-theme="magic"] #tema-btn::before{left:-.5rem}
 html[data-theme="magic"] #tema-btn::after{right:-.5rem}
+
+/* Musica ambiente (panel de estilos) */
+#tema-panel .musica{margin-top:.9rem;padding-top:.8rem;border-top:1px solid rgb(var(--n700));display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+#tema-panel .mus-btn{cursor:pointer;font:inherit;font-size:.8rem;font-weight:700;padding:.5rem .8rem;border-radius:9999px;border:2px solid rgb(var(--n700));background:rgb(var(--n800));color:rgb(var(--n100))}
+#tema-panel .mus-btn[aria-pressed="true"]{border-color:rgb(var(--a500));color:rgb(var(--a300))}
+#tema-panel .mus-vol{flex:1;min-width:6rem;accent-color:rgb(var(--a500))}
+#tema-panel .mus-msg{flex-basis:100%;margin:0;font-size:.7rem;color:rgb(var(--n400))}
+#tema-panel .mus-msg:empty{display:none}

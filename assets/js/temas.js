@@ -141,6 +141,57 @@
         });
         if (lema) lema.textContent = LEMAS[id] || '';
     }
+
+    /* ---- Musica ambiente por estilo: assets/musica/<tema>.mp3 (o .m4a/.ogg). Apagada por defecto; cada persona la activa en su movil ---- */
+    var EXT = ['mp3', 'm4a', 'ogg'];
+    var M = { on: false, vol: 0.25, audio: null, estado: '', pausada: false };
+    try { M.on = localStorage.getItem('vane_musica') === '1'; var v = parseFloat(localStorage.getItem('vane_musica_vol')); if (v >= 0 && v <= 1) M.vol = v; } catch (e) { /* sin almacenamiento */ }
+    function fundir(a, a_vol, fin) {
+        var paso = (a_vol - a.volume) / 16, n = 0;
+        var iv = setInterval(function () {
+            n++; a.volume = Math.max(0, Math.min(1, a.volume + paso));
+            if (n >= 16) { clearInterval(iv); a.volume = Math.max(0, Math.min(1, a_vol)); if (fin) fin(); }
+        }, 50);
+    }
+    function detener() {
+        var a = M.audio; M.audio = null; M.pausada = false;
+        if (a) fundir(a, 0, function () { a.pause(); a.removeAttribute('src'); a.load(); });
+    }
+    function sonar(id) {
+        detener(); M.estado = '';
+        if (!M.on) { pintarMus(); return; }
+        var a = new Audio(), i = 0; a.loop = true; a.volume = 0; a.preload = 'auto'; M.audio = a;
+        function sig() {
+            if (M.audio !== a) return;
+            if (i >= EXT.length) { M.estado = 'falta'; pintarMus(); return; }
+            a.src = 'assets/musica/' + id + '.' + EXT[i++]; a.load(); jugar();
+        }
+        function jugar() {
+            var p = a.play();
+            if (p && p.catch) p.catch(function (e) { if (e && e.name === 'NotAllowedError' && M.audio === a) { M.estado = 'bloqueado'; pintarMus(); } });
+        }
+        a.addEventListener('error', sig);
+        a.addEventListener('playing', function () { if (M.audio === a) { M.estado = 'ok'; pintarMus(); fundir(a, M.vol); } });
+        sig();
+    }
+    function visible(el) { return !!el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none'; }
+    /* La musica se calla mientras se ve un video o un efecto a pantalla completa, y vuelve despues */
+    setInterval(function () {
+        if (!M.on || !M.audio) return;
+        var ocupado = visible(document.getElementById('mediaModal')) || !!document.querySelector('[class*="z-[90]"]');
+        if (ocupado && !M.audio.paused) { M.audio.pause(); M.pausada = true; }
+        else if (!ocupado && M.pausada) { M.pausada = false; var p = M.audio.play(); if (p && p.catch) p.catch(function () {}); }
+    }, 700);
+    /* Si el navegador bloqueo el autoplay, el primer toque en la pagina arranca la musica */
+    document.addEventListener('pointerdown', function () {
+        if (M.on && M.audio && M.audio.paused && !M.pausada) { var p = M.audio.play(); if (p && p.catch) p.catch(function () {}); }
+    });
+    function pintarMus() {
+        if (!panel) return;
+        var b = panel.querySelector('.mus-btn'), m = panel.querySelector('.mus-msg'), id = document.documentElement.getAttribute('data-theme') || 'luxury';
+        b.setAttribute('aria-pressed', M.on ? 'true' : 'false'); b.textContent = M.on ? '🎵 Música: encendida' : '🎵 Música: apagada';
+        m.textContent = !M.on ? '' : M.estado === 'falta' ? 'Aún no hay música para este estilo.' : M.estado === 'bloqueado' ? 'Pulsa otra vez para activar el sonido.' : '';
+    }
     function aplicar(id, guardar) {
         if (!TEMAS.some(function (t) { return t.id === id; })) id = 'luxury';
         var t = TEMAS.filter(function (x) { return x.id === id; })[0];
@@ -148,6 +199,7 @@
         var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', t.meta);
         if (guardar) { try { localStorage.setItem(CLAVE, id); } catch (e) { /* sin almacenamiento */ } }
         pintarEscudos(id); pintarDeco(id);
+        if (M.on) sonar(id); else pintarMus();
         var claves = CLUB[id] ? [CLUB[id]] : (id === 'magic' ? ['castillo', 'orejas'] : []);
         claves.forEach(function (k) {
             if (!(k in oficial)) sondear(k, function () { if (document.documentElement.getAttribute('data-theme') === id) { pintarEscudos(id); pintarDeco(id); } });
@@ -164,8 +216,17 @@
             h += '<button class="op" type="button" data-id="' + t.id + '" aria-pressed="false"><span class="muestra" style="background:' + t.sw + '">' + t.emo + '</span>' +
                  '<span class="nom">' + t.nombre + '</span><span class="sub">' + t.sub + '</span></button>';
         });
-        panel.innerHTML = h + '</div>';
+        panel.innerHTML = h + '</div><div class="musica"><button class="mus-btn" type="button" aria-pressed="false">🎵 Música: apagada</button>' +
+            '<input class="mus-vol" type="range" min="0" max="100" value="' + Math.round(M.vol * 100) + '" aria-label="Volumen de la música"><p class="mus-msg" role="status"></p></div>';
         document.body.appendChild(panel); document.body.appendChild(btn);
+        panel.querySelector('.mus-btn').addEventListener('click', function () {
+            M.on = !M.on; try { localStorage.setItem('vane_musica', M.on ? '1' : '0'); } catch (e) { /* sin almacenamiento */ }
+            if (M.on) sonar(document.documentElement.getAttribute('data-theme') || 'luxury'); else { detener(); M.estado = ''; pintarMus(); }
+        });
+        panel.querySelector('.mus-vol').addEventListener('input', function (e) {
+            M.vol = e.target.value / 100; try { localStorage.setItem('vane_musica_vol', String(M.vol)); } catch (er) { /* sin almacenamiento */ }
+            if (M.audio) M.audio.volume = M.vol;
+        });
         function abrir(v) { panel.hidden = !v; btn.setAttribute('aria-expanded', v ? 'true' : 'false'); }
         btn.addEventListener('click', function () { abrir(panel.hidden); });
         panel.querySelector('.cerrar').addEventListener('click', function () { abrir(false); btn.focus(); });

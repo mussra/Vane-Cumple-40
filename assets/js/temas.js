@@ -192,6 +192,31 @@
         b.setAttribute('aria-pressed', M.on ? 'true' : 'false'); b.textContent = M.on ? '🎵 Música: encendida' : '🎵 Música: apagada';
         m.textContent = !M.on ? '' : M.estado === 'falta' ? 'Aún no hay música para este estilo.' : M.estado === 'bloqueado' ? 'Pulsa otra vez para activar el sonido.' : '';
     }
+
+    /* ---- Sonidos de los efectos por estilo: assets/sfx/<tema>/<sonido>.mp3. Si falta el archivo, suena el sonido original (WebAudio).
+       luxury siempre usa los sonidos originales. efectos.js llama a window.VaneTemaSfx.reproducir() antes de sintetizar. ---- */
+    var SFX_NOMBRES = ['lanzar', 'estallar', 'tick', 'tope', 'premio', 'obturador', 'impresora', 'ding', 'click', 'pop', 'chime', 'fanfarria', 'whoosh', 'destello', 'broma', 'bola', 'linea', 'bingo'];
+    var SFX = {};
+    function cargarSfx(id) {
+        if (id === 'luxury' || SFX[id]) return;
+        var lis = SFX[id] = {};
+        SFX_NOMBRES.forEach(function (n) {
+            var a = new Audio(); a.preload = 'auto';
+            a.addEventListener('canplaythrough', function () { lis[n] = a.src; }, { once: true });
+            a.src = 'assets/sfx/' + id + '/' + n + '.mp3';
+        });
+    }
+    window.VaneTemaSfx = {
+        reproducir: function (tipo, volumen, v) {
+            var id = document.documentElement.getAttribute('data-theme') || 'luxury', lis = SFX[id];
+            if (id === 'luxury' || !lis || !lis[tipo]) return false;
+            try {
+                var vol = Math.max(0, Math.min(1, volumen * (v == null ? 1 : v))), c = new Audio(lis[tipo]);
+                c.volume = vol; var p = c.play(); if (p && p.catch) p.catch(function () {});
+                return true;
+            } catch (e) { return false; }
+        }
+    };
     function aplicar(id, guardar) {
         if (!TEMAS.some(function (t) { return t.id === id; })) id = 'luxury';
         var t = TEMAS.filter(function (x) { return x.id === id; })[0];
@@ -199,6 +224,7 @@
         var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', t.meta);
         if (guardar) { try { localStorage.setItem(CLAVE, id); } catch (e) { /* sin almacenamiento */ } }
         pintarEscudos(id); pintarDeco(id);
+        cargarSfx(id);
         if (M.on) sonar(id); else pintarMus();
         var claves = CLUB[id] ? [CLUB[id]] : (id === 'magic' ? ['castillo', 'orejas'] : []);
         claves.forEach(function (k) {

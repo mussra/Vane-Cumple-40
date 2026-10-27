@@ -1947,6 +1947,8 @@
         }
     };
     function sonar(tipo, volumen, v) {
+        /* Sonido propio del estilo elegido (assets/sfx/<tema>/<tipo>.mp3); si no existe, se sintetiza el original */
+        if (global.VaneTemaSfx && global.VaneTemaSfx.reproducir(tipo, volumen == null ? 1 : volumen, v == null ? 1 : v)) return;
         var ac = audioCtx(); if (!ac || !SFX[tipo]) return;
         var vol = clamp(volumen == null ? 1 : volumen, 0, 1);
         if (vol <= 0.001) return;

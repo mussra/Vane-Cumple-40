@@ -246,3 +246,5 @@ html[data-theme="magic"] #tema-btn::after{right:-.5rem}
 
 /* Fondos: se mueven con la pagina (sin attachment fixed) para que la barra del navegador movil no los desplace */
 html[data-theme]:not([data-theme="luxury"]) body{background-attachment:scroll!important}
+#tema-panel .def-btn{display:block;margin:.8rem auto 0;cursor:pointer;font:inherit;font-size:.72rem;font-weight:600;padding:.4rem .8rem;border-radius:9999px;border:1px dashed rgb(var(--n600));background:transparent;color:rgb(var(--n300))}
+#tema-panel .def-btn:hover{border-color:rgb(var(--a500));color:rgb(var(--a300))}

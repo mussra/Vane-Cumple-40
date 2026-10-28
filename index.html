@@ -27,7 +27,7 @@
     <script>
         (function () {
             try {
-                var q = new URLSearchParams(location.search).get('tema'), t = q || localStorage.getItem('vane_tema');
+                var q = new URLSearchParams(location.search).get('tema'), t = q || localStorage.getItem('vane_tema') || localStorage.getItem('vane_tema_defecto');
                 if (q) localStorage.setItem('vane_tema', q);
                 if (t && /^[a-z]{3,10}$/.test(t)) document.documentElement.setAttribute('data-theme', t);
             } catch (e) { /* sin almacenamiento */ }
@@ -265,6 +265,24 @@
             </details>
 
             <!-- Herramientas avanzadas -->
+            <!-- Estilos de la página (por defecto y para todos) -->
+            <details class="mb-5 bg-slate-950/60 border border-slate-800 rounded-xl">
+            <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
+            <i class="fa-solid fa-chevron-right chevron text-[10px] text-amber-500"></i>
+            <i class="fa-solid fa-palette text-amber-400"></i> Estilos de la página
+            </summary>
+            <div class="px-4 pb-4 text-xs space-y-3">
+            <p class="text-[11px] text-slate-500 leading-snug"><b class="text-slate-300">Por defecto</b>: lo ven quienes no han elegido estilo (y se aplica solo a los que entren después). <b class="text-slate-300">Aplicar a todos ahora</b>: cambia el estilo de todos los dispositivos a la vez; después cada persona puede volver a cambiarlo en su botón 🎨.</p>
+            <div class="flex gap-2 flex-wrap items-center">
+            <label for="est-sel" class="text-slate-300">Estilo:</label>
+            <select id="est-sel" class="bg-slate-900 text-amber-300 font-semibold rounded-lg border border-slate-700 px-2 py-2"></select>
+            <button onclick="guardarEstiloDefecto()" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar como por defecto</button>
+            <button onclick="aplicarEstiloATodos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"><i class="fa-solid fa-users mr-1 text-amber-400"></i> Aplicar a todos ahora</button>
+            </div>
+            <p id="est-info" class="text-[11px] text-slate-400"></p>
+            </div>
+            </details>
+
             <!-- Desenfoque de los casos bloqueados -->
             <details class="mb-5 bg-slate-950/60 border border-slate-800 rounded-xl">
                 <summary class="px-4 py-3 text-sm font-semibold text-amber-300 flex items-center gap-2">
@@ -3158,6 +3176,41 @@
         }, (e) => manejarErrorFirestore(e, 'bloqueados'));
     }
 
+    /* ---- Estilo de la página para todos (config_sistema/estilo): defecto = estilo de quien no ha elegido; todos = cambio puntual global ---- */
+    let estiloCfg = {};
+    function nombreEstilo(id) { const T = window.VaneTemas; const x = T && T.lista().find((y) => y.id === id); return x ? x.emo + ' ' + x.nombre : String(id); }
+    function pintarEstiloAdmin() {
+    const sel = $('est-sel'); if (!sel || !window.VaneTemas) return;
+    if (!sel.options.length) window.VaneTemas.lista().forEach((x) => sel.add(new Option(x.emo + ' ' + x.nombre, x.id)));
+    const info = $('est-info');
+    if (info) info.textContent = 'Por defecto: ' + nombreEstilo(estiloCfg.defecto || 'luxury') + (estiloCfg.todos && estiloCfg.todos.tema ? ' · Último cambio para todos: ' + nombreEstilo(estiloCfg.todos.tema) : '');
+    }
+    function escribirEstilo(datos, okMsg) {
+    if (!db || modoLocal()) { mostrarToast('Sin conexión (o modo emergencia): no se puede cambiar el estilo para todos.', 'error'); return; }
+    contarEscrituraAdmin(1);
+    db.collection('config_sistema').doc('estilo').set(Object.assign({}, datos, { updatedAt: ST() }), { merge: true })
+    .then(() => mostrarToast(okMsg))
+    .catch((e) => manejarErrorFirestore(e, 'estilo'));
+    }
+    window.guardarEstiloDefecto = function () {
+    const id = $('est-sel').value;
+    escribirEstilo({ defecto: id }, 'Estilo por defecto guardado: ' + nombreEstilo(id) + '.');
+    };
+    window.aplicarEstiloATodos = function () {
+    const id = $('est-sel').value;
+    if (!confirm('¿Cambiar el estilo de TODOS los dispositivos a ' + nombreEstilo(id) + '? Cada persona podrá volver a cambiarlo después.')) return;
+    escribirEstilo({ todos: { tema: id, ver: ahoraServidor() } }, 'Estilo aplicado a todos: ' + nombreEstilo(id) + '.');
+    };
+    function suscribirEstiloConfig() {
+    pintarEstiloAdmin();
+    db.collection('config_sistema').doc('estilo').onSnapshot((doc) => {
+    if (!doc.metadata.hasPendingWrites) contarLectura(1);
+    estiloCfg = doc.exists ? doc.data() : {};
+    pintarEstiloAdmin();
+    if (window.VaneTemas) window.VaneTemas.recibirConfig(estiloCfg, doc.metadata.hasPendingWrites ? null : mostrarToast);
+    }, (e) => manejarErrorFirestore(e, 'estilo'));
+    }
+
     // El administrador puede pausar/reanudar la descarga en segundo plano en todos los dispositivos
     function suscribirPrecargaConfig() {
         db.collection('config_sistema').doc('precarga').onSnapshot((doc) => {
@@ -3595,6 +3648,7 @@
             suscribirMaster();
             suscribirPrecargaConfig();
             suscribirBloqueoConfig();
+            suscribirEstiloConfig();
             suscribirMuroConfig();
             suscribirEstadoJuego();
         } catch (e) {

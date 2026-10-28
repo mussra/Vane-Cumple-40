@@ -24,6 +24,13 @@
         kids:   { tipo: 'flota', e: ['⭐', '🎈', '🦄', '🌈', '🚀', '🍭', '🦖', '🎨'], n: 16 }
     };
     var uid = 0;
+    function lsg(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function lss(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* sin almacenamiento */ } }
+    function valido(id) { return TEMAS.some(function (x) { return x.id === id; }); }
+    function nombreDe(id) { var x = TEMAS.filter(function (y) { return y.id === id; })[0]; return x ? x.emo + ' ' + x.nombre : id; }
+    /* Primera vez que este dispositivo ve la funcion: un cambio global anterior a esa fecha no le afecta (usa el estilo por defecto) */
+    var PRIMERA = Number(lsg('vane_tema_primera')) || 0;
+    if (!PRIMERA) { PRIMERA = Date.now(); lss('vane_tema_primera', String(PRIMERA)); }
 
     /* ---- Escudos: aproximaciones estilizadas (no oficiales). Para usar los oficiales, ver assets/escudos/LEEME.txt ---- */
     function corona(c) {
@@ -258,9 +265,12 @@
             h += '<button class="op" type="button" data-id="' + t.id + '" aria-pressed="false"><span class="muestra" style="background:' + t.sw + '">' + t.emo + '</span>' +
                  '<span class="nom">' + t.nombre + '</span><span class="sub">' + t.sub + '</span></button>';
         });
-        panel.innerHTML = h + '</div><div class="musica"><button class="mus-btn" type="button" aria-pressed="false">🎵 Música: apagada</button>' +
+        panel.innerHTML = h + '</div><button class="def-btn" type="button">↺ Usar el estilo por defecto</button><div class="musica"><button class="mus-btn" type="button" aria-pressed="false">🎵 Música: apagada</button>' +
             '<input class="mus-vol" type="range" min="0" max="100" value="' + Math.round(M.vol * 100) + '" aria-label="Volumen de la música"><p class="mus-msg" role="status"></p></div>';
         document.body.appendChild(panel); document.body.appendChild(btn);
+        panel.querySelector('.def-btn').addEventListener('click', function () {
+            lss(CLAVE, null); var d = lsg('vane_tema_defecto'); aplicar(valido(d) ? d : 'luxury', false);
+        });
         panel.querySelector('.mus-btn').addEventListener('click', function () {
             M.on = !M.on; try { localStorage.setItem('vane_musica', M.on ? '1' : '0'); } catch (e) { /* sin almacenamiento */ }
             if (M.on) sonar(document.documentElement.getAttribute('data-theme') || 'luxury'); else { detener(); M.estado = ''; pintarMus(); }
@@ -276,6 +286,26 @@
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) abrir(false); });
         document.addEventListener('click', function (e) { if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target)) abrir(false); });
     }
+    /* ---- Configuracion del administrador (config_sistema/estilo), la entrega index.html:
+       defecto = estilo de quien no ha elegido uno; todos = {tema, ver}: cambio puntual para todos, que luego cada persona puede volver a cambiar ---- */
+    function recibirConfig(d, avisar) {
+        d = d || {};
+        var def = valido(d.defecto) ? d.defecto : null;
+        lss('vane_tema_defecto', def);
+        var g = d.todos, ver = g ? Number(g.ver) : 0;
+        if (g && valido(g.tema) && ver > Math.max(Number(lsg('vane_tema_ver')) || 0, PRIMERA)) {
+            lss('vane_tema_ver', String(ver));
+            aplicar(g.tema, true);
+            if (avisar) avisar('El administrador ha cambiado el estilo a ' + nombreDe(g.tema) + '. Puedes cambiarlo en el botón 🎨.');
+            return;
+        }
+        if (lsg(CLAVE) === null) aplicar(def || 'luxury', false);
+    }
+    window.VaneTemas = {
+        lista: function () { return TEMAS.map(function (x) { return { id: x.id, nombre: x.nombre, emo: x.emo }; }); },
+        actual: function () { return document.documentElement.getAttribute('data-theme') || 'luxury'; },
+        recibirConfig: recibirConfig
+    };
     function iniciar() {
         crearSlots(); crearSelector(); vigilarAlto();
         aplicar(document.documentElement.getAttribute('data-theme') || 'luxury', false);

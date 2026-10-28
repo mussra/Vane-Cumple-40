@@ -134,9 +134,9 @@ html[data-theme]:not([data-theme="luxury"]) #gate-privado #gate-msg{color:rgb(va
 @media(min-width:640px){.tema-escudo--hero{width:116px}}
 .tema-lema{display:none;margin:0 auto .75rem;font-size:.72rem;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:rgb(var(--a400))}
 .tema-lema:not(:empty){display:block;text-align:center}
-/* Altura fija (viewport grande): al subir/bajar la barra del navegador movil no cambia el contenedor y los objetos no saltan */
-#tema-deco{position:fixed;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:-1;pointer-events:none;overflow:hidden;transform:translateZ(0)}
-#tema-deco .marca{position:absolute;left:50%;top:50%;width:min(78vmin,560px);transform:translate(-50%,-50%);opacity:.075}
+/* Anclado al borde INFERIOR con altura fija (viewport grande): en Chrome Android la barra de direcciones aparece/desaparece por ARRIBA y mueve lo anclado arriba; el borde inferior no se mueve */
+#tema-deco{position:fixed;bottom:0;left:0;width:100%;height:100vh;height:100lvh;z-index:-1;pointer-events:none;overflow:hidden;transform:translateZ(0)}
+#tema-deco .marca{position:absolute;left:50%;bottom:50%;width:min(78vmin,560px);transform:translate(-50%,50%);opacity:.075}
 #tema-deco .marca svg{width:100%;height:auto;filter:none}
 #tema-deco .flota{position:absolute;bottom:-12%;line-height:1;opacity:0;animation:tema-sube linear infinite;will-change:transform,opacity}
 @keyframes tema-sube{0%{transform:translate3d(0,0,0) rotate(-8deg);opacity:0}12%{opacity:.5}85%{opacity:.5}100%{transform:translate3d(var(--dx,20px),-118vh,0) rotate(10deg);opacity:0}}
@@ -227,7 +227,7 @@ html[data-theme="magic"] .tema-lema{color:#fde047;text-shadow:0 0 16px rgba(250,
 html[data-theme="magic"] .tema-escudo--hero{width:min(250px,70vw)}
 html[data-theme="magic"] .tema-escudo--bienvenida{width:70px}
 html[data-theme="magic"] .tema-escudo--pie{width:52px}
-#tema-deco .marca--castillo{top:auto;bottom:0;transform:translateX(-50%);width:min(120vw,900px);opacity:.2}
+#tema-deco .marca--castillo{bottom:0;transform:translateX(-50%);width:min(120vw,900px);opacity:.2}
 #tema-deco .brilla{position:absolute;line-height:1;opacity:0;animation:tema-brilla ease-in-out infinite}
 @keyframes tema-brilla{0%,100%{opacity:0;transform:scale(.5)}50%{opacity:.85;transform:scale(1.15)}}
 @media(prefers-reduced-motion:reduce){#tema-deco .brilla{display:none}}
@@ -243,3 +243,6 @@ html[data-theme="magic"] #tema-btn::after{right:-.5rem}
 #tema-panel .mus-vol{flex:1;min-width:6rem;accent-color:rgb(var(--a500))}
 #tema-panel .mus-msg{flex-basis:100%;margin:0;font-size:.7rem;color:rgb(var(--n400))}
 #tema-panel .mus-msg:empty{display:none}
+
+/* Fondos fijos: anclados abajo para que no se desplacen cuando cambia la barra del navegador */
+html[data-theme]:not([data-theme="luxury"]) body{background-position:left bottom}

@@ -121,10 +121,10 @@
             var el = document.createElement('span'), e = cfg.e[i % cfg.e.length];
             el.textContent = e;
             if (cfg.tipo === 'brilla') {
-                el.className = 'brilla'; el.style.left = (Math.random() * 96) + '%'; el.style.top = (Math.random() * 80) + '%'; el.style.fontSize = (.7 + Math.random() * 1.1) + 'rem';
+                el.className = 'brilla'; el.style.left = (Math.random() * 96) + '%'; el.style.bottom = (Math.random() * 80) + '%'; el.style.fontSize = (.7 + Math.random() * 1.1) + 'rem';
                 el.style.animationDuration = (2.5 + Math.random() * 4) + 's'; el.style.animationDelay = (-Math.random() * 6) + 's';
             } else if (cfg.tipo === 'nube') {
-                el.className = 'nube'; el.style.top = (4 + Math.random() * 55) + '%'; el.style.fontSize = (3 + Math.random() * 4) + 'rem';
+                el.className = 'nube'; el.style.bottom = (30 + Math.random() * 55) + '%'; el.style.fontSize = (3 + Math.random() * 4) + 'rem';
                 el.style.animationDuration = (70 + Math.random() * 70) + 's'; el.style.animationDelay = (-Math.random() * 120) + 's';
             } else {
                 el.className = 'flota'; el.style.left = (Math.random() * 96) + '%'; el.style.fontSize = (1.2 + Math.random() * 1.8) + 'rem';

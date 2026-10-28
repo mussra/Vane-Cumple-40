@@ -1589,12 +1589,12 @@
             var bi = bolaActual(tJuego(t));
             if (bi < 0 || posSalida[c.idx] > bi) {
                 S.sacudida[c.idx] = t; S.aviso = { txt: '¡Esa foto aún no ha salido!', t: t };
-                if (audible(cv)) sonar('broma', volSala(cv), 1);            // el sonido solo en el dispositivo con el sonido activado (admin o visor principal)
+                if (audible(cv)) sonar('broma', volSala(cv), 1, 'fotos-bingo');            // el sonido solo en el dispositivo con el sonido activado (admin o visor principal)
                 enviarBroma();                                              // pero todos ven el aviso de quién se ha equivocado
                 return;
             }
             S.marcas[c.idx] = t; S.nMarcas++;
-            sonar('pop', volLocal(cv), 1.4);
+            sonar('pop', volLocal(cv), 1.4, 'fotos-bingo');
             comprobar(t);
         }
         // Aviso a todos: quien se equivoca lo anuncia por Firestore (como mucho una vez cada 2,5 s)
@@ -1609,18 +1609,18 @@
             var M = S.doc && S.doc.broma;                                   // aviso visible en todos; el sonido solo en el dispositivo que no esté silenciado (evita ecos)
             if (M && typeof M.serv === 'number' && M.dev !== S.id && !S.sonado['M' + M.serv] && Math.abs(servAhora() - M.serv) < 6000) {
                 S.sonado['M' + M.serv] = 1;
-                if (ok) sonar('broma', volSala(cv), 1);
+                if (ok) sonar('broma', volSala(cv), 1, 'fotos-bingo');
                 S.aviso = { txt: String(M.por || 'Alguien').slice(0, 20) + ' se ha equivocado 😅', t: t };
             }
-            if (g < T0) { var cu = Math.ceil(T0 - g); if (cu <= 3 && cu !== S.cuenta) { S.cuenta = cu; if (ok) sonar('click', volSala(cv), 1); } }
-            if (bi > S.bolaSonada) { if (bi === S.bolaSonada + 1 && ok) sonar('bola', volSala(cv), 1); S.bolaSonada = bi; }
+            if (g < T0) { var cu = Math.ceil(T0 - g); if (cu <= 3 && cu !== S.cuenta) { S.cuenta = cu; if (ok) sonar('click', volSala(cv), 1, 'fotos-bingo'); } }
+            if (bi > S.bolaSonada) { if (bi === S.bolaSonada + 1 && ok) sonar('bola', volSala(cv), 1, 'fotos-bingo'); S.bolaSonada = bi; }
             if (L && !S.sonado['L' + L.serv]) {
                 S.sonado['L' + L.serv] = 1;
-                if (ok && t - L.t < 3) { sonar('linea', volSala(cv), 1); hablar('¡Línea!'); }
+                if (ok && t - L.t < 3) { sonar('linea', volSala(cv), 1, 'fotos-bingo'); hablar('¡Línea!'); }
             }
             if (B && !S.sonado['B' + B.serv]) {
                 S.sonado['B' + B.serv] = 1;
-                if (ok && t - B.t < 3) { sonar('bingo', volSala(cv), 1); hablar('¡Bingo!'); }
+                if (ok && t - B.t < 3) { sonar('bingo', volSala(cv), 1, 'fotos-bingo'); hablar('¡Bingo!'); }
             }
         }
         function texto(ctx, txt, x, y, px, color, align, serif, maxW) {
@@ -1946,7 +1946,81 @@
             [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach(function (f, i) { voz(ac, AU.sfx, { tipo: 'triangle', f: f, t: t + 0.2 + i * 0.07, dur: 0.8, vol: 0.1 * v, ataque: 0.005, eco: 0.3 }); });
         }
     };
-    function sonar(tipo, volumen, v) {
+    /* ======================================================================
+       ARCHIVOS DE AUDIO OPCIONALES POR EFECTO (WebAudio, mismo desbloqueo que el sonido generado)
+       - Musica:  assets/musica/efectos/<efecto>.mp3   (bucle; va sincronizada con el tiempo del efecto)
+       - Sonidos: assets/sfx/efectos/<efecto>/<sonido>.mp3
+       Si un archivo no existe, suena el original generado por codigo. <efecto> = fotos-castillo, fotos-bingo, ...
+       ====================================================================== */
+    var SFX_NOMBRES = ['lanzar', 'estallar', 'tick', 'tope', 'premio', 'obturador', 'impresora', 'ding', 'click', 'pop', 'chime', 'fanfarria', 'whoosh', 'destello', 'broma', 'bola', 'linea', 'bingo'];
+    var BUF = {}, PRECARGADO = {};
+    function ctxCrear() {
+        if (!AU.ctx) {
+            try { var AC = global.AudioContext || global.webkitAudioContext; if (AC) AU.ctx = new AC(); } catch (e) { AU.ctx = null; }
+            if (AU.ctx) cadenaAudio(AU.ctx);
+        }
+        return AU.ctx;
+    }
+    function cargarBuf(url) {
+        var b = BUF[url]; if (b) return b;
+        b = BUF[url] = { estado: 'cargando', buf: null };
+        var ac = ctxCrear();
+        if (!ac || !global.fetch) { b.estado = 'no'; return b; }
+        global.fetch(url).then(function (r) { if (!r.ok) throw new Error('404'); return r.arrayBuffer(); })
+            .then(function (ab) { return new Promise(function (ok, ko) { ac.decodeAudioData(ab, ok, ko); }); })
+            .then(function (buf) { b.buf = buf; b.estado = 'ok'; })
+            .catch(function () { b.estado = 'no'; });
+        return b;
+    }
+    function precargarEfecto(tipo) {
+        if (PRECARGADO[tipo]) return; PRECARGADO[tipo] = true;
+        cargarBuf('assets/musica/efectos/' + tipo + '.mp3');
+        SFX_NOMBRES.forEach(function (n) { cargarBuf('assets/sfx/efectos/' + tipo + '/' + n + '.mp3'); });
+    }
+    /* Devuelve 'cargando', el AudioBuffer de la musica del efecto, o null si no hay archivo */
+    function musicaArchivo(tipo) {
+        var b = BUF['assets/musica/efectos/' + tipo + '.mp3'];
+        return !b || b.estado === 'cargando' ? (b ? 'cargando' : null) : (b.estado === 'ok' ? b.buf : null);
+    }
+    function sfxArchivo(fx, nombre, vol, v) {
+        var b = BUF['assets/sfx/efectos/' + fx + '/' + nombre + '.mp3'];
+        if (!b || b.estado !== 'ok') return false;
+        var ac = audioCtx(); if (!ac) return true;                       // sin audio activo: no suena (como el sonido generado)
+        try {
+            var src = ac.createBufferSource(), g = ac.createGain();
+            AU.sfx.gain.value = vol; g.gain.value = clamp(v, 0, 2);
+            src.buffer = b.buf; src.connect(g); g.connect(AU.sfx); src.start(ac.currentTime + 0.01);
+        } catch (e) { return false; }
+        return true;
+    }
+    /* Musica de archivo con la misma interfaz que crearMusica; el punto del bucle sale del tiempo del efecto (t mod duracion) */
+    function crearMusicaArchivo(buf) {
+        var src = null, ini = 0, off0 = 0, rate0 = 1, activo = false, NIVEL = 0.8;
+        function parar() { if (src) { try { src.stop(); } catch (e) { /* ignorar */ } try { src.disconnect(); } catch (e2) { /* ignorar */ } src = null; } }
+        function arrancar(t, rate) {
+            parar(); var ac = AU.ctx; if (!ac) return;
+            src = ac.createBufferSource(); src.buffer = buf; src.loop = true; src.playbackRate.value = rate; src.connect(AU.musica);
+            off0 = ((t % buf.duration) + buf.duration) % buf.duration; src.start(0, off0); ini = ac.currentTime; rate0 = rate;
+        }
+        return {
+            reiniciar: function (t) { if (src) arrancar(t, rate0); },
+            detener: function () { if (activo && AU.ctx && AU.musica) { try { AU.musica.gain.setTargetAtTime(0, AU.ctx.currentTime, 0.06); } catch (e) { /* ignorar */ } } parar(); activo = false; },
+            avanzar: function (t, rate, vol) {
+                var ac = audioCtx(); if (!ac) return;
+                var nivel = NIVEL * clamp(vol == null ? 1 : vol, 0, 1);
+                try { AU.musica.gain.setTargetAtTime(nivel, ac.currentTime, 0.05); } catch (e) { /* ignorar */ }
+                if (nivel <= 0.001) { parar(); activo = false; return; }
+                if (!activo || !src) { activo = true; arrancar(t, rate); return; }
+                if (rate !== rate0) { off0 = (off0 + (ac.currentTime - ini) * rate0) % buf.duration; ini = ac.currentTime; rate0 = rate; src.playbackRate.value = rate; }
+                var esp = (off0 + (ac.currentTime - ini) * rate0) % buf.duration, obj = ((t % buf.duration) + buf.duration) % buf.duration, d = Math.abs(esp - obj);
+                d = Math.min(d, buf.duration - d);
+                if (d > 0.4) arrancar(t, rate);                              // se entro tarde o hubo un salto: se vuelve a sincronizar
+            }
+        };
+    }
+
+    function sonar(tipo, volumen, v, fx) {
+        if (fx && sfxArchivo(fx, tipo, clamp(volumen == null ? 1 : volumen, 0, 1), v == null ? 1 : v)) return;   // archivo propio del efecto
         /* Sonido propio del estilo elegido (assets/sfx/<tema>/<tipo>.mp3); si no existe, se sintetiza el original */
         if (global.VaneTemaSfx && global.VaneTemaSfx.reproducir(tipo, volumen == null ? 1 : volumen, v == null ? 1 : v)) return;
         var ac = audioCtx(); if (!ac || !SFX[tipo]) return;
@@ -2014,6 +2088,7 @@
     function crearPlayer(canvas, tipo, opts) {
         opts = opts || {};
         var seed = opts.seed || 1;
+        precargarEfecto(tipo); var nacio = ahoraMs(), musicaElegida = false;
         var ctx = canvas.getContext ? canvas.getContext('2d') : null;
         var efecto = null, imgs = [], base = 0, t0 = 0, jugando = false, fin = false, rate = 1, listo = false;
         var raf = 0, destruido = false, ultimoTU = 0, ultimoT = 0, wPx = 0, hPx = 0, musica = null;
@@ -2037,12 +2112,19 @@
         function sonidos(desde, hasta) {
             if (!efecto || !efecto.sonidos.length || canvas.muted || !jugando) return;
             if (hasta - desde > 0.6 || hasta < desde) return;           // saltos: no se repiten los sonidos
-            for (var i = 0; i < efecto.sonidos.length; i++) { var e = efecto.sonidos[i]; if (e.t > desde && e.t <= hasta) sonar(e.tipo, canvas.volume * canvas.volumenEfectos, e.v); }
+            for (var i = 0; i < efecto.sonidos.length; i++) { var e = efecto.sonidos[i]; if (e.t > desde && e.t <= hasta) sonar(e.tipo, canvas.volume * canvas.volumenEfectos, e.v, tipo); }
         }
         function audioEfecto(t) {
-            if (!efecto || !efecto.musica) return;
-            if (jugando && !canvas.muted) { if (!musica) musica = crearMusica(efecto.musica); if (musica) musica.avanzar(t, rate, canvas.volume * canvas.volumenMusica); }
-            else if (musica) musica.detener();
+            if (!efecto) return;
+            if (jugando && !canvas.muted) {
+                if (!musica && !musicaElegida) {
+                    var est = musicaArchivo(tipo);                      // archivo assets/musica/efectos/<efecto>.mp3 si existe; si no, la musica generada
+                    if (est === 'cargando' && ahoraMs() - nacio < 2500) return;
+                    musicaElegida = true;
+                    musica = (est && est !== 'cargando') ? crearMusicaArchivo(est) : (efecto.musica ? crearMusica(efecto.musica) : null);
+                }
+                if (musica) musica.avanzar(t, rate, canvas.volume * canvas.volumenMusica);
+            } else if (musica) musica.detener();
         }
         function fmtT(x) { x = Math.max(0, Math.floor(x + 0.0001)); return Math.floor(x / 60) + ':' + ('0' + (x % 60)).slice(-2); }
         function pintarReloj(t, dur) {
@@ -2133,10 +2215,11 @@
             load: { configurable: true, value: function () { /* sin recurso que cargar */ } },
             // Sonido de prueba para ajustar el volumen sin lanzar el efecto: dos efectos y unos segundos de la música del estilo
             probarSonido: { configurable: true, value: function () {
-                sonar('ding', canvas.volume * canvas.volumenEfectos, 1);
-                setTimeout(function () { sonar('chime', canvas.volume * canvas.volumenEfectos, 1); }, 380);
-                var estilo = efecto && efecto.musica; if (!estilo) return;
-                var m = crearMusica(estilo), tt = 0, n = 0;
+                sonar('ding', canvas.volume * canvas.volumenEfectos, 1, tipo);
+                setTimeout(function () { sonar('chime', canvas.volume * canvas.volumenEfectos, 1, tipo); }, 380);
+                var est = musicaArchivo(tipo), estilo = efecto && efecto.musica;
+                var m = (est && est !== 'cargando') ? crearMusicaArchivo(est) : (estilo ? crearMusica(estilo) : null); if (!m) return;
+                var tt = 0, n = 0;
                 var iv = setInterval(function () { m.avanzar(tt, 1, canvas.volume * canvas.volumenMusica); tt += 0.1; if (++n > 32) { clearInterval(iv); m.detener(); } }, 100);
             } },
             establecerImagenes: { configurable: true, value: function (arr) {

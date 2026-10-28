@@ -110,21 +110,25 @@
         if (pie) { var f = document.createElement('div'); f.className = 'tema-escudo tema-escudo--pie'; f.dataset.slot = 'pie'; pie.insertBefore(f, pie.firstChild); slots.push(f); }
         deco = document.createElement('div'); deco.id = 'tema-deco'; deco.setAttribute('aria-hidden', 'true'); document.body.appendChild(deco);
     }
+    var altoDeco = 0, tmrDeco = 0;
+    function altoPagina() { return Math.max(document.body.offsetHeight, window.innerHeight || 0, 400); }
     function pintarDeco(id) {
         if (!deco) return;
         deco.innerHTML = '';
+        var H = altoPagina(), pantallas = Math.max(1, H / (window.innerHeight || 700)); altoDeco = H; deco.style.height = H + 'px';
         var club = CLUB[id], cfg = DECO[id];
         if (club) { var m = document.createElement('div'); m.className = 'marca'; m.innerHTML = htmlEscudo(club); deco.appendChild(m); }
         if (id === 'magic') { var cs = document.createElement('div'); cs.className = 'marca marca--castillo'; cs.innerHTML = svgCastillo(); deco.appendChild(cs); }
         if (!cfg) return;
-        for (var i = 0; i < cfg.n; i++) {
+        var n = Math.min(Math.round(cfg.n * pantallas), cfg.tipo === 'nube' ? 14 : 64);
+        for (var i = 0; i < n; i++) {
             var el = document.createElement('span'), e = cfg.e[i % cfg.e.length];
-            el.textContent = e;
+            el.textContent = e; el.style.top = (Math.random() * H) + 'px';
             if (cfg.tipo === 'brilla') {
-                el.className = 'brilla'; el.style.left = (Math.random() * 96) + '%'; el.style.bottom = (Math.random() * 80) + '%'; el.style.fontSize = (.7 + Math.random() * 1.1) + 'rem';
+                el.className = 'brilla'; el.style.left = (Math.random() * 96) + '%'; el.style.fontSize = (.7 + Math.random() * 1.1) + 'rem';
                 el.style.animationDuration = (2.5 + Math.random() * 4) + 's'; el.style.animationDelay = (-Math.random() * 6) + 's';
             } else if (cfg.tipo === 'nube') {
-                el.className = 'nube'; el.style.bottom = (30 + Math.random() * 55) + '%'; el.style.fontSize = (3 + Math.random() * 4) + 'rem';
+                el.className = 'nube'; el.style.fontSize = (3 + Math.random() * 4) + 'rem';
                 el.style.animationDuration = (70 + Math.random() * 70) + 's'; el.style.animationDelay = (-Math.random() * 120) + 's';
             } else {
                 el.className = 'flota'; el.style.left = (Math.random() * 96) + '%'; el.style.fontSize = (1.2 + Math.random() * 1.8) + 'rem';
@@ -133,6 +137,18 @@
             }
             deco.appendChild(el);
         }
+    }
+    /* La altura de la pagina cambia al cargar los recuerdos: se reajusta la capa (la barra del navegador no cambia el alto del contenido) */
+    function vigilarAlto() {
+        function prog() {
+            clearTimeout(tmrDeco);
+            tmrDeco = setTimeout(function () {
+                var H = altoPagina(); if (deco) deco.style.height = H + 'px';
+                if (Math.abs(H - altoDeco) > (window.innerHeight || 700) * 0.6) pintarDeco(document.documentElement.getAttribute('data-theme') || 'luxury');
+            }, 500);
+        }
+        if (window.ResizeObserver) new ResizeObserver(prog).observe(document.body);
+        window.addEventListener('orientationchange', prog);
     }
     function pintarEscudos(id) {
         var club = CLUB[id];
@@ -261,7 +277,7 @@
         document.addEventListener('click', function (e) { if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target)) abrir(false); });
     }
     function iniciar() {
-        crearSlots(); crearSelector();
+        crearSlots(); crearSelector(); vigilarAlto();
         aplicar(document.documentElement.getAttribute('data-theme') || 'luxury', false);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();

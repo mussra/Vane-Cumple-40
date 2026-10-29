@@ -11,10 +11,10 @@
         { id: 'betis',   nombre: 'Forever Green', sub: 'Verde y blanco',       emo: '💚', sw: 'linear-gradient(90deg,#0a8a4c 0 33%,#fff 33% 50%,#0a8a4c 50% 66%,#fff 66% 83%,#0a8a4c 83%)', meta: '#002c18' },
         { id: 'sevilla', nombre: 'Live in Red',   sub: 'Rojo y blanco',        emo: '❤️', sw: 'linear-gradient(135deg,#0e0406,#b00a22 55%,#ffffff)', meta: '#0e0406' },
         { id: 'cookie',  nombre: 'Nice Cookie',   sub: 'Repostería dulce',     emo: '🍪', sw: 'linear-gradient(135deg,#fde7cf,#f9a8d4 55%,#92400e)', meta: '#fef7ed' },
-        { id: 'magic',   nombre: 'Magic Castle', sub: 'Castillo y orejas',    emo: '🏰', sw: 'linear-gradient(135deg,#0a0f32,#2f43a8 60%,#facc15)', meta: '#0a0f32' },
+        { id: 'magic',   nombre: 'El castillo de Vane', sub: 'Castillo y orejas',    emo: '🏰', sw: 'linear-gradient(135deg,#0a0f32,#2f43a8 60%,#facc15)', meta: '#0a0f32' },
         { id: 'kids',    nombre: 'Peques',        sub: '5 a 10 años',          emo: '🦄', sw: 'linear-gradient(135deg,#ffb3d1,#ffd88a 35%,#a6f0be 68%,#a5d8ff)', meta: '#fff7d6' }
     ];
-    var LEMAS = { magic: '✨ Magic Castle ✨', betis: 'Forever Green', sevilla: 'Live in Red', cookie: '🍪 Nice Cookie 🧁', kids: '🎈 ¡A jugar! 🎈' };
+    var LEMAS = { magic: '✨ El castillo de Vane ✨', betis: 'Forever Green', sevilla: 'Live in Red', cookie: '🍪 Nice Cookie 🧁', kids: '🎈 ¡A jugar! 🎈' };
     var CLUB = { betis: 'betis', sevilla: 'sevilla' };
     var DECO = {
         cloud:  { tipo: 'nube', e: ['☁️'], n: 6 },

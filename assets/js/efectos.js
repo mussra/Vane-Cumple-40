@@ -2325,6 +2325,8 @@
         for (var i = 0; i < urls.length; i++) { if (!(await cache.match(urls[i]))) return null; }
         return { urls: urls };
     }
+    // ¿Pinta de imagen? (una entrada en caché que no es imagen está corrupta: se ignora y se re-descarga)
+    function esRespuestaImagen(res) { var ct = (res.headers.get('content-type') || '').toLowerCase(); return !ct || ct.indexOf('image/') === 0 || ct.indexOf('octet-stream') >= 0; }
     // Descarga la colección a la caché del navegador. o: { signal, esperar(), alProgreso(n,total,bytes), alRecibir() }
     async function descargarSet(recurso, cache, o) {
         o = o || {};
@@ -2332,10 +2334,15 @@
         var total = urls.length, hechas = 0, bytes = 0, sig = 0, faltan = [], fallo = null;
         if (o.alProgreso) o.alProgreso(0, total, 0);
         async function uno(u) {
-            if (await cache.match(u)) { hechas++; if (o.alProgreso) o.alProgreso(hechas, total, bytes); return; }
+            var hit = await cache.match(u);
+            if (hit) {
+                if (esRespuestaImagen(hit)) { hechas++; if (o.alProgreso) o.alProgreso(hechas, total, bytes); return; }
+                try { await cache.delete(u); } catch (e) { /* ignorar */ }   // entrada corrupta: fuera
+            }
             if (o.esperar) await o.esperar();
             var res = await fetch(u, { mode: 'cors', credentials: 'omit', signal: o.signal });
             if (!res.ok) { if (res.status === 404 || res.status === 410) { faltan.push(u); hechas++; if (o.alProgreso) o.alProgreso(hechas, total, bytes); return; } throw errHttp(res.status); }
+            if (!esRespuestaImagen(res)) { faltan.push(u); hechas++; if (o.alProgreso) o.alProgreso(hechas, total, bytes); return; }   // no guardar respuestas que no son imagen
             if (o.alRecibir) o.alRecibir();
             var blob = await res.blob();
             bytes += blob.size;

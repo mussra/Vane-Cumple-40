@@ -224,7 +224,8 @@
                         </div>
                         <button onclick="comprobarMedios()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-film mr-1 text-amber-400"></i> Comprobar medios</button>
                         <button onclick="recalibrarManual()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-clock mr-1 text-amber-400"></i> Recalibrar reloj</button>
-                        <button onclick="borrarCacheVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-broom mr-1 text-amber-400"></i> Vaciar caché de vídeos</button>
+                        <button onclick="borrarCacheMediosLocal()" title="Vacía la caché de fotos y vídeos solo de este dispositivo" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-broom mr-1 text-amber-400"></i> Vaciar caché (este dispositivo)</button>
+                        <button onclick="borrarCacheMediosGlobal()" title="Ordena a TODOS los dispositivos conectados que vacíen su caché de fotos y vídeos y la vuelvan a descargar" class="px-3 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 transition-colors"><i class="fa-solid fa-tower-broadcast mr-1 text-rose-400"></i> Vaciar caché en todos</button>
                     </div>
                     <div id="salud-videos" class="mt-3 text-xs space-y-1"></div>
                 </div>
@@ -1724,6 +1725,24 @@
         }
     };
 
+    // Vacía la caché de vídeos Y de fotos de ESTE dispositivo (sin tocar la sesión)
+    window.borrarCacheMediosLocal = async function (silencioso) {
+        try {
+            Object.keys(cacheVideos).forEach(cancelarDescarga);
+            efectoReset();
+            if ('caches' in window) { await caches.delete(CACHE_VIDEOS); await caches.delete(CACHE_FOTOS); }
+            cacheAbierta = null;
+            cacheFotosAbierta = null;
+            Object.values(cacheVideos).forEach((e) => Object.assign(e, { estado: 'pendiente', rec: 0, total: 0, bytes: 0, error: null, intentos: 0, fallosFetch: 0, reintentable: false, pausada: false }));
+            notificarCache(true);
+            actualizarAlmacenamiento();
+            planificarPrecarga();
+            if (!silencioso) mostrarToast('Caché de fotos y vídeos vaciada. Se volverá a descargar.');
+        } catch (e) {
+            mostrarToast('No se pudo vaciar la caché.', 'error');
+        }
+    };
+
     /* ============================================================
        FIRESTORE: ESTADO DEL JUEGO
        ============================================================ */
@@ -2436,6 +2455,21 @@
         if (cacheF && !opc.forzarRed) { try { const r = await VaneEfectos.leerSetDeCache(recurso, cacheF); urls = r && r.urls; } catch (x) { urls = null; } }
         if (activeId !== id || (efectoCtx && efectoCtx.slots)) return;
         if (!urls) {
+            // El set figuraba completo pero la caché perdió entradas (o están corruptas):
+            // reintenta la descarga una vez; si sigue faltando, muestra error con botón.
+            if (e && e.kind === 'fotos' && e.estado === 'completo' && !opc.forzarRed) {
+                if (e.reintentoSetFotos) {
+                    Object.assign(e, { estado: 'error', error: 'Faltan fotos en la descarga. Prueba a vaciar la caché de medios.', reintentable: false });
+                    notificarCache(true);
+                } else {
+                    e.reintentoSetFotos = true;
+                    e.estado = 'pendiente';
+                    notificarCache(true);
+                    planificarPrecarga();
+                    renderOverlay();
+                    return;
+                }
+            }
             const sinCache = opc.forzarRed || !cacheF || !e || ['sin-cors', 'sin-cache', 'sin-espacio'].includes(e.estado);
             if (!sinCache) { planificarPrecarga(); renderOverlay(); return; }      // alCompletarDescarga() volverá a llamar aquí
             try { urls = await VaneEfectos.resolverLista(recurso, cacheF, null); }
@@ -3227,6 +3261,36 @@
             .catch((e) => manejarErrorFirestore(e, 'precarga'));
     };
 
+    /* ---- Vaciado remoto de la caché de medios en TODOS los dispositivos ----
+       El administrador escribe un «epoch» nuevo en config_sistema/cache_medios;
+       cada dispositivo lo compara con el último aplicado (localStorage) y, si es
+       mayor, vacía sus cachés de fotos y vídeos y vuelve a precargar. La primera
+       vez que un dispositivo ve el documento solo anota el valor (no borra), así
+       desplegar este cambio no vacía cachés que están sanas. */
+    const LS_EPOCH_CACHE = 'vane_cache_epoch';
+    function suscribirCacheMediosConfig() {
+        db.collection('config_sistema').doc('cache_medios').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            const epoch = doc.exists ? Number(doc.data().epoch) || 0 : 0;
+            if (!epoch) return;
+            const visto = lsGet(LS_EPOCH_CACHE, null);
+            if (visto === null) { lsSet(LS_EPOCH_CACHE, String(epoch)); return; }
+            if (epoch > (parseInt(visto, 10) || 0)) {
+                lsSet(LS_EPOCH_CACHE, String(epoch));
+                borrarCacheMediosLocal(true);
+                mostrarToast('El administrador ha vaciado la caché de fotos y vídeos. Se volverán a descargar.');
+            }
+        }, (e) => manejarErrorFirestore(e, 'cache_medios'));
+    }
+    window.borrarCacheMediosGlobal = function () {
+        if (!db || modoLocal()) return;
+        if (!confirm('¿Vaciar la caché de fotos y vídeos en TODOS los dispositivos?\n\nCada móvil volverá a descargar todos los medios (puede tardar varios minutos según la wifi). Hazlo antes de empezar, no durante el juego.')) return;
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('cache_medios').set({ epoch: Date.now(), por: nombreDispositivo(), updatedAt: ST() }, { merge: true })
+            .then(() => mostrarToast('Orden enviada: todos los dispositivos vaciarán su caché de fotos y vídeos.'))
+            .catch((e) => manejarErrorFirestore(e, 'cache_medios'));
+    };
+
     window.reintentarDescargas = function () {
         let n = 0;
         Object.values(cacheVideos).forEach((e) => {
@@ -3647,6 +3711,7 @@
             try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) { /* ignorar */ }
             suscribirMaster();
             suscribirPrecargaConfig();
+            suscribirCacheMediosConfig();
             suscribirBloqueoConfig();
             suscribirEstiloConfig();
             suscribirMuroConfig();

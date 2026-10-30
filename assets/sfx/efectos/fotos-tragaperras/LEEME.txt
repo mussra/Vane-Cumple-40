@@ -1,7 +1,7 @@
 SONIDOS DEL EFECTO FOTOS · TRAGAPERRAS DE RECUERDOS  (fotos-tragaperras)
 Tienen prioridad sobre los del estilo elegido.
 Formato: mp3, sin música de fondo, cortos y con el volumen parecido entre sí. Solo hace falta crear los que quieras:
-el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver PROMPTS.md.
+el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver assets/sfx/PROMPTS.md.
 
 Este efecto solo usa estos sonidos (los demás no hace falta crearlos):
   tick.mp3  -  tic seco y pequeño (0,05 s)

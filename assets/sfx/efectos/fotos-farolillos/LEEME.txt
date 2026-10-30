@@ -1,6 +1,6 @@
 SONIDOS DEL EFECTO FOTOS · FAROLILLOS AL CIELO  (fotos-farolillos)
 Tienen prioridad sobre los del estilo elegido.
 Formato: mp3, sin música de fondo, cortos y con el volumen parecido entre sí. Solo hace falta crear los que quieras:
-el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver PROMPTS.md.
+el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver assets/sfx/PROMPTS.md.
 
 Este efecto no usa sonidos sueltos (solo música); si quisieras alguno, puedes poner cualquiera de los 18, pero no sonaría.

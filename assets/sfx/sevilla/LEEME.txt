@@ -1,7 +1,7 @@
 SONIDOS DEL ESTILO LIVE IN RED
 Valen para todos los efectos mientras este estilo está activo (si el efecto no tiene un archivo propio en efectos/).
 Formato: mp3, sin música de fondo, cortos y con el volumen parecido entre sí. Solo hace falta crear los que quieras:
-el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver PROMPTS.md.
+el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver assets/sfx/PROMPTS.md.
 
 Ficheros esperados (los 18):
   lanzar.mp3  -  silbido del cohete al subir (1 s)

@@ -225,6 +225,7 @@
                         <button onclick="comprobarMedios()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-film mr-1 text-amber-400"></i> Comprobar medios</button>
                         <button onclick="recalibrarManual()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-clock mr-1 text-amber-400"></i> Recalibrar reloj</button>
                         <button onclick="borrarCacheVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-broom mr-1 text-amber-400"></i> Vaciar caché de vídeos</button>
+                        <button onclick="purgarCachesTodos()" class="px-3 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-500/40 transition-colors"><i class="fa-solid fa-trash-can mr-1"></i> Purgar cachés de todos los clientes</button>
                     </div>
                     <div id="salud-videos" class="mt-3 text-xs space-y-1"></div>
                 </div>
@@ -557,7 +558,7 @@
     /* ============================================================
        CONFIGURACIÓN  (todo lo ajustable está aquí arriba)
        ============================================================ */
-    const APP_VERSION = 'v5.2';
+    const APP_VERSION = 'v5.3';
 
     const firebaseConfig = window.FIREBASE_CONFIG;
 
@@ -699,6 +700,16 @@
         return null;
     }
 
+    // Purga remota de cachés: tras una purga, imágenes y descargas saltan la caché HTTP del navegador
+    const bust = (u) => { const v = lsGet('vane_purge'); return (v && /^https?:/i.test(u || '')) ? u + (u.indexOf('?') >= 0 ? '&' : '?') + '_p=' + encodeURIComponent(v) : u; };
+    (function () {
+        const f0 = window.fetch.bind(window);
+        window.fetch = (u, o) => {
+            const get = !o || !o.method || String(o.method).toUpperCase() === 'GET';
+            if (get && typeof u === 'string' && lsGet('vane_purge') && !/googleapis|gstatic|firebase/i.test(u)) return f0(u, Object.assign({ cache: 'reload' }, o));
+            return f0(u, o);
+        };
+    })();
     const PLACEHOLDER_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="100%" height="100%" fill="#0f172a"/><text x="50%" y="50%" fill="#475569" font-family="sans-serif" font-size="18" text-anchor="middle">Sin foto</text></svg>');
 
     /* ============================================================
@@ -1132,7 +1143,7 @@
         return `
         <article id="card-${e}" data-id="${e}" class="polaroid-card bg-[#1f2937] rounded-xl p-4 pb-5 border border-slate-700/60 flex flex-col justify-between">
             <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950 mb-4 flex items-center justify-center border border-slate-800/80">
-                <img id="img-${e}" src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain lock-img transition-all duration-300">
+                <img id="img-${e}" src="${esc(c.imagenUrl ? bust(c.imagenUrl) : PLACEHOLDER_IMG)}" alt="Fotografía del caso: ${esc(c.titulo || id)}" loading="lazy" decoding="async" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain lock-img transition-all duration-300">
                 <div id="lock-${e}" class="absolute inset-0 flex flex-col items-center justify-center lock-blur">
                     <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
                     <span class="text-xs font-medium text-slate-200 uppercase tracking-wider">Bloqueado</span>
@@ -1184,7 +1195,7 @@
         const title = $('title-' + id), desc = $('desc-' + id);
         if (title) title.textContent = c.titulo || id;
         if (desc) desc.textContent = c.descripcion || '';
-        if (img && c.imagenUrl && img.getAttribute('src') !== c.imagenUrl && img.dataset.fallo !== '1') img.src = c.imagenUrl;
+        if (img && c.imagenUrl && img.getAttribute('src') !== bust(c.imagenUrl) && img.dataset.fallo !== '1') img.src = bust(c.imagenUrl);
 
         if (esResuelto(c)) {
             card.classList.add('resuelta');
@@ -1998,7 +2009,7 @@
             wrapper.innerHTML = `
                 <div class="flex flex-col items-center justify-center p-4 text-center h-full w-full bg-slate-900 overflow-y-auto gap-3">
                     <div class="relative w-28 sm:w-36 aspect-[3/4] shrink-0 overflow-hidden rounded-lg bg-slate-950 shadow-xl border border-slate-700">
-                        <img src="${esc(c.imagenUrl || PLACEHOLDER_IMG)}" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain" alt="Imagen del caso">
+                        <img src="${esc(c.imagenUrl ? bust(c.imagenUrl) : PLACEHOLDER_IMG)}" onerror="console.warn('Imagen no disponible:', this.src);this.onerror=null;this.src=PLACEHOLDER_IMG;" class="h-full w-full object-contain" alt="Imagen del caso">
                     </div>
                     <div>
                         <h4 class="font-serif text-base font-bold text-white mb-1"><i class="fa-solid fa-microphone-lines text-amber-400 mr-1.5"></i> Explicación en vivo</h4>
@@ -2688,7 +2699,7 @@
             try {
                 const cf = await abrirCacheFotos();
                 const hit = cf ? await cf.match(urlOriginal) : null;
-                const src = hit ? (fotoGrandeUrl = URL.createObjectURL(await hit.blob())) : urlOriginal;
+                const src = hit ? (fotoGrandeUrl = URL.createObjectURL(await hit.blob())) : bust(urlOriginal);
                 const im = new Image();
                 im.style.cssText = estilo; im.alt = 'Foto ampliada';
                 im.onload = () => { if ($('foto-grande-marco') === marco) marco.replaceChildren(im); };
@@ -3227,6 +3238,34 @@
             .catch((e) => manejarErrorFirestore(e, 'precarga'));
     };
 
+    async function purgarLocal(ver) {
+        try { Object.keys(cacheVideos).forEach(cancelarDescarga); } catch (e) { /* ignorar */ }
+        try {
+            if ('caches' in window) {
+                const ks = await caches.keys();
+                await Promise.all(ks.filter((k) => k.indexOf('vane-') === 0).map((k) => caches.delete(k)));
+            }
+        } catch (e) { /* ignorar */ }
+        lsSet('vane_purge', String(ver));
+    }
+    function suscribirCachePurge() {
+        db.collection('config_sistema').doc('cache_purge').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            if (!doc.exists) return;
+            const ver = String(doc.data().version || '');
+            if (!ver || ver === lsGet('vane_purge')) return;
+            purgarLocal(ver).then(() => { mostrarToast('Caché renovada. Recargando…'); setTimeout(() => location.reload(), 1200); });
+        }, (e) => manejarErrorFirestore(e, 'cache_purge'));
+    }
+    window.purgarCachesTodos = function () {
+        if (!db || modoLocal()) { mostrarToast('Sin conexión con Firebase.', 'error'); return; }
+        if (!confirm('Se borrarán las cachés de fotos y vídeos de TODOS los dispositivos y se recargará la página. ¿Continuar?')) return;
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('cache_purge').set({ version: Date.now(), updatedAt: ST() })
+            .then(() => mostrarToast('Orden de purga enviada a todos los dispositivos.'))
+            .catch((e) => { manejarErrorFirestore(e, 'cache_purge'); mostrarToast('No se pudo enviar la orden.', 'error'); });
+    };
+
     window.reintentarDescargas = function () {
         let n = 0;
         Object.values(cacheVideos).forEach((e) => {
@@ -3647,6 +3686,7 @@
             try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) { /* ignorar */ }
             suscribirMaster();
             suscribirPrecargaConfig();
+            suscribirCachePurge();
             suscribirBloqueoConfig();
             suscribirEstiloConfig();
             suscribirMuroConfig();

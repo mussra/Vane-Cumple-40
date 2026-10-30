@@ -89,7 +89,7 @@
                         <div>
                             <h4 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Audio centralizado</h4>
                             <p class="text-xs text-slate-300 leading-normal mt-0.5">
-                                Para evitar ecos, el <strong>audio suena solo en el dispositivo principal</strong> (Visor Maestro). Tu móvil permanece silenciado.
+                                Para evitar ecos, el <strong>audio suena en el dispositivo principal</strong> (Visor Maestro) y tu móvil permanece silenciado por defecto; si quieres, puedes activar el sonido en tu móvil durante la reproducción.
                             </p>
                         </div>
                     </div>
@@ -157,6 +157,9 @@
                 </button>
                 <button onclick="cambiarRol('master')" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 font-medium transition-colors border border-indigo-500/40">
                     <i class="fa-solid fa-tv mr-1 text-indigo-400"></i> Visor Maestro (TV)
+                </button>
+                <button onclick="toggleModoLibre()" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 font-medium transition-colors border border-indigo-500/40">
+                    <i class="fa-solid fa-unlock-keyhole mr-1 text-indigo-400"></i> <span data-libre-txt>Activar modo libre</span>
                 </button>
                 <button onclick="intentarActivarAdmin()" class="px-3 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900 text-amber-300 font-medium transition-colors border border-amber-500/40">
                     <i class="fa-solid fa-crown mr-1 text-amber-400"></i> Administrador
@@ -318,10 +321,10 @@
                     <button onclick="exportarCopia()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-download mr-1 text-amber-400"></i> Exportar copia</button>
                     <button onclick="document.getElementById('input-import').click()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-upload mr-1 text-amber-400"></i> Importar copia</button>
                     <input type="file" id="input-import" accept="application/json,.json" style="display:none;">
-                    <button id="btn-emergencia" onclick="toggleModoEmergencia()" class="px-3 py-2 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/40 transition-colors"><i class="fa-solid fa-life-ring mr-1"></i> <span id="btn-emergencia-txt">Activar modo emergencia</span></button>
+                    <button id="btn-libre" onclick="toggleModoLibre()" class="px-3 py-2 rounded-lg bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/40 transition-colors"><i class="fa-solid fa-unlock-keyhole mr-1"></i> <span data-libre-txt>Activar modo libre</span></button>
                     <button onclick="inicializarTodo()" class="px-3 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-500/40 transition-colors"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Inicializar todo (borra contenido)</button>
                     <p class="w-full text-[11px] text-slate-500 leading-snug">
-                        Modo emergencia: desbloquea todos los casos solo en este dispositivo y los reproduce sin sincronizar. Úsalo si se agota la cuota de Firebase.
+                        Modo libre: desbloquea todos los casos solo en este dispositivo y los reproduce por su cuenta, con sonido y sin sincronizar. Cualquier persona puede activarlo desde «Cambiar rol»; úsalo también si se agota la cuota de Firebase.
                     </p>
                 </div>
             </details>
@@ -733,7 +736,7 @@
     let retryEstadoTimer = null;
     let ultimoFromCache = null;
     const estadoErrores = { cuota: false, permisos: false };
-    let modoEmergencia = lsGet('vane_emergencia') === '1';
+    let modoLibre = lsGet('vane_libre') === '1' || lsGet('vane_emergencia') === '1';   // modo libre (antes «modo libre»)
     let modoAhorro = false;
 
     // Reloj
@@ -778,7 +781,7 @@
     let ovSig = '';
 
     const esAdminOMaster = () => isAdmin || currentRole === 'master';
-    const modoLocal = () => modoEmergencia || estadoErrores.cuota || estadoErrores.permisos;
+    const modoLocal = () => modoLibre || estadoErrores.cuota || estadoErrores.permisos;
     const ahoraServidor = () => Date.now() + clockOffsetMs;
     const dispositivosEsperados = () => {
         const n = parseInt(lsGet('vane_dispositivos', ''), 10);
@@ -909,7 +912,7 @@
             estadoErrores.cuota = true;
             mostrarBanner('cuota', 'error',
                 'Se ha agotado la cuota gratuita de Firebase (lecturas o escrituras del día). Se renueva a medianoche, hora del Pacífico (sobre las 08:00–09:00 en España). Hasta entonces la sala no se sincroniza.' +
-                (isAdmin ? ' Plan B: en Herramientas avanzadas activa el «Modo emergencia» para ver los casos en la TV sin sincronizar.' : ' Puedes abrir los casos ya resueltos y verlos en este dispositivo.'));
+                ' Plan B: en «Cambiar rol» activa el «Modo libre» para ver los casos en este dispositivo sin sincronizar.');
         } else if (code === 'permission-denied') {
             estadoErrores.permisos = true;
             mostrarBanner('permisos', 'error',
@@ -974,6 +977,7 @@
         const rol = isAdmin ? 'admin' : (currentRole === 'master' ? 'master' : 'guest');
         currentRole = rol;
         const nombres = { admin: 'Administrador', master: 'Visor Maestro (TV)', guest: 'Visor básico' };
+        actualizarBotonLibre();
         $('current-role-badge').textContent = nombres[rol];
         $('badge-role-header').textContent = APP_VERSION + ' • ' + nombres[rol];
         show($('admin-panel'), rol === 'admin', 'block');
@@ -1135,7 +1139,7 @@
     /* ============================================================
        GALERÍA
        ============================================================ */
-    const esResuelto = (c) => !!(c && (c.resuelto || modoEmergencia));
+    const esResuelto = (c) => !!(c && (c.resuelto || modoLibre));
 
     function htmlTarjeta(id) {
         const c = casosConfig[id];
@@ -1518,18 +1522,19 @@
         }
     });
 
-    window.toggleModoEmergencia = function () {
-        modoEmergencia = !modoEmergencia;
-        lsSet('vane_emergencia', modoEmergencia ? '1' : '0');
+    window.toggleModoLibre = function () {
+        if (!modoLibre && !confirm('Modo libre: este dispositivo desbloqueará todos los casos y los reproducirá por su cuenta, con sonido y sin sincronizar con el resto de la sala. ¿Activarlo?')) return;
+        modoLibre = !modoLibre;
+        lsSet('vane_libre', modoLibre ? '1' : '0');
+        lsSet('vane_emergencia', '0');
         Object.keys(casosConfig).forEach(actualizarUI);
-        actualizarBotonEmergencia();
-        mostrarToast(modoEmergencia ? 'Modo emergencia activado: todo desbloqueado, sin sincronizar.' : 'Modo emergencia desactivado.');
+        actualizarBotonLibre();
+        mostrarToast(modoLibre ? 'Modo libre activado: todo desbloqueado, con sonido y sin sincronizar.' : 'Modo libre desactivado.');
     };
-    function actualizarBotonEmergencia() {
-        const t = $('btn-emergencia-txt');
-        if (t) t.textContent = modoEmergencia ? 'Desactivar modo emergencia' : 'Activar modo emergencia';
-        if (modoEmergencia) mostrarBanner('emergencia', 'aviso', 'Modo emergencia activo en este dispositivo: los casos están desbloqueados y se reproducen sin sincronizar.');
-        else quitarBanner('emergencia');
+    function actualizarBotonLibre() {
+        document.querySelectorAll('[data-libre-txt]').forEach((t) => { t.textContent = modoLibre ? 'Desactivar modo libre' : 'Activar modo libre'; });
+        if (modoLibre) mostrarBanner('libre', 'aviso', 'Modo libre activo en este dispositivo: los casos están desbloqueados y se reproducen por tu cuenta, con sonido y sin sincronizar.');
+        else quitarBanner('libre');
     }
 
     /* ============================================================
@@ -1539,7 +1544,7 @@
     function iniciarMonitorSalud() {
         const inp = $('input-dispositivos');
         if (inp && document.activeElement !== inp) inp.value = dispositivosEsperados();
-        actualizarBotonEmergencia();
+        actualizarBotonLibre();
         iniciarListenerDispositivosCache();
         if (saludTimer) return;
         actualizarSalud();
@@ -1574,7 +1579,7 @@
             ['Latido de sincronía', modoAhorro ? `${HEARTBEAT_AHORRO_MS / 1000} s (ahorro)` : `${HEARTBEAT_RAPIDO_MS / 1000} s → ${HEARTBEAT_ESTABLE_MS / 1000} s`],
             ['Caché de vídeos', 'caches' in window ? 'Disponible' : 'No disponible'],
             ['Dispositivos esperados', String(dispositivosEsperados())],
-            ['Modo emergencia', modoEmergencia ? 'Activo' : 'No'],
+            ['Modo libre', modoLibre ? 'Activo' : 'No'],
             ['Casos cargados', String(Object.keys(casosConfig).length)]
         ];
         $('salud-grid').innerHTML = tiles.map(([k, v]) => `<div class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2"><div class="text-[10px] text-slate-500">${esc(k)}</div><div class="font-medium text-slate-200">${esc(v)}</div></div>`).join('');
@@ -3170,7 +3175,7 @@
     window.guardarBloqueo = function () {
         const v = leerControlesBloqueo();
         bloqueoActual = v; aplicarBloqueo(v); lsSet('vane_bloqueo', JSON.stringify(v));
-        if (!db || modoLocal()) { bloqueoSucio = false; mostrarToast('Guardado solo en este dispositivo (sin conexión o modo emergencia).', 'error'); return; }
+        if (!db || modoLocal()) { bloqueoSucio = false; mostrarToast('Guardado solo en este dispositivo (sin conexión o modo libre).', 'error'); return; }
         contarEscrituraAdmin(1);
         db.collection('config_sistema').doc('bloqueados').set({ velo: v.velo, foto: v.foto, oscuro: v.oscuro, updatedAt: ST() }, { merge: true })
             .then(() => { bloqueoSucio = false; mostrarToast('Desenfoque guardado para todos los dispositivos.'); })
@@ -3197,7 +3202,7 @@
     if (info) info.textContent = 'Por defecto: ' + nombreEstilo(estiloCfg.defecto || 'luxury') + (estiloCfg.todos && estiloCfg.todos.tema ? ' · Último cambio para todos: ' + nombreEstilo(estiloCfg.todos.tema) : '');
     }
     function escribirEstilo(datos, okMsg) {
-    if (!db || modoLocal()) { mostrarToast('Sin conexión (o modo emergencia): no se puede cambiar el estilo para todos.', 'error'); return; }
+    if (!db || modoLocal()) { mostrarToast('Sin conexión (o modo libre): no se puede cambiar el estilo para todos.', 'error'); return; }
     contarEscrituraAdmin(1);
     db.collection('config_sistema').doc('estilo').set(Object.assign({}, datos, { updatedAt: ST() }), { merge: true })
     .then(() => mostrarToast(okMsg))
@@ -3614,7 +3619,7 @@
 
     window.toggleAudio = function () {
         const p = $('player');
-        if (!p || !esAdminOMaster()) return;
+        if (!p) return;
         p.muted = !p.muted;
         actualizarBarraAudio();
     };
@@ -3625,7 +3630,9 @@
         if (!lab) return;
         if (!p) { lab.innerHTML = ''; return; }
         if (!esAdminOMaster() && !modoLocal()) {
-            lab.innerHTML = '<span class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-volume-xmark text-amber-400"></i> El sonido sale por la TV</span>';
+            // Visor básico en reproducción sincronizada: silenciado por defecto, pero puede activar el sonido en este móvil
+            if (p.muted) lab.innerHTML = '<span class="flex items-center gap-2 text-slate-400 flex-wrap"><span class="flex items-center gap-1.5"><i class="fa-solid fa-volume-xmark text-amber-400"></i> El sonido sale por la TV</span><button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-colors border border-slate-700"><i class="fa-solid fa-volume-high text-amber-400"></i> <span>Activar sonido aquí</span></button></span>';
+            else lab.innerHTML = '<button onclick="toggleAudio()" class="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-lg text-xs transition-colors border border-emerald-500/40"><i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Silenciar este móvil</span></button>';
             return;
         }
         if (p.muted) {

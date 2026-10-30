@@ -1,0 +1,24 @@
+SONIDOS DEL ESTILO FOREVER GREEN
+Valen para todos los efectos mientras este estilo está activo (si el efecto no tiene un archivo propio en efectos/).
+Formato: mp3, sin música de fondo, cortos y con el volumen parecido entre sí. Solo hace falta crear los que quieras:
+el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver PROMPTS.md.
+
+Ficheros esperados (los 18):
+  lanzar.mp3  -  silbido del cohete al subir (1 s)
+  estallar.mp3  -  explosión de fuegos artificiales con chisporroteo (1,5 s)
+  tick.mp3  -  tic seco y pequeño (0,05 s)
+  tope.mp3  -  golpe sordo suave (rebote) (0,2 s)
+  premio.mp3  -  arpegio ascendente de 5 notas con destellos (1 s)
+  obturador.mp3  -  clic de cámara de fotos (0,2 s)
+  impresora.mp3  -  foto instantánea saliendo de la impresora (1 s)
+  ding.mp3  -  campanita brillante única (1 s)
+  click.mp3  -  clic de interfaz (0,1 s)
+  pop.mp3  -  burbuja que explota (0,1 s)
+  chime.mp3  -  carillón de 4 notas (1,5 s)
+  fanfarria.mp3  -  fanfarria corta de triunfo (2 s)
+  whoosh.mp3  -  barrido de aire (0,6 s)
+  destello.mp3  -  brillo / centelleo (0,5 s)
+  broma.mp3  -  "boing" cómico + trombón triste (1,5 s)
+  bola.mp3  -  barrido y campanita (sale una bola del bingo) (0,8 s)
+  linea.mp3  -  jingle de "línea" en el bingo (2 s)
+  bingo.mp3  -  gran celebración de "¡Bingo!" (3-4 s)

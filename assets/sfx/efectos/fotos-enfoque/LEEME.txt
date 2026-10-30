@@ -1,0 +1,8 @@
+SONIDOS DEL EFECTO FOTOS · ENFOQUE DE MISTERIO  (fotos-enfoque)
+Tienen prioridad sobre los del estilo elegido.
+Formato: mp3, sin música de fondo, cortos y con el volumen parecido entre sí. Solo hace falta crear los que quieras:
+el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver PROMPTS.md.
+
+Este efecto solo usa estos sonidos (los demás no hace falta crearlos):
+  ding.mp3  -  campanita brillante única (1 s)
+  whoosh.mp3  -  barrido de aire (0,6 s)

@@ -1,0 +1,12 @@
+SONIDOS DEL EFECTO FOTOS · BINGO DE RECUERDOS (JUEGO, UN CARTÓN POR MÓVIL)  (fotos-bingo)
+Tienen prioridad sobre los del estilo elegido.
+Formato: mp3, sin música de fondo, cortos y con el volumen parecido entre sí. Solo hace falta crear los que quieras:
+el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver PROMPTS.md.
+
+Este efecto solo usa estos sonidos (los demás no hace falta crearlos):
+  click.mp3  -  clic de interfaz (0,1 s)
+  pop.mp3  -  burbuja que explota (0,1 s)
+  broma.mp3  -  "boing" cómico + trombón triste (1,5 s)
+  bola.mp3  -  barrido y campanita (sale una bola del bingo) (0,8 s)
+  linea.mp3  -  jingle de "línea" en el bingo (2 s)
+  bingo.mp3  -  gran celebración de "¡Bingo!" (3-4 s)

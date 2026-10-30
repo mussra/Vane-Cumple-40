@@ -1,0 +1,7 @@
+SONIDOS DE LOS EFECTOS
+Dos niveles (de más a menos prioridad):
+  1. efectos/<efecto>/<sonido>.mp3   sonido propio de ese efecto (p. ej. efectos/fotos-castillo/fanfarria.mp3)
+  2. <estilo>/<sonido>.mp3           sonido propio del estilo, para todos los efectos (p. ej. betis/estallar.mp3)
+  3. Si no hay archivo, suena el sonido original generado por código.
+Carpetas de estilo: dark, cloud, green, betis, sevilla, cookie, kids, magic (luxury usa siempre los originales).
+Los 18 nombres de sonido y sus prompts: PROMPTS.md. Cada carpeta tiene su LEEME.txt con lo que espera.

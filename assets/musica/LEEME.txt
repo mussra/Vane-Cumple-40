@@ -1,0 +1,18 @@
+MÚSICA AMBIENTE POR ESTILO
+Aquí van las músicas de fondo de la página, una por estilo, en bucle (ideal 60-90 s, mp3 128 kbps, 1-2 MB).
+Cada persona la enciende en el botón 🎨 > Música (apagada por defecto). Se calla sola mientras hay un vídeo o un efecto.
+Si falta el archivo de un estilo, no suena música ambiente en ese estilo.
+
+Ficheros esperados (mp3, m4a u ogg):
+  luxury.mp3  -  Luxury (estilo original)
+  dark.mp3  -  Dark
+  cloud.mp3  -  Cloud
+  green.mp3  -  Green
+  betis.mp3  -  Forever Green
+  sevilla.mp3  -  Live in Red
+  cookie.mp3  -  Nice Cookie
+  kids.mp3  -  Peques (5-10 años)
+  magic.mp3  -  El castillo de Vane
+
+Subcarpeta efectos/: música propia de cada efecto de fotos (ver su LEEME.txt).
+Prompts para generarlas: PROMPTS.md.

@@ -1,0 +1,19 @@
+SONIDOS PROPIOS DE CADA EFECTO
+Una carpeta por efecto, con el nombre exacto del efecto:
+  fotos-fuegos/  -  Fotos · Fuegos artificiales
+  fotos-nave/  -  Fotos · Nave espacial
+  fotos-muro/  -  Fotos · Videowall (16 móviles)
+  fotos-ola/  -  Fotos · Ola de luz (16 móviles)
+  fotos-mosaico/  -  Fotos · Mosaico del 40
+  fotos-enfoque/  -  Fotos · Enfoque de misterio
+  fotos-puzzle/  -  Fotos · Rompecabezas
+  fotos-polaroid/  -  Fotos · Polaroids reveladas
+  fotos-tunel/  -  Fotos · Túnel del tiempo
+  fotos-farolillos/  -  Fotos · Farolillos al cielo
+  fotos-lluvia/  -  Fotos · Lluvia de recuerdos
+  fotos-tragaperras/  -  Fotos · Tragaperras de recuerdos
+  fotos-pasteleria/  -  Fotos · Tarta de recuerdos (repostería)
+  fotos-castillo/  -  Fotos · Teatro del castillo de cuento
+  fotos-bingo/  -  Fotos · Bingo de recuerdos (juego, un cartón por móvil)
+
+Dentro de cada una, su LEEME.txt dice qué sonidos usa ese efecto.

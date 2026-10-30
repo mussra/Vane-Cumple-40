@@ -1,0 +1,24 @@
+MÚSICA DE FONDO DE CADA EFECTO DE FOTOS
+Un archivo por efecto, con el nombre exacto del efecto + .mp3 (bucle de 60-120 s, mp3 128 kbps).
+Va sincronizada con el tiempo del efecto en todos los móviles y se repite en bucle si el efecto dura más.
+Si falta el archivo, suena la música generada de siempre (en fuegos y tragaperras, ninguna).
+
+Ficheros esperados:
+  fotos-fuegos.mp3  -  Fotos · Fuegos artificiales
+  fotos-nave.mp3  -  Fotos · Nave espacial
+  fotos-muro.mp3  -  Fotos · Videowall (16 móviles)
+  fotos-ola.mp3  -  Fotos · Ola de luz (16 móviles)
+  fotos-mosaico.mp3  -  Fotos · Mosaico del 40
+  fotos-enfoque.mp3  -  Fotos · Enfoque de misterio
+  fotos-puzzle.mp3  -  Fotos · Rompecabezas
+  fotos-polaroid.mp3  -  Fotos · Polaroids reveladas
+  fotos-tunel.mp3  -  Fotos · Túnel del tiempo
+  fotos-farolillos.mp3  -  Fotos · Farolillos al cielo
+  fotos-lluvia.mp3  -  Fotos · Lluvia de recuerdos
+  fotos-tragaperras.mp3  -  Fotos · Tragaperras de recuerdos
+  fotos-pasteleria.mp3  -  Fotos · Tarta de recuerdos (repostería)
+  fotos-castillo.mp3  -  Fotos · Teatro del castillo de cuento
+  fotos-bingo.mp3  -  Fotos · Bingo de recuerdos (juego, un cartón por móvil)
+
+Ejemplo del castillo: assets/musica/efectos/fotos-castillo.mp3
+Prompts para generarlas: PROMPTS.md.

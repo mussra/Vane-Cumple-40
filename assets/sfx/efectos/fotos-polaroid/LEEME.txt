@@ -1,0 +1,9 @@
+SONIDOS DEL EFECTO FOTOS · POLAROIDS REVELADAS  (fotos-polaroid)
+Tienen prioridad sobre los del estilo elegido.
+Formato: mp3, sin música de fondo, cortos y con el volumen parecido entre sí. Solo hace falta crear los que quieras:
+el que falte sigue sonando como ahora (el sonido original generado por código). Prompts: ver PROMPTS.md.
+
+Este efecto solo usa estos sonidos (los demás no hace falta crearlos):
+  obturador.mp3  -  clic de cámara de fotos (0,2 s)
+  impresora.mp3  -  foto instantánea saliendo de la impresora (1 s)
+  ding.mp3  -  campanita brillante única (1 s)

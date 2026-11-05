@@ -230,6 +230,12 @@
                         <button onclick="borrarCacheVideos()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"><i class="fa-solid fa-broom mr-1 text-amber-400"></i> Vaciar caché de vídeos</button>
                         <button onclick="purgarCachesTodos()" class="px-3 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-500/40 transition-colors"><i class="fa-solid fa-trash-can mr-1"></i> Purgar cachés de todos los clientes</button>
                     </div>
+                    <div class="flex gap-2 flex-wrap items-center mt-2 text-xs">
+                        <input id="input-purge-item" type="text" placeholder="archivo o carpeta (p. ej. foto1.jpg)" class="px-2 py-2 rounded-lg bg-slate-950 text-slate-200 border border-slate-700 w-56">
+                        <button onclick="purgarElementoTodos()" class="px-3 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-500/40 transition-colors"><i class="fa-solid fa-broom-ball mr-1"></i> Vaciar elemento en todos</button>
+                        <select id="select-purge-cliente" onfocus="poblarSelectClientes()" class="px-2 py-2 rounded-lg bg-slate-950 text-slate-200 border border-slate-700 max-w-[14rem]"></select>
+                        <button onclick="purgarCliente()" class="px-3 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-500/40 transition-colors"><i class="fa-solid fa-mobile-screen mr-1"></i> Vaciar caché de ese cliente</button>
+                    </div>
                     <div id="salud-videos" class="mt-3 text-xs space-y-1"></div>
                 </div>
             </details>
@@ -3271,6 +3277,93 @@
             .catch((e) => { manejarErrorFirestore(e, 'cache_purge'); mostrarToast('No se pudo enviar la orden.', 'error'); });
     };
 
+    /* ---- Purga remota selectiva: un elemento en todos los clientes / un cliente completo ----
+       Solo se borran copias en caché (vane-*); los archivos originales no se tocan. */
+    const LS_PURGE_ITEM_TS = 'vane_purge_item_ts';
+    const LS_PURGE_CLIENTE_TS = 'vane_purge_cliente_ts';
+    async function borrarEntradaCacheEnTodos(nombre) {
+        if (!('caches' in window) || !nombre) return 0;
+        const needle = String(nombre).trim().replace(/^\/+/, '');
+        if (!needle) return 0;
+        let n = 0;
+        const ks = await caches.keys();
+        for (const k of ks) {
+            if (k.indexOf('vane-') !== 0) continue;
+            const cache = await caches.open(k);
+            const reqs = await cache.keys();
+            for (const r of reqs) {
+                let path = '';
+                try { path = new URL(r.url).pathname; } catch (e) { path = r.url || ''; }
+                if (path.slice(-needle.length) === needle || path.indexOf('/' + needle + '/') >= 0) {
+                    try { await cache.delete(r); n++; } catch (e) { /* ignorar */ }
+                }
+            }
+        }
+        return n;
+    }
+    function suscribirCachePurgeItem() {
+        db.collection('config_sistema').doc('cache_purge_item').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            if (!doc.exists) return;
+            const ts = Number(doc.data().ts) || 0;
+            const nombre = String(doc.data().nombre || '').trim();
+            if (!ts || !nombre || ts <= (parseInt(lsGet(LS_PURGE_ITEM_TS), 10) || 0)) return;
+            lsSet(LS_PURGE_ITEM_TS, String(ts));
+            borrarEntradaCacheEnTodos(nombre).then((n) => {
+                if (n > 0) mostrarToast('El administrador liberó la caché de «' + nombre + '». Se volverá a descargar si se necesita.');
+            });
+        }, (e) => manejarErrorFirestore(e, 'cache_purge_item'));
+    }
+    function suscribirCachePurgeCliente() {
+        db.collection('config_sistema').doc('cache_purge_cliente').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            if (!doc.exists) return;
+            const ts = Number(doc.data().ts) || 0;
+            const destino = String(doc.data().clientId || '');
+            if (!ts || !destino || destino !== clientId) return;
+            if (ts <= (parseInt(lsGet(LS_PURGE_CLIENTE_TS), 10) || 0)) return;
+            lsSet(LS_PURGE_CLIENTE_TS, String(ts));
+            purgarLocal('cliente-' + ts).then(() => {
+                mostrarToast('El administrador vació la caché de este dispositivo. Recargando…');
+                setTimeout(() => location.reload(), 1200);
+            });
+        }, (e) => manejarErrorFirestore(e, 'cache_purge_cliente'));
+    }
+    window.purgarElementoTodos = function () {
+        if (!db || modoLocal()) { mostrarToast('Sin conexión con Firebase.', 'error'); return; }
+        const inp = document.getElementById('input-purge-item');
+        const nombre = ((inp && inp.value) || '').trim();
+        if (!nombre) { mostrarToast('Escribe el nombre del archivo o carpeta a liberar.', 'error'); return; }
+        if (!confirm('Se liberará la caché de «' + nombre + '» en TODOS los dispositivos (solo copias en caché; los archivos originales no se tocan). ¿Continuar?')) return;
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('cache_purge_item').set({ nombre: nombre, ts: Date.now(), por: nombreDispositivo(), updatedAt: ST() }, { merge: true })
+            .then(() => mostrarToast('Orden enviada: se liberará «' + nombre + '» en todos los dispositivos.'))
+            .catch((e) => { manejarErrorFirestore(e, 'cache_purge_item'); mostrarToast('No se pudo enviar la orden.', 'error'); });
+    };
+    window.purgarCliente = function () {
+        if (!db || modoLocal()) { mostrarToast('Sin conexión con Firebase.', 'error'); return; }
+        const sel = document.getElementById('select-purge-cliente');
+        const destino = sel && sel.value;
+        if (!destino) { mostrarToast('Elige el cliente a limpiar.', 'error'); return; }
+        const etiqueta = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : destino;
+        if (!confirm('Se vaciará TODA la caché del cliente «' + etiqueta + '» (solo copias en caché). ¿Continuar?')) return;
+        contarEscrituraAdmin(1);
+        db.collection('config_sistema').doc('cache_purge_cliente').set({ clientId: destino, ts: Date.now(), por: nombreDispositivo(), updatedAt: ST() }, { merge: true })
+            .then(() => mostrarToast('Orden enviada al cliente «' + etiqueta + '».'))
+            .catch((e) => { manejarErrorFirestore(e, 'cache_purge_cliente'); mostrarToast('No se pudo enviar la orden.', 'error'); });
+    };
+    function poblarSelectClientes() {
+        const sel = document.getElementById('select-purge-cliente');
+        if (!sel) return;
+        const actual = sel.value;
+        const filas = [{ id: clientId, nombre: nombreDispositivo() + ' · este' }];
+        Object.keys(dispositivosCache || {}).forEach((k) => {
+            if (k !== clientId) filas.push({ id: k, nombre: (dispositivosCache[k].nombre || k.slice(-6)) });
+        });
+        sel.innerHTML = '<option value="">Elegir cliente…</option>' + filas.map((f) => '<option value="' + esc(f.id) + '">' + esc(f.nombre) + ' (' + esc(f.id.slice(-6)) + ')</option>').join('');
+        if (actual) sel.value = actual;
+    }
+
     window.reintentarDescargas = function () {
         let n = 0;
         Object.values(cacheVideos).forEach((e) => {
@@ -3694,6 +3787,9 @@
             suscribirMaster();
             suscribirPrecargaConfig();
             suscribirCachePurge();
+            suscribirCachePurgeItem();
+            suscribirCachePurgeCliente();
+            poblarSelectClientes();
             suscribirBloqueoConfig();
             suscribirEstiloConfig();
             suscribirMuroConfig();

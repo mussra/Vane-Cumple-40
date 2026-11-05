@@ -3329,14 +3329,62 @@
             });
         }, (e) => manejarErrorFirestore(e, 'cache_purge_cliente'));
     }
+
+    /* ---- Órdenes de caché durables (cola): cada orden es un doc; nada se sobrescribe ----
+       Los clientes procesan cada doc una sola vez (registro en localStorage). */
+    const LS_ORDENES_HECHAS = 'vane_ordenes_hechas';
+    function ordenesHechas() { try { const h = JSON.parse(lsGet(LS_ORDENES_HECHAS, '[]')); return Array.isArray(h) ? h : []; } catch (e) { return []; } }
+    function marcarOrdenHecha(id) { const h = ordenesHechas(); h.push(id); lsSet(LS_ORDENES_HECHAS, JSON.stringify(h.slice(-500))); }
+    function suscribirCacheOrdenes() {
+        db.collection('cache_ordenes').orderBy('ts', 'desc').limit(500).onSnapshot((snap) => {
+            contarLectura(snap.docChanges().filter((ch) => !ch.doc.metadata.hasPendingWrites).length);
+            const hechas = ordenesHechas();
+            const pend = snap.docs
+                .filter((docu) => hechas.indexOf(docu.id) < 0)
+                .sort((a, b) => (Number(a.data().ts) || 0) - (Number(b.data().ts) || 0));
+            if (!pend.length) return;
+            // 1) Primero las purgas de elemento, en orden y marcadas SOLO al completar
+            //    (si el cliente se interrumpe, las no marcadas se reintentan: es inocuo).
+            const deElemento = pend.filter((docu) => docu.data().tipo === 'elemento');
+            const mias = pend.filter((docu) => docu.data().tipo === 'cliente' && docu.data().clientId === clientId);
+            const ajenasOInvalidas = pend.filter((docu) => docu.data().tipo !== 'elemento' && mias.indexOf(docu) < 0);
+            ajenasOInvalidas.forEach((docu) => marcarOrdenHecha(docu.id));   // dirigidas a otro o sin ts: nada que hacer
+            (async () => {
+                for (const docu of deElemento) {
+                    const d = docu.data();
+                    const ts = Number(d.ts) || 0;
+                    if (!ts || !d.nombre) { marcarOrdenHecha(docu.id); continue; }
+                    try { await borrarEntradaCacheEnTodos(String(d.nombre)); } catch (e) { /* reintento en el próximo snapshot */ continue; }
+                    if (ts > (parseInt(lsGet(LS_PURGE_ITEM_TS), 10) || 0)) lsSet(LS_PURGE_ITEM_TS, String(ts));
+                    marcarOrdenHecha(docu.id);
+                    mostrarToast('El administrador liberó la caché de «' + d.nombre + '». Se volverá a descargar si se necesita.');
+                }
+                // 2) La purga de ESTE cliente va la última: una sola purga + una recarga,
+                //    sin interrumpir las purgas de elemento pendientes.
+                if (mias.length) {
+                    const tsMax = Math.max.apply(null, mias.map((docu) => Number(docu.data().ts) || 0));
+                    mias.forEach((docu) => marcarOrdenHecha(docu.id));
+                    if (tsMax > (parseInt(lsGet(LS_PURGE_CLIENTE_TS), 10) || 0)) lsSet(LS_PURGE_CLIENTE_TS, String(tsMax));
+                    purgarLocal('orden-' + tsMax).then(() => {
+                        mostrarToast('El administrador vació la caché de este dispositivo. Recargando…');
+                        setTimeout(() => location.reload(), 1200);
+                    });
+                }
+            })();
+        }, (e) => manejarErrorFirestore(e, 'cache_ordenes'));
+    }
+
     window.purgarElementoTodos = function () {
         if (!db || modoLocal()) { mostrarToast('Sin conexión con Firebase.', 'error'); return; }
         const inp = document.getElementById('input-purge-item');
         const nombre = ((inp && inp.value) || '').trim();
         if (!nombre) { mostrarToast('Escribe el nombre del archivo o carpeta a liberar.', 'error'); return; }
         if (!confirm('Se liberará la caché de «' + nombre + '» en TODOS los dispositivos (solo copias en caché; los archivos originales no se tocan). ¿Continuar?')) return;
-        contarEscrituraAdmin(1);
-        db.collection('config_sistema').doc('cache_purge_item').set({ nombre: nombre, ts: Date.now(), por: nombreDispositivo(), updatedAt: ST() }, { merge: true })
+        contarEscrituraAdmin(2);
+        const ts = Date.now();
+        const orden = { tipo: 'elemento', nombre: nombre, ts: ts, por: nombreDispositivo(), updatedAt: ST() };
+        db.collection('cache_ordenes').add(orden)
+            .then(() => db.collection('config_sistema').doc('cache_purge_item').set({ nombre: nombre, ts: ts, por: nombreDispositivo(), updatedAt: ST() }, { merge: true }))
             .then(() => mostrarToast('Orden enviada: se liberará «' + nombre + '» en todos los dispositivos.'))
             .catch((e) => { manejarErrorFirestore(e, 'cache_purge_item'); mostrarToast('No se pudo enviar la orden.', 'error'); });
     };
@@ -3347,8 +3395,11 @@
         if (!destino) { mostrarToast('Elige el cliente a limpiar.', 'error'); return; }
         const etiqueta = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : destino;
         if (!confirm('Se vaciará TODA la caché del cliente «' + etiqueta + '» (solo copias en caché). ¿Continuar?')) return;
-        contarEscrituraAdmin(1);
-        db.collection('config_sistema').doc('cache_purge_cliente').set({ clientId: destino, ts: Date.now(), por: nombreDispositivo(), updatedAt: ST() }, { merge: true })
+        contarEscrituraAdmin(2);
+        const ts = Date.now();
+        const orden = { tipo: 'cliente', clientId: destino, ts: ts, por: nombreDispositivo(), updatedAt: ST() };
+        db.collection('cache_ordenes').add(orden)
+            .then(() => db.collection('config_sistema').doc('cache_purge_cliente').set({ clientId: destino, ts: ts, por: nombreDispositivo(), updatedAt: ST() }, { merge: true }))
             .then(() => mostrarToast('Orden enviada al cliente «' + etiqueta + '».'))
             .catch((e) => { manejarErrorFirestore(e, 'cache_purge_cliente'); mostrarToast('No se pudo enviar la orden.', 'error'); });
     };
@@ -3789,6 +3840,7 @@
             suscribirCachePurge();
             suscribirCachePurgeItem();
             suscribirCachePurgeCliente();
+            suscribirCacheOrdenes();
             poblarSelectClientes();
             suscribirBloqueoConfig();
             suscribirEstiloConfig();

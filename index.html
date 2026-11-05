@@ -513,11 +513,22 @@
             const s = document.createElement('script');
             s.src = 'assets/js/efectos.js';
             s.onload = () => {
-                const m = document.createElement('script');
-                m.textContent = g('app-main').textContent;
-                document.body.appendChild(m);
-                document.documentElement.classList.remove('gate-locked');
-                g('gate-privado').remove();
+                // Carrera real observada en produccion: si la sesion se verifica antes de que el parser
+                // termine de leer el bloque app-main (197 KB), textContent llega truncado y la copia
+                // ejecutable muere con SyntaxError -> toda la app queda inerte (botones sin handler).
+                // Esperar a que el documento termine de parsearse garantiza el textContent completo.
+                const montarApp = () => {
+                    const m = document.createElement('script');
+                    m.textContent = g('app-main').textContent;
+                    document.body.appendChild(m);
+                    document.documentElement.classList.remove('gate-locked');
+                    g('gate-privado').remove();
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', montarApp, { once: true });
+                } else {
+                    montarApp();
+                }
             };
             s.onerror = () => { entrado = false; mostrarFormulario('No se pudo cargar la aplicación. Recarga la página.', true); };
             document.head.appendChild(s);

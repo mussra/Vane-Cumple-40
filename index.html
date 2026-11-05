@@ -3332,49 +3332,57 @@
 
     /* ---- Órdenes de caché durables (cola): cada orden es un doc; nada se sobrescribe ----
        Los clientes procesan cada doc una sola vez (registro en localStorage). */
-    const LS_ORDENES_HECHAS = 'vane_ordenes_hechas';
-    function ordenesHechas() { try { const h = JSON.parse(lsGet(LS_ORDENES_HECHAS, '[]')); return Array.isArray(h) ? h : []; } catch (e) { return []; } }
-    function marcarOrdenHecha(id) { const h = ordenesHechas(); h.push(id); lsSet(LS_ORDENES_HECHAS, JSON.stringify(h.slice(-2000))); }
+    const LS_ORDENES_WM = 'vane_ordenes_wm';
+    function ordenesWM() { return parseInt(lsGet(LS_ORDENES_WM), 10) || 0; }
     function suscribirCacheOrdenes() {
         // Órdenes durables DENTRO de config_sistema (permisos ya verificados: lectura clientes, escritura admin).
-        // Un doc por orden (id orden_<ts>_<rand>); sin ventana límite: ninguna orden se pierde por volumen.
-        // Guarda de edad: una orden de más de 30 días nunca actúa (acota reprocesos si el registro local se poda).
-        const EDAD_MAX_MS = 30 * 24 * 3600 * 1000;
+        // Un doc por orden (id orden_<ts>_<rand>). Marca de agua durable (vane_ordenes_wm): se procesa en orden
+        // de ts todo lo que tenga ts > marca, y la marca solo avanza por tramo contiguo completado.
+        // Compactación: el admin poda órdenes >30 días y escribe ordenes_compactacion.ts = última ts podada.
+        // Si la marca del cliente queda por debajo, HAY historia perdida -> purga completa automática + recarga.
+        db.collection('config_sistema').doc('ordenes_compactacion').onSnapshot((doc) => {
+            if (!doc.metadata.hasPendingWrites) contarLectura(1);
+            if (!doc.exists) return;
+            const corte = Number(doc.data().ts) || 0;
+            if (!corte || corte <= ordenesWM()) return;
+            lsSet(LS_ORDENES_WM, String(corte));
+            purgarLocal('compact-' + corte).then(() => {
+                mostrarToast('Caché renovada por mantenimiento. Recargando…');
+                setTimeout(() => location.reload(), 1200);
+            });
+        }, (e) => manejarErrorFirestore(e, 'ordenes_compactacion'));
         db.collection('config_sistema').where('tipo', 'in', ['elemento', 'cliente']).onSnapshot((snap) => {
             contarLectura(snap.docChanges().filter((ch) => !ch.doc.metadata.hasPendingWrites).length);
-            const ahora = Date.now();
-            const hechas = ordenesHechas();
+            const wm = ordenesWM();
             const pend = snap.docs
-                .filter((docu) => hechas.indexOf(docu.id) < 0)
+                .filter((docu) => (Number(docu.data().ts) || 0) > wm)
                 .sort((a, b) => (Number(a.data().ts) || 0) - (Number(b.data().ts) || 0));
             if (!pend.length) return;
-            const deElemento = [];
-            const mias = [];
-            pend.forEach((docu) => {
-                const d = docu.data();
-                const ts = Number(d.ts) || 0;
-                if (!ts || ahora - ts > EDAD_MAX_MS) { marcarOrdenHecha(docu.id); return; }
-                if (d.tipo === 'elemento') deElemento.push(docu);
-                else if (d.tipo === 'cliente' && d.clientId === clientId) mias.push(docu);
-                else marcarOrdenHecha(docu.id);
-            });
             (async () => {
-                // 1) Purgas de elemento primero, en orden, marcadas SOLO al completar (reintento seguro).
-                for (const docu of deElemento) {
+                let hayPurgaMia = false;
+                let tsMia = 0;
+                for (const docu of pend) {
                     const d = docu.data();
                     const ts = Number(d.ts) || 0;
-                    if (!d.nombre) { marcarOrdenHecha(docu.id); continue; }
-                    try { await borrarEntradaCacheEnTodos(String(d.nombre)); } catch (e) { continue; }
-                    if (ts > (parseInt(lsGet(LS_PURGE_ITEM_TS), 10) || 0)) lsSet(LS_PURGE_ITEM_TS, String(ts));
-                    marcarOrdenHecha(docu.id);
-                    mostrarToast('El administrador liberó la caché de «' + d.nombre + '». Se volverá a descargar si se necesita.');
+                    if (d.tipo === 'elemento') {
+                        if (!d.nombre) { lsSet(LS_ORDENES_WM, String(ts)); continue; }
+                        try { await borrarEntradaCacheEnTodos(String(d.nombre)); } catch (e) { break; }   // hueco: reintento en el próximo snapshot
+                        if (ts > (parseInt(lsGet(LS_PURGE_ITEM_TS), 10) || 0)) lsSet(LS_PURGE_ITEM_TS, String(ts));
+                        lsSet(LS_ORDENES_WM, String(ts));
+                        mostrarToast('El administrador liberó la caché de «' + d.nombre + '». Se volverá a descargar si se necesita.');
+                    } else if (d.tipo === 'cliente' && d.clientId === clientId) {
+                        hayPurgaMia = true;
+                        if (ts > tsMia) tsMia = ts;
+                        lsSet(LS_ORDENES_WM, String(ts));
+                    } else {
+                        lsSet(LS_ORDENES_WM, String(ts));   // dirigida a otro cliente o sin ts válido: nada que hacer
+                    }
                 }
-                // 2) La purga de ESTE cliente, la última: una sola purga + una sola recarga.
-                if (mias.length) {
-                    const tsMax = Math.max.apply(null, mias.map((docu) => Number(docu.data().ts) || 0));
-                    mias.forEach((docu) => marcarOrdenHecha(docu.id));
-                    if (tsMax > (parseInt(lsGet(LS_PURGE_CLIENTE_TS), 10) || 0)) lsSet(LS_PURGE_CLIENTE_TS, String(tsMax));
-                    purgarLocal('orden-' + tsMax).then(() => {
+                // La purga de ESTE cliente se ejecuta al final: no interrumpe las purgas de elemento y
+                // las subsume (borra todas las cachés vane-). Una sola purga + una sola recarga.
+                if (hayPurgaMia) {
+                    if (tsMia > (parseInt(lsGet(LS_PURGE_CLIENTE_TS), 10) || 0)) lsSet(LS_PURGE_CLIENTE_TS, String(tsMia));
+                    purgarLocal('orden-' + tsMia).then(() => {
                         mostrarToast('El administrador vació la caché de este dispositivo. Recargando…');
                         setTimeout(() => location.reload(), 1200);
                     });
@@ -3389,7 +3397,15 @@
     function podarOrdenesViejas() {
         const corte = Date.now() - 30 * 24 * 3600 * 1000;
         db.collection('config_sistema').where('tipo', 'in', ['elemento', 'cliente']).get().then((snap) => {
-            snap.docs.forEach((d) => { const ts = Number(d.data().ts) || 0; if (ts && ts < corte) d.ref.delete().catch(() => { /* ignorar */ }); });
+            let maxBorrado = 0;
+            const borrados = [];
+            snap.docs.forEach((d) => {
+                const ts = Number(d.data().ts) || 0;
+                if (ts && ts < corte) { borrados.push(d.ref.delete().catch(() => { /* ignorar */ })); if (ts > maxBorrado) maxBorrado = ts; }
+            });
+            if (!maxBorrado) return;
+            // Punto de compactación durable: los clientes cuya marca quede por debajo purgarán todo al reconectar.
+            Promise.all(borrados).then(() => db.collection('config_sistema').doc('ordenes_compactacion').set({ ts: maxBorrado, updatedAt: ST() }, { merge: true })).catch(() => { /* ignorar */ });
         }).catch(() => { /* ignorar */ });
     }
 

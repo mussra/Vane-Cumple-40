@@ -3334,33 +3334,42 @@
        Los clientes procesan cada doc una sola vez (registro en localStorage). */
     const LS_ORDENES_HECHAS = 'vane_ordenes_hechas';
     function ordenesHechas() { try { const h = JSON.parse(lsGet(LS_ORDENES_HECHAS, '[]')); return Array.isArray(h) ? h : []; } catch (e) { return []; } }
-    function marcarOrdenHecha(id) { const h = ordenesHechas(); h.push(id); lsSet(LS_ORDENES_HECHAS, JSON.stringify(h.slice(-500))); }
+    function marcarOrdenHecha(id) { const h = ordenesHechas(); h.push(id); lsSet(LS_ORDENES_HECHAS, JSON.stringify(h.slice(-2000))); }
     function suscribirCacheOrdenes() {
-        db.collection('cache_ordenes').orderBy('ts', 'desc').limit(500).onSnapshot((snap) => {
+        // Órdenes durables DENTRO de config_sistema (permisos ya verificados: lectura clientes, escritura admin).
+        // Un doc por orden (id orden_<ts>_<rand>); sin ventana límite: ninguna orden se pierde por volumen.
+        // Guarda de edad: una orden de más de 30 días nunca actúa (acota reprocesos si el registro local se poda).
+        const EDAD_MAX_MS = 30 * 24 * 3600 * 1000;
+        db.collection('config_sistema').where('tipo', 'in', ['elemento', 'cliente']).onSnapshot((snap) => {
             contarLectura(snap.docChanges().filter((ch) => !ch.doc.metadata.hasPendingWrites).length);
+            const ahora = Date.now();
             const hechas = ordenesHechas();
             const pend = snap.docs
                 .filter((docu) => hechas.indexOf(docu.id) < 0)
                 .sort((a, b) => (Number(a.data().ts) || 0) - (Number(b.data().ts) || 0));
             if (!pend.length) return;
-            // 1) Primero las purgas de elemento, en orden y marcadas SOLO al completar
-            //    (si el cliente se interrumpe, las no marcadas se reintentan: es inocuo).
-            const deElemento = pend.filter((docu) => docu.data().tipo === 'elemento');
-            const mias = pend.filter((docu) => docu.data().tipo === 'cliente' && docu.data().clientId === clientId);
-            const ajenasOInvalidas = pend.filter((docu) => docu.data().tipo !== 'elemento' && mias.indexOf(docu) < 0);
-            ajenasOInvalidas.forEach((docu) => marcarOrdenHecha(docu.id));   // dirigidas a otro o sin ts: nada que hacer
+            const deElemento = [];
+            const mias = [];
+            pend.forEach((docu) => {
+                const d = docu.data();
+                const ts = Number(d.ts) || 0;
+                if (!ts || ahora - ts > EDAD_MAX_MS) { marcarOrdenHecha(docu.id); return; }
+                if (d.tipo === 'elemento') deElemento.push(docu);
+                else if (d.tipo === 'cliente' && d.clientId === clientId) mias.push(docu);
+                else marcarOrdenHecha(docu.id);
+            });
             (async () => {
+                // 1) Purgas de elemento primero, en orden, marcadas SOLO al completar (reintento seguro).
                 for (const docu of deElemento) {
                     const d = docu.data();
                     const ts = Number(d.ts) || 0;
-                    if (!ts || !d.nombre) { marcarOrdenHecha(docu.id); continue; }
-                    try { await borrarEntradaCacheEnTodos(String(d.nombre)); } catch (e) { /* reintento en el próximo snapshot */ continue; }
+                    if (!d.nombre) { marcarOrdenHecha(docu.id); continue; }
+                    try { await borrarEntradaCacheEnTodos(String(d.nombre)); } catch (e) { continue; }
                     if (ts > (parseInt(lsGet(LS_PURGE_ITEM_TS), 10) || 0)) lsSet(LS_PURGE_ITEM_TS, String(ts));
                     marcarOrdenHecha(docu.id);
                     mostrarToast('El administrador liberó la caché de «' + d.nombre + '». Se volverá a descargar si se necesita.');
                 }
-                // 2) La purga de ESTE cliente va la última: una sola purga + una recarga,
-                //    sin interrumpir las purgas de elemento pendientes.
+                // 2) La purga de ESTE cliente, la última: una sola purga + una sola recarga.
                 if (mias.length) {
                     const tsMax = Math.max.apply(null, mias.map((docu) => Number(docu.data().ts) || 0));
                     mias.forEach((docu) => marcarOrdenHecha(docu.id));
@@ -3371,7 +3380,17 @@
                     });
                 }
             })();
-        }, (e) => manejarErrorFirestore(e, 'cache_ordenes'));
+        }, (e) => manejarErrorFirestore(e, 'config_ordenes'));
+    }
+    function enviarOrdenCache(orden) {
+        const id = 'orden_' + orden.ts + '_' + Math.random().toString(36).slice(2, 8);
+        return db.collection('config_sistema').doc(id).set(orden);
+    }
+    function podarOrdenesViejas() {
+        const corte = Date.now() - 30 * 24 * 3600 * 1000;
+        db.collection('config_sistema').where('tipo', 'in', ['elemento', 'cliente']).get().then((snap) => {
+            snap.docs.forEach((d) => { const ts = Number(d.data().ts) || 0; if (ts && ts < corte) d.ref.delete().catch(() => { /* ignorar */ }); });
+        }).catch(() => { /* ignorar */ });
     }
 
     window.purgarElementoTodos = function () {
@@ -3383,8 +3402,9 @@
         contarEscrituraAdmin(2);
         const ts = Date.now();
         const orden = { tipo: 'elemento', nombre: nombre, ts: ts, por: nombreDispositivo(), updatedAt: ST() };
-        db.collection('cache_ordenes').add(orden)
+        enviarOrdenCache(orden)
             .then(() => db.collection('config_sistema').doc('cache_purge_item').set({ nombre: nombre, ts: ts, por: nombreDispositivo(), updatedAt: ST() }, { merge: true }))
+            .then(() => podarOrdenesViejas())
             .then(() => mostrarToast('Orden enviada: se liberará «' + nombre + '» en todos los dispositivos.'))
             .catch((e) => { manejarErrorFirestore(e, 'cache_purge_item'); mostrarToast('No se pudo enviar la orden.', 'error'); });
     };
@@ -3398,8 +3418,9 @@
         contarEscrituraAdmin(2);
         const ts = Date.now();
         const orden = { tipo: 'cliente', clientId: destino, ts: ts, por: nombreDispositivo(), updatedAt: ST() };
-        db.collection('cache_ordenes').add(orden)
+        enviarOrdenCache(orden)
             .then(() => db.collection('config_sistema').doc('cache_purge_cliente').set({ clientId: destino, ts: ts, por: nombreDispositivo(), updatedAt: ST() }, { merge: true }))
+            .then(() => podarOrdenesViejas())
             .then(() => mostrarToast('Orden enviada al cliente «' + etiqueta + '».'))
             .catch((e) => { manejarErrorFirestore(e, 'cache_purge_cliente'); mostrarToast('No se pudo enviar la orden.', 'error'); });
     };
